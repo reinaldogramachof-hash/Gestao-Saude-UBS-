@@ -6,30 +6,37 @@
 
 ## Status Atual do Projeto
 
-**Fase:** 0 — Fundação / Documentação
-**Data de início:** 2026-04-20
-**Próxima etapa:** Criar estrutura de pastas do projeto e inicializar repositórios frontend e backend
+**Fase:** 1 — Fundação CONCLUÍDA → Iniciando Fase 2 (MVP)
+**Data de conclusão da Fase 1:** 2026-04-20
+**Próxima etapa:** Implementar autenticação JWT e primeiras telas funcionais
 
 ---
 
 ## O que foi feito até agora
 
-- [x] Análise completa do ecossistema de saúde de SJC (e-SUS, SISREG, CROSS, UBS Resolve, Saúde na Mão)
-- [x] Definição do escopo do projeto (camada de transparência, não substituição de sistemas)
-- [x] Definição de stack tecnológica (React + Node.js + PostgreSQL)
-- [x] Definição das entidades core e fluxo de status
-- [x] Criação do `CLAUDE.md` (instrução master)
-- [x] Criação da documentação acadêmica (`docs/`)
-- [x] Criação deste arquivo de início de sessão
+- [x] Análise completa do ecossistema de saúde de SJC
+- [x] Definição de escopo, stack e entidades core
+- [x] Criação do `CLAUDE.md`, documentação acadêmica em `docs/` (5 documentos)
+- [x] Repositório GitHub inicializado e sincronizado
+- [x] `app/frontend/` — React + Vite + Tailwind, AuthContext, roteamento, axios
+- [x] `app/backend/` — Node.js + Express + Knex, server.js, auth middleware, rotas
+- [x] `app/backend/src/db/migrations/` — 8 migrations PostgreSQL (001–008) com comentários
+- [x] `app/backend/src/db/seeds/` — seed de desenvolvimento com 3 UBSs e gestores de teste
+- [x] `screens/` — 8 wireframes HTML gerados pelo Stitch MCP
+- [x] `.gitignore` expandido, `knexfile.js` corrigido para PostgreSQL
 
 ---
 
-## O que está pendente agora
+## O que está pendente agora (Fase 2 — MVP)
 
-- [ ] Inicializar projeto React (frontend)
-- [ ] Inicializar projeto Node.js + Express (backend)
-- [ ] Criar schema inicial do PostgreSQL
-- [ ] Criar wireframes das telas core (Stitch MCP)
+- [ ] Subir instância PostgreSQL (Railway) e rodar `npx knex migrate:latest`
+- [ ] Implementar rota POST `/api/auth/login-gestor` (email + senha → JWT)
+- [ ] Implementar rota POST `/api/auth/login-paciente` (CRA + data_nascimento → JWT)
+- [ ] Tela de login funcional — Portal do Paciente (React)
+- [ ] Tela de login funcional — Portal do Gestor (React)
+- [ ] CRUD de pacientes (backend + frontend gestor)
+- [ ] CRUD de solicitações com atualização de status
+- [ ] Consulta de medicamentos (backend + frontend paciente)
 
 ---
 
@@ -55,12 +62,20 @@
 
 ## Último Relatório de Sessão
 
-Nenhum relatório de execução gerado ainda (fase de documentação — isenta de relatório técnico).
+`.Agent/reports/Relatorio_Consolidacao_Arquitetura.md` — Fase 1 executada pelo Antigravity.
 
 ---
 
-## Próximas Ações para o Arquiteto Retomarem
+## Atenção para a Próxima Sessão
 
-1. Validar documentação gerada com Reinaldo
-2. Inicializar estrutura de código (frontend + backend)
-3. Briefar Stitch MCP para gerar wireframes das telas core
+- O `knexfile.js` foi **corrigido** de SQLite3 para PostgreSQL — o agente havia trocado por engano
+- O banco **ainda não rodou** `migrate:latest` — aguarda instância PostgreSQL ativa (Railway)
+- Há arquivos de scaffolding na raiz (`buildMigrations.js`, `scaffold.js`, `index.html`, `package.json` root) que são resíduos do agente — não fazem parte do produto, podem ser removidos após validação com Reinaldo
+- Os wireframes em `screens/` e `stitch_gest_o_sa_de_ubs/` são os protótipos visuais do Stitch — servem de referência para a Fase 2
+
+## Próximas Ações (Fase 2)
+
+1. Provisionar banco PostgreSQL no Railway e configurar `DATABASE_URL` no `.env`
+2. Rodar `npx knex migrate:latest` e `npx knex seed:run`
+3. Briefar Deep Think para implementar as rotas de autenticação
+4. Briefar Stitch MCP para converter os wireframes em componentes React funcionais
