@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+
+<html class="light" lang="pt-BR"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Portal do Paciente - Dashboard</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&amp;family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "outline": "#6e7b6c",
+                        "on-secondary-container": "#406c46",
+                        "on-primary-container": "#f7fff2",
+                        "on-surface-variant": "#3e4a3d",
+                        "on-surface": "#181d1a",
+                        "inverse-on-surface": "#eef2ee",
+                        "secondary-fixed-dim": "#a1d3a4",
+                        "tertiary-fixed-dim": "#ffb2bf",
+                        "on-tertiary-fixed": "#3f0016",
+                        "on-tertiary-fixed-variant": "#8a143c",
+                        "on-primary": "#ffffff",
+                        "secondary": "#3b6842",
+                        "on-primary-fixed": "#002109",
+                        "background": "#f6faf6",
+                        "error-container": "#ffdad6",
+                        "on-background": "#181d1a",
+                        "secondary-container": "#baecbc",
+                        "inverse-primary": "#62df7d",
+                        "primary-container": "#00873a",
+                        "primary": "#006b2c",
+                        "on-error": "#ffffff",
+                        "surface-variant": "#dfe3e0",
+                        "surface-container-low": "#f1f5f1",
+                        "primary-fixed": "#7ffc97",
+                        "surface-container-lowest": "#ffffff",
+                        "on-tertiary": "#ffffff",
+                        "on-secondary-fixed": "#002109",
+                        "on-secondary-fixed-variant": "#23502c",
+                        "tertiary-container": "#c74668",
+                        "on-tertiary-container": "#fffbff",
+                        "error": "#ba1a1a",
+                        "on-primary-fixed-variant": "#005320",
+                        "surface-container": "#ebefeb",
+                        "primary-fixed-dim": "#62df7d",
+                        "tertiary": "#a72d51",
+                        "tertiary-fixed": "#ffd9de",
+                        "on-error-container": "#93000a",
+                        "inverse-surface": "#2d312f",
+                        "surface-container-high": "#e5e9e5",
+                        "secondary-fixed": "#bdefbe",
+                        "on-secondary": "#ffffff",
+                        "surface-dim": "#d7dbd7",
+                        "surface-container-highest": "#dfe3e0",
+                        "outline-variant": "#bdcaba",
+                        "surface-tint": "#006e2d",
+                        "surface-bright": "#f6faf6",
+                        "surface": "#f6faf6"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "2xl": "1rem",
+                        "3xl": "1.5rem",
+                        "full": "9999px"
+                    },
+                    "fontFamily": {
+                        "headline": ["Manrope", "sans-serif"],
+                        "body": ["Inter", "sans-serif"],
+                        "label": ["Inter", "sans-serif"]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        body { font-family: 'Inter', sans-serif; }
+        h1, h2, h3 { font-family: 'Manrope', sans-serif; }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-background min-h-screen pb-32">
+<!-- TopAppBar -->
+<header class="bg-green-50/80 dark:bg-slate-900/80 backdrop-blur-xl docked full-width top-0 sticky z-50 shadow-sm shadow-green-900/5 transition-all">
+<div class="flex justify-between items-center w-full px-6 py-4 max-w-screen-xl mx-auto">
+<div class="flex items-center gap-4">
+<div class="w-12 h-12 rounded-full overflow-hidden bg-green-100 flex items-center justify-center border-2 border-primary-container/20">
+<img alt="Foto de perfil do paciente" data-alt="close-up portrait of a friendly middle-aged Brazilian man with a warm smile, professional lighting, clean neutral background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuB4FNSA4k3mddzC6oxyZ7G8PYW514lDmg9Brm6t3qwT4Hv5btDb6X_4sNUDsUAzRnhhPWO4_kO6cuVgSXaDEH08K8U4L5i6qTSwCRlMJQLxeHB1rAo8lqKFoARUMF0EaP9svk7wExZBccsWXV_O5Q4lG19N9u0uTXp2w1u5wjbNKPopgaXf7basUfEeKsxLSttXtG2zqaacU1VNHZ8SzCB3-oOOj1NWl9q4wKbjqI1iTMIFGaV_onxm2SQLYAZ4wEibSz5hKbZ6"/>
+</div>
+<div>
+<h1 class="font-['Manrope'] font-bold text-xl tracking-tight text-green-800 dark:text-green-400">Olá, João Silva</h1>
+<p class="font-['Inter'] text-xs font-semibold uppercase tracking-wider text-green-700/60 dark:text-slate-400">UBS Central</p>
+</div>
+</div>
+<div class="flex gap-2">
+<button class="material-symbols-outlined p-2 rounded-full bg-green-100/50 text-green-800 hover:bg-green-100 transition-colors">search</button>
+<button class="material-symbols-outlined p-2 rounded-full bg-green-100/50 text-green-800 hover:bg-green-100 transition-colors">account_circle</button>
+</div>
+</div>
+</header>
+<main class="max-w-screen-xl mx-auto px-6 pt-8">
+<!-- Hero Section / Title -->
+<div class="mb-8">
+<h2 class="text-3xl font-extrabold text-on-surface tracking-tight mb-2">Minhas Solicitações Ativas</h2>
+<p class="text-on-surface-variant font-body">Acompanhe o andamento das suas consultas e exames solicitados.</p>
+</div>
+<!-- Dashboard Bento Grid -->
+<div class="grid grid-cols-1 md:grid-cols-12 gap-6">
+<!-- Urgent Card (Prioritário) -->
+<div class="md:col-span-12 lg:col-span-8 bg-surface-container-lowest rounded-3xl p-6 shadow-sm ring-1 ring-tertiary/20 flex flex-col md:flex-row gap-6 items-start md:items-center">
+<div class="bg-tertiary-fixed text-on-tertiary-fixed p-4 rounded-2xl">
+<span class="material-symbols-outlined text-4xl" data-icon="stethoscope">stethoscope</span>
+</div>
+<div class="flex-1">
+<div class="flex flex-wrap items-center gap-3 mb-2">
+<h3 class="text-xl font-bold text-on-surface">Consulta Especialista - Cardiologia</h3>
+<span class="bg-tertiary text-on-tertiary text-[10px] font-bold uppercase tracking-widest px-3 py-1 rounded-full">Prioritário</span>
+</div>
+<p class="text-on-surface-variant mb-4">Aguardando confirmação de horário pelo setor de regulação.</p>
+<div class="flex items-center gap-4 text-sm font-medium text-on-surface-variant">
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-lg">calendar_month</span>
+<span>Previsto para Julho/2024</span>
+</div>
+</div>
+</div>
+<button class="w-full md:w-auto bg-primary text-on-primary font-bold px-6 py-3 rounded-xl hover:bg-primary-container transition-all active:scale-95">Ver Detalhes</button>
+</div>
+<!-- Normal Card 1 (Agendado) -->
+<div class="md:col-span-6 lg:col-span-4 bg-surface-container-lowest rounded-3xl p-6 shadow-sm flex flex-col justify-between hover:bg-surface-container-low transition-colors group">
+<div>
+<div class="flex justify-between items-start mb-6">
+<div class="bg-secondary-container text-on-secondary-container p-3 rounded-xl">
+<span class="material-symbols-outlined text-2xl" data-icon="lab_research">lab_research</span>
+</div>
+<span class="bg-primary-container/10 text-primary-container text-[10px] font-bold uppercase tracking-widest px-3 py-1 rounded-full">Agendado</span>
+</div>
+<h3 class="text-lg font-bold text-on-surface mb-2">Exame de Sangue (Hemograma)</h3>
+<p class="text-on-surface-variant text-sm mb-6 leading-relaxed">Comparecer em jejum de 8h. Traga seu documento original com foto.</p>
+</div>
+<div class="flex items-center justify-between pt-4 border-t border-surface-container-high">
+<div class="text-sm font-bold text-on-surface flex items-center gap-2">
+<span class="material-symbols-outlined text-primary text-lg">event</span>
+                        15/06 às 07:30
+                    </div>
+<span class="material-symbols-outlined text-outline-variant group-hover:text-primary transition-colors">arrow_forward_ios</span>
+</div>
+</div>
+<!-- Normal Card 2 (Em Análise) -->
+<div class="md:col-span-6 lg:col-span-4 bg-surface-container-lowest rounded-3xl p-6 shadow-sm flex flex-col justify-between hover:bg-surface-container-low transition-colors group">
+<div>
+<div class="flex justify-between items-start mb-6">
+<div class="bg-surface-container-high text-on-surface-variant p-3 rounded-xl">
+<span class="material-symbols-outlined text-2xl" data-icon="description">description</span>
+</div>
+<span class="bg-tertiary-fixed text-on-tertiary-fixed-variant text-[10px] font-bold uppercase tracking-widest px-3 py-1 rounded-full">Em Análise</span>
+</div>
+<h3 class="text-lg font-bold text-on-surface mb-2">Renovação de Receita</h3>
+<p class="text-on-surface-variant text-sm mb-6 leading-relaxed">Aguardando assinatura do médico responsável. Você receberá um SMS quando pronto.</p>
+</div>
+<div class="flex items-center justify-between pt-4 border-t border-surface-container-high">
+<div class="text-sm font-bold text-on-surface flex items-center gap-2">
+<span class="material-symbols-outlined text-tertiary text-lg">update</span>
+                        Previsto em 2 dias
+                    </div>
+<span class="material-symbols-outlined text-outline-variant group-hover:text-primary transition-colors">arrow_forward_ios</span>
+</div>
+</div>
+<!-- Decorative Card (Progress) -->
+<div class="md:col-span-12 lg:col-span-4 bg-primary text-on-primary rounded-3xl p-8 relative overflow-hidden shadow-xl shadow-primary/10">
+<div class="relative z-10 h-full flex flex-col">
+<h3 class="text-2xl font-extrabold mb-2">Bem-estar em dia</h3>
+<p class="text-primary-fixed/80 mb-8 font-medium">Você completou 70% das suas tarefas de saúde este mês.</p>
+<div class="mt-auto flex justify-center">
+<!-- Progress Bloom -->
+<div class="relative w-32 h-32 flex items-center justify-center">
+<svg class="w-full h-full transform -rotate-90">
+<circle class="text-primary-container" cx="64" cy="64" fill="transparent" r="54" stroke="currentColor" stroke-width="12"></circle>
+<circle class="text-primary-fixed" cx="64" cy="64" fill="transparent" r="54" stroke="currentColor" stroke-dasharray="339.29" stroke-dashoffset="101.78" stroke-width="12"></circle>
+</svg>
+<span class="absolute text-xl font-black">70%</span>
+</div>
+</div>
+</div>
+<!-- Abstract visual element -->
+<div class="absolute -right-8 -bottom-8 w-48 h-48 bg-primary-container/30 rounded-full blur-3xl"></div>
+</div>
+</div>
+<!-- Tips Section -->
+<section class="mt-12 mb-8">
+<h4 class="text-xl font-bold mb-4 text-on-surface">Dicas de Saúde</h4>
+<div class="flex gap-4 overflow-x-auto pb-4 no-scrollbar">
+<div class="min-w-[280px] bg-secondary-fixed text-on-secondary-fixed-variant p-5 rounded-2xl">
+<span class="material-symbols-outlined mb-2">water_drop</span>
+<h5 class="font-bold mb-1">Mantenha-se hidratado</h5>
+<p class="text-sm">Beba pelo menos 2 litros de água hoje para auxiliar sua recuperação.</p>
+</div>
+<div class="min-w-[280px] bg-tertiary-fixed text-on-tertiary-fixed-variant p-5 rounded-2xl">
+<span class="material-symbols-outlined mb-2">vaccines</span>
+<h5 class="font-bold mb-1">Vacina da Gripe</h5>
+<p class="text-sm">A campanha de vacinação começou na UBS Central. Não esqueça sua carteirinha.</p>
+</div>
+</div>
+</section>
+</main>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 left-0 w-full z-50 bg-white/90 dark:bg-slate-950/90 backdrop-blur-2xl border-t border-green-50 dark:border-slate-800 shadow-[0_-4px_24px_rgba(0,107,44,0.06)] px-4 pb-6 pt-3 flex justify-around items-center">
+<!-- Item Início (Active) -->
+<a class="flex flex-col items-center justify-center bg-green-100 dark:bg-green-900/40 text-green-800 dark:text-green-200 rounded-2xl px-5 py-2 tap-highlight-transparent active:scale-95 transition-transform duration-200" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">home</span>
+<span class="font-['Inter'] text-[11px] font-semibold uppercase tracking-wider mt-1">Início</span>
+</a>
+<!-- Item Medicamentos -->
+<a class="flex flex-col items-center justify-center text-slate-400 dark:text-slate-500 px-5 py-2 hover:text-green-600 dark:hover:text-green-300 tap-highlight-transparent active:scale-95 transition-transform duration-200" href="#">
+<span class="material-symbols-outlined">medication</span>
+<span class="font-['Inter'] text-[11px] font-semibold uppercase tracking-wider mt-1">Medicamentos</span>
+</a>
+<!-- Item Avisos -->
+<a class="flex flex-col items-center justify-center text-slate-400 dark:text-slate-500 px-5 py-2 hover:text-green-600 dark:hover:text-green-300 tap-highlight-transparent active:scale-95 transition-transform duration-200" href="#">
+<span class="material-symbols-outlined">notifications</span>
+<span class="font-['Inter'] text-[11px] font-semibold uppercase tracking-wider mt-1">Avisos</span>
+</a>
+<!-- Item Agenda -->
+<a class="flex flex-col items-center justify-center text-slate-400 dark:text-slate-500 px-5 py-2 hover:text-green-600 dark:hover:text-green-300 tap-highlight-transparent active:scale-95 transition-transform duration-200" href="#">
+<span class="material-symbols-outlined">calendar_today</span>
+<span class="font-['Inter'] text-[11px] font-semibold uppercase tracking-wider mt-1">Agenda</span>
+</a>
+</nav>
+<style>
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+</body></html>

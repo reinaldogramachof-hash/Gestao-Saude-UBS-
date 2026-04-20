@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+
+<html lang="pt-BR"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Restorative Pavilion - Login do Paciente</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;700;800&amp;family=Inter:wght@400;500;600&amp;family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "surface-tint": "#006e2d",
+                    "on-primary-container": "#f7fff2",
+                    "surface-container-high": "#e5e9e5",
+                    "secondary-fixed-dim": "#a1d3a4",
+                    "inverse-on-surface": "#eef2ee",
+                    "surface-container": "#ebefeb",
+                    "tertiary-fixed-dim": "#ffb2bf",
+                    "on-tertiary-container": "#fffbff",
+                    "tertiary": "#a72d51",
+                    "on-primary": "#ffffff",
+                    "primary": "#006b2c",
+                    "primary-fixed-dim": "#62df7d",
+                    "secondary-container": "#baecbc",
+                    "on-error": "#ffffff",
+                    "tertiary-fixed": "#ffd9de",
+                    "surface-container-lowest": "#ffffff",
+                    "outline-variant": "#bdcaba",
+                    "background": "#f6faf6",
+                    "error": "#ba1a1a",
+                    "on-background": "#181d1a",
+                    "on-surface-variant": "#3e4a3d",
+                    "secondary": "#3b6842",
+                    "primary-fixed": "#7ffc97",
+                    "surface": "#f6faf6",
+                    "error-container": "#ffdad6",
+                    "surface-dim": "#d7dbd7",
+                    "secondary-fixed": "#bdefbe",
+                    "on-tertiary": "#ffffff",
+                    "on-tertiary-fixed": "#3f0016",
+                    "inverse-primary": "#62df7d",
+                    "outline": "#6e7b6c",
+                    "on-secondary": "#ffffff",
+                    "on-surface": "#181d1a",
+                    "on-tertiary-fixed-variant": "#8a143c",
+                    "surface-container-highest": "#dfe3e0",
+                    "on-secondary-fixed": "#002109",
+                    "on-secondary-container": "#406c46",
+                    "on-primary-fixed": "#002109",
+                    "surface-bright": "#f6faf6",
+                    "surface-variant": "#dfe3e0",
+                    "primary-container": "#00873a",
+                    "on-secondary-fixed-variant": "#23502c",
+                    "tertiary-container": "#c74668",
+                    "on-error-container": "#93000a",
+                    "surface-container-low": "#f1f5f1",
+                    "on-primary-fixed-variant": "#005320",
+                    "inverse-surface": "#2d312f"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "fontFamily": {
+                    "headline": ["Manrope"],
+                    "body": ["Inter"],
+                    "label": ["Inter"]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f6faf6;
+            color: #181d1a;
+        }
+        h1, h2, h3 {
+            font-family: 'Manrope', sans-serif;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-surface min-h-screen flex flex-col items-center justify-center p-6 text-on-surface">
+<!-- Hero Branding Section -->
+<header class="w-full max-w-md mb-12 text-center">
+<div class="mb-8 flex justify-center">
+<div class="w-16 h-16 bg-primary-container rounded-xl flex items-center justify-center shadow-lg">
+<span class="material-symbols-outlined text-on-primary-container text-4xl" data-icon="spa" style="font-variation-settings: 'FILL' 1;">spa</span>
+</div>
+</div>
+<h1 class="text-3xl font-extrabold tracking-tight text-on-background mb-2">Restorative Pavilion</h1>
+<p class="text-on-surface-variant font-medium">Portal do Paciente</p>
+</header>
+<!-- Login Card -->
+<main class="w-full max-w-md bg-surface-container-lowest p-8 rounded-3xl shadow-[0_8px_32px_0_rgba(0,107,44,0.04)] relative overflow-hidden">
+<!-- Abstract Background Texture (Subtle Glassmorphism effect) -->
+<div class="absolute -top-24 -right-24 w-48 h-48 bg-secondary-fixed opacity-20 blur-3xl rounded-full"></div>
+<form class="space-y-6 relative z-10">
+<!-- CRA Input Field -->
+<div class="space-y-2">
+<label class="block text-sm font-semibold text-on-surface-variant ml-1" for="cra">Número do CRA</label>
+<div class="relative">
+<input class="w-full h-14 bg-surface-container-high border-none rounded-xl px-4 text-on-surface placeholder:text-outline focus:ring-2 focus:ring-primary/20 transition-all" id="cra" name="cra" placeholder="Ex: 00123456" type="text"/>
+<div class="absolute right-4 top-1/2 -translate-y-1/2">
+<span class="material-symbols-outlined text-outline" data-icon="badge">badge</span>
+</div>
+</div>
+</div>
+<!-- Birth Date Input Field -->
+<div class="space-y-2">
+<label class="block text-sm font-semibold text-on-surface-variant ml-1" for="birthdate">Data de Nascimento</label>
+<div class="relative">
+<input class="w-full h-14 bg-surface-container-high border-none rounded-xl px-4 text-on-surface focus:ring-2 focus:ring-primary/20 transition-all appearance-none" id="birthdate" name="birthdate" type="date"/>
+<div class="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none">
+<span class="material-symbols-outlined text-outline" data-icon="calendar_today">calendar_today</span>
+</div>
+</div>
+</div>
+<!-- Login Button -->
+<button class="w-full h-14 bg-primary text-on-primary font-bold rounded-xl shadow-lg shadow-primary/20 hover:bg-primary-container active:scale-[0.98] transition-all flex items-center justify-center gap-2 mt-8" type="submit">
+<span>Entrar</span>
+<span class="material-symbols-outlined text-sm" data-icon="arrow_forward">arrow_forward</span>
+</button>
+<!-- Help Link -->
+<div class="flex justify-center pt-4">
+<a class="flex items-center gap-2 text-sm font-semibold text-primary hover:text-primary-container transition-colors group" href="#">
+<span class="material-symbols-outlined text-[18px] group-hover:fill-current" data-icon="help_outline">help_outline</span>
+<span>O que é o CRA?</span>
+</a>
+</div>
+</form>
+</main>
+<!-- Featured Visual Content (Editorial Asymmetry) -->
+<section class="w-full max-w-md mt-12 grid grid-cols-2 gap-4">
+<div class="bg-surface-container-low p-4 rounded-2xl flex flex-col justify-between h-40">
+<span class="material-symbols-outlined text-primary text-3xl" data-icon="health_metrics">health_metrics</span>
+<p class="text-sm font-semibold text-on-surface leading-tight">Acompanhe seu progresso de saúde em tempo real.</p>
+</div>
+<div class="relative h-40 rounded-2xl overflow-hidden shadow-sm">
+<img alt="Saúde e Bem-estar" class="w-full h-full object-cover" data-alt="Close-up of a stethoscope on a clean medical desk with soft sunlight and green plants in background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBMwDxwxGPm4y9fXSn5KWZHatM6ktTpb17yvcELeMHkSfo05LeW8-IaaEt36WC3TqyU2H14OJ89xpNse__7kralpVqNvQafro9WXnbZRMkc62zst0tcPwD3cTAH_JsI11b3eiInZL5N4AS3EIEsWkN6OfPvz_1comWldqtP3q5-cAqc3G1ZsXlHw494uK-zPMd_eTPD22ELSFUzPO7PV3hMs3V1VzyEBYhlC6uSM4brrullA69Rixgzwx-shPWri__1GjIk5HQS"/>
+<div class="absolute inset-0 bg-primary/10 mix-blend-overlay"></div>
+</div>
+</section>
+<!-- Footer -->
+<footer class="mt-12 text-center w-full max-w-xs">
+<div class="bg-surface-container-high/50 px-4 py-2 rounded-full inline-flex items-center gap-2">
+<span class="material-symbols-outlined text-[14px] text-on-surface-variant" data-icon="lock" style="font-variation-settings: 'FILL' 1;">lock</span>
+<p class="text-[11px] font-medium text-on-surface-variant uppercase tracking-wider">Alguns de seus dados são protegidos — LGPD</p>
+</div>
+<!-- Platform Aesthetic Detail -->
+<div class="mt-8 flex justify-center gap-4 opacity-40">
+<span class="material-symbols-outlined" data-icon="verified_user">verified_user</span>
+<span class="material-symbols-outlined" data-icon="security">security</span>
+<span class="material-symbols-outlined" data-icon="encrypted">encrypted</span>
+</div>
+</footer>
+</body></html>

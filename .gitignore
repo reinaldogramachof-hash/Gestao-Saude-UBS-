@@ -1,0 +1,29 @@
+# Dependências — nunca versionar a pasta node_modules
+node_modules/
+app/frontend/node_modules/
+app/backend/node_modules/
+
+# Variáveis de ambiente — nunca versionar arquivos .env com senhas reais
+.env
+app/frontend/.env
+app/backend/.env
+
+# Arquivos de build do frontend
+app/frontend/dist/
+
+# Logs e arquivos temporários gerados pelo agente
+*.log
+migrate_output.txt
+seed_output.txt
+dev.sqlite3
+
+# Scripts de scaffold (utilitários do agente, não fazem parte do produto)
+buildMigrations.js
+scaffold.js
+
+# Assets brutos do Stitch (imagens brutas — telas organizadas estão em /screens)
+stitch_gest_o_sa_de_ubs/
+
+# Sistema operacional
+.DS_Store
+Thumbs.db

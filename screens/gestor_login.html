@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+
+<html lang="pt-BR"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Acesso - Gestão Saúde UBS+</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&amp;family=Inter:wght@400;500;600&amp;family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "surface-variant": "#d3e4fe",
+                    "surface-container-low": "#eff4ff",
+                    "primary-fixed": "#7ffc97",
+                    "surface-container-lowest": "#ffffff",
+                    "inverse-primary": "#62df7d",
+                    "secondary-container": "#baecbc",
+                    "primary": "#006b2c",
+                    "primary-container": "#00873a",
+                    "on-error": "#ffffff",
+                    "on-background": "#0b1c30",
+                    "background": "#f8f9ff",
+                    "error-container": "#ffdad6",
+                    "on-primary-fixed": "#002109",
+                    "on-tertiary-fixed": "#3f0016",
+                    "tertiary-fixed-dim": "#ffb2bf",
+                    "on-tertiary-fixed-variant": "#8a143c",
+                    "on-primary": "#ffffff",
+                    "secondary": "#3b6842",
+                    "on-primary-container": "#f7fff2",
+                    "inverse-on-surface": "#eaf1ff",
+                    "on-surface-variant": "#3e4a3d",
+                    "on-surface": "#0b1c30",
+                    "secondary-fixed-dim": "#a1d3a4",
+                    "outline": "#6e7b6c",
+                    "on-secondary-container": "#406c46",
+                    "surface": "#f8f9ff",
+                    "on-secondary": "#ffffff",
+                    "surface-container-highest": "#d3e4fe",
+                    "surface-dim": "#cbdbf5",
+                    "outline-variant": "#bdcaba",
+                    "surface-tint": "#006e2d",
+                    "surface-bright": "#f8f9ff",
+                    "inverse-surface": "#213145",
+                    "on-error-container": "#93000a",
+                    "tertiary-fixed": "#ffd9de",
+                    "surface-container-high": "#dce9ff",
+                    "secondary-fixed": "#bdefbe",
+                    "surface-container": "#e5eeff",
+                    "primary-fixed-dim": "#62df7d",
+                    "tertiary": "#a72d51",
+                    "error": "#ba1a1a",
+                    "on-primary-fixed-variant": "#005320",
+                    "tertiary-container": "#c74668",
+                    "on-tertiary-container": "#fffbff",
+                    "on-tertiary": "#ffffff",
+                    "on-secondary-fixed": "#002109",
+                    "on-secondary-fixed-variant": "#23502c"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.125rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {},
+            "fontFamily": {
+                    "headline": ["Manrope"],
+                    "body": ["Inter"],
+                    "label": ["Inter"]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .editorial-shadow {
+            box-shadow: 0 24px 48px -12px rgba(11, 28, 48, 0.08);
+        }
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(20px);
+        }
+    </style>
+</head>
+<body class="bg-background text-on-surface font-body min-h-screen flex flex-col">
+<!-- TopNavBar (Shared Component) -->
+<!-- Suppression logic: Displayed as it's the gateway to the primary ecosystem -->
+<header class="w-full sticky top-0 z-50 bg-white/85 dark:bg-slate-900/85 backdrop-blur-xl shadow-sm shadow-green-900/5">
+<nav class="flex justify-between items-center h-16 px-6 lg:px-12 w-full max-w-screen-2xl mx-auto font-['Manrope'] tracking-tight">
+<div class="text-xl font-bold tracking-tighter text-slate-900 dark:text-slate-50">
+                Gestão Saúde UBS+
+            </div>
+<div class="hidden md:flex items-center gap-8">
+<a class="text-slate-500 dark:text-slate-400 font-medium hover:text-green-600 transition-colors" href="#">Portal Institucional</a>
+<a class="text-slate-500 dark:text-slate-400 font-medium hover:text-green-600 transition-colors" href="#">Transparência</a>
+<button class="bg-primary hover:bg-primary-container text-on-primary px-5 py-2 rounded-xl text-sm font-semibold transition-all duration-200 ease-in-out active:scale-95">
+                    Acessar Sistema
+                </button>
+</div>
+</nav>
+</header>
+<!-- Main Content Canvas -->
+<main class="flex-grow flex items-center justify-center relative px-6 py-12 lg:py-24 overflow-hidden">
+<!-- Background Aesthetic Element -->
+<div class="absolute inset-0 z-0">
+<img class="w-full h-full object-cover opacity-10 blur-sm scale-105" data-alt="Modern healthcare facility interior with clean glass walls, soft clinical lighting, and high-end architectural design in blurred soft focus" src="https://lh3.googleusercontent.com/aida-public/AB6AXuA67qw_aWFTgn9xUgaV8iM0whtwCIgWMFKf0i-sQClHTDXm-Prq9afIdPQYM7uDQVuz9FKEhZMa93PYYNd4_94dhvpsYIgPDdUIeLRJ44Wp1oQnafb2WGcRx2jE1QGwFQxTgdR0ZvCw4qP82RYUs8XynFm5IRCcKHkjNg0VcD0OWi_aoXOvsJ5VOvYla_EJoGnxsk_Ufj58T_NZK5XtbH--2dnUTE-Uw1iS8N7--djcAbpbTVmz7nesVjXNfpc75GyCU9_6UGHI"/>
+<div class="absolute inset-0 bg-gradient-to-tr from-surface via-transparent to-surface-container-low opacity-60"></div>
+</div>
+<!-- Login Card: Clinical Architect Persona -->
+<div class="relative z-10 w-full max-w-lg">
+<div class="glass-panel border-0 rounded-xl editorial-shadow overflow-hidden p-8 md:p-12">
+<!-- Header Section -->
+<div class="mb-10 text-center md:text-left">
+<h1 class="font-headline text-3xl font-extrabold tracking-tight text-on-surface mb-3 leading-tight">
+                        Acesso ao Portal do Gestor
+                    </h1>
+<p class="text-on-surface-variant font-medium leading-relaxed">
+                        Entre com suas credenciais institucionais para gerenciar sua unidade.
+                    </p>
+</div>
+<!-- Form Section -->
+<form class="space-y-6">
+<div class="space-y-2">
+<label class="block text-xs font-bold tracking-wider text-on-surface-variant uppercase ml-1">
+                            E-mail institucional
+                        </label>
+<div class="relative group">
+<div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-outline">
+<span class="material-symbols-outlined text-[20px]">alternate_email</span>
+</div>
+<input class="w-full pl-11 pr-4 py-4 bg-surface-container-low border-b-2 border-transparent focus:border-primary transition-all duration-200 outline-none rounded-xl text-on-surface placeholder:text-outline-variant font-medium" placeholder="ex: gestor@saude.gov.br" type="email"/>
+</div>
+</div>
+<div class="space-y-2">
+<label class="block text-xs font-bold tracking-wider text-on-surface-variant uppercase ml-1">
+                            Senha
+                        </label>
+<div class="relative group">
+<div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-outline">
+<span class="material-symbols-outlined text-[20px]">lock</span>
+</div>
+<input class="w-full pl-11 pr-4 py-4 bg-surface-container-low border-b-2 border-transparent focus:border-primary transition-all duration-200 outline-none rounded-xl text-on-surface placeholder:text-outline-variant font-medium" placeholder="••••••••" type="password"/>
+</div>
+</div>
+<div class="pt-4">
+<button class="w-full bg-primary hover:bg-primary-container text-white font-bold py-4 rounded-xl shadow-lg shadow-primary/20 transition-all duration-300 active:scale-[0.98] flex items-center justify-center gap-2 group" type="submit">
+<span>Entrar</span>
+<span class="material-symbols-outlined text-[20px] group-hover:translate-x-1 transition-transform">arrow_forward</span>
+</button>
+</div>
+</form>
+<!-- Footer Links -->
+<div class="mt-8 text-center">
+<a class="text-sm font-semibold text-primary hover:text-primary-container transition-colors inline-flex items-center gap-1 group" href="#">
+                        Esqueci minha senha
+                        <span class="h-0.5 w-0 group-hover:w-full bg-primary transition-all duration-300 block"></span>
+</a>
+</div>
+<!-- Emergency Contact / Help -->
+<div class="mt-12 pt-8 border-t border-outline-variant/20 flex items-center justify-center gap-6">
+<div class="flex items-center gap-2 text-on-surface-variant">
+<span class="material-symbols-outlined text-[18px]">support_agent</span>
+<span class="text-xs font-medium">Suporte Técnico</span>
+</div>
+<div class="flex items-center gap-2 text-on-surface-variant">
+<span class="material-symbols-outlined text-[18px]">verified_user</span>
+<span class="text-xs font-medium">Conexão Segura</span>
+</div>
+</div>
+</div>
+<!-- Contextual Decorative Info -->
+<div class="mt-8 text-center md:text-left px-4">
+<p class="text-xs text-on-surface-variant/70 leading-relaxed font-medium">
+                    Este sistema é monitorado. O uso indevido está sujeito a penalidades conforme a Portaria Normativa Institucional vigente.
+                </p>
+</div>
+</div>
+</main>
+<!-- Footer (Shared Component) -->
+<footer class="w-full py-8 bg-transparent">
+<div class="flex flex-col md:flex-row justify-between items-center px-12 max-w-screen-2xl mx-auto text-xs font-['Inter'] tracking-wide">
+<div class="text-slate-400 dark:text-slate-500 mb-4 md:mb-0">
+                © 2024 Gestão Saúde UBS+. Todos os direitos reservados.
+            </div>
+<div class="flex gap-8">
+<a class="text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 transition-all duration-200" href="#">Termos de Uso</a>
+<a class="text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 transition-all duration-200" href="#">Privacidade</a>
+<a class="text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 transition-all duration-200" href="#">Ajuda</a>
+</div>
+</div>
+</footer>
+</body></html>

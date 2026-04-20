@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+
+<html class="light" lang="pt-BR"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Consulta de Medicamentos - Portal do Paciente</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&amp;family=Inter:wght@400;500;600&amp;family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "surface-bright": "#f6faf6",
+                    "primary-fixed": "#7ffc97",
+                    "on-tertiary-container": "#fffbff",
+                    "tertiary-fixed": "#ffd9de",
+                    "surface-container": "#ebefeb",
+                    "on-tertiary": "#ffffff",
+                    "on-error": "#ffffff",
+                    "inverse-primary": "#62df7d",
+                    "error": "#ba1a1a",
+                    "surface-dim": "#d7dbd7",
+                    "surface-tint": "#006e2d",
+                    "on-tertiary-fixed": "#3f0016",
+                    "surface-variant": "#dfe3e0",
+                    "secondary-fixed-dim": "#a1d3a4",
+                    "on-primary-fixed-variant": "#005320",
+                    "background": "#f6faf6",
+                    "tertiary-container": "#c74668",
+                    "inverse-surface": "#2d312f",
+                    "on-surface": "#181d1a",
+                    "on-secondary-fixed-variant": "#23502c",
+                    "on-primary-fixed": "#002109",
+                    "error-container": "#ffdad6",
+                    "surface-container-low": "#f1f5f1",
+                    "inverse-on-surface": "#eef2ee",
+                    "surface": "#f6faf6",
+                    "on-error-container": "#93000a",
+                    "secondary-fixed": "#bdefbe",
+                    "on-secondary": "#ffffff",
+                    "surface-container-lowest": "#ffffff",
+                    "on-secondary-fixed": "#002109",
+                    "primary": "#006b2c",
+                    "on-secondary-container": "#406c46",
+                    "secondary-container": "#baecbc",
+                    "on-tertiary-fixed-variant": "#8a143c",
+                    "secondary": "#3b6842",
+                    "outline-variant": "#bdcaba",
+                    "primary-fixed-dim": "#62df7d",
+                    "outline": "#6e7b6c",
+                    "on-surface-variant": "#3e4a3d",
+                    "tertiary-fixed-dim": "#ffb2bf",
+                    "on-primary-container": "#f7fff2",
+                    "primary-container": "#00873a",
+                    "on-background": "#181d1a",
+                    "tertiary": "#a72d51",
+                    "surface-container-highest": "#dfe3e0",
+                    "on-primary": "#ffffff",
+                    "surface-container-high": "#e5e9e5"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "fontFamily": {
+                    "headline": ["Manrope"],
+                    "body": ["Inter"],
+                    "label": ["Inter"]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        body { font-family: 'Inter', sans-serif; }
+        h1, h2, h3 { font-family: 'Manrope', sans-serif; }
+        .glass-header {
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-surface text-on-surface min-h-screen pb-32">
+<!-- TopAppBar -->
+<header class="sticky top-0 z-50 bg-green-50/80 dark:bg-slate-900/80 backdrop-blur-xl shadow-sm shadow-green-900/5">
+<div class="flex justify-between items-center w-full px-6 py-4 max-w-screen-xl mx-auto">
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 rounded-full overflow-hidden ring-2 ring-primary-fixed">
+<img alt="Foto de perfil do paciente" class="w-full h-full object-cover" data-alt="Close-up portrait of a middle-aged Brazilian man with a kind smile, professional studio lighting, soft blurred background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBs46VbwXOvtwwMvyUyDPuWS6vwjMJ7hmPs9ajN_68ysykCk7PKbl9fVcwpqnTZm6xh6mr3HcPdS3NfUI6Q9ufCjz9P-iWqehfNLWRzFSSez617iGpnRpD3dM-aCAwjeE2dI0JkWjE_h6D7MXhHGKtNG3sylRdVZ47WmP_aDZKAb4s_TXnhbXj9RGcur5tEnljb9ZYX4Ey1b_mdz8QPeD9cJbJBKxAGp4dO7Le3Gi7M-Ko6dYbu0jWoKiQGuJjYVuZyv3YjJeTC"/>
+</div>
+<h1 class="font-['Manrope'] font-bold text-xl tracking-tight text-green-800">Olá, João Silva</h1>
+</div>
+<div class="flex flex-col items-end">
+<span class="text-xs font-semibold text-primary uppercase tracking-widest">Unidade Atual</span>
+<span class="font-['Manrope'] font-extrabold text-green-700">UBS Central</span>
+</div>
+</div>
+</header>
+<main class="max-w-screen-xl mx-auto px-6 pt-8 space-y-8">
+<!-- Header Section -->
+<section class="space-y-2">
+<h2 class="text-4xl font-extrabold tracking-tight text-on-surface leading-none">Consulta de Medicamentos</h2>
+<p class="text-on-surface-variant font-medium">Verifique a disponibilidade em tempo real na rede municipal.</p>
+</section>
+<!-- Search Bar Section -->
+<section class="relative group">
+<div class="absolute inset-y-0 left-5 flex items-center pointer-events-none">
+<span class="material-symbols-outlined text-outline">search</span>
+</div>
+<input class="w-full h-16 pl-14 pr-6 bg-surface-container-high border-none rounded-xl focus:ring-2 focus:ring-primary/20 transition-all text-lg placeholder:text-outline" placeholder="Buscar medicamento..." type="text"/>
+</section>
+<!-- Bento Grid Results -->
+<section class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+<!-- Available Card 1 -->
+<div class="bg-surface-container-lowest rounded-xl p-6 transition-all hover:translate-y-[-4px] group">
+<div class="flex justify-between items-start mb-4">
+<div class="p-3 rounded-xl bg-secondary-container text-on-secondary-container">
+<span class="material-symbols-outlined">medication</span>
+</div>
+<div class="flex items-center gap-1.5 px-3 py-1 rounded-full bg-green-100 text-green-800 text-xs font-bold">
+<span class="material-symbols-outlined text-sm" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+                        Disponível
+                    </div>
+</div>
+<h3 class="text-xl font-bold text-on-surface mb-1">Amoxicilina 500mg</h3>
+<p class="text-sm text-on-surface-variant mb-4">Antibiótico - Uso Adulto</p>
+<div class="pt-4 mt-auto border-t border-surface-variant/30 flex flex-col gap-3">
+<div class="flex items-center gap-2 text-primary font-semibold">
+<span class="material-symbols-outlined text-sm">inventory_2</span>
+<span class="text-sm">Disponível em estoque</span>
+</div>
+<div class="flex items-center gap-2 text-outline text-[11px] font-medium uppercase tracking-wider">
+<span class="material-symbols-outlined text-xs">schedule</span>
+                        Atualizado hoje às 10:30
+                    </div>
+</div>
+</div>
+<!-- Unavailable Card -->
+<div class="bg-surface-container-lowest rounded-xl p-6 transition-all hover:translate-y-[-4px]">
+<div class="flex justify-between items-start mb-4">
+<div class="p-3 rounded-xl bg-tertiary-container/10 text-tertiary">
+<span class="material-symbols-outlined">pill</span>
+</div>
+<div class="flex items-center gap-1.5 px-3 py-1 rounded-full bg-error-container text-on-error-container text-xs font-bold">
+<span class="material-symbols-outlined text-sm" style="font-variation-settings: 'FILL' 1;">cancel</span>
+                        Indisponível
+                    </div>
+</div>
+<h3 class="text-xl font-bold text-on-surface mb-1">Losartana Potássica 50mg</h3>
+<p class="text-sm text-on-surface-variant mb-4">Anti-hipertensivo</p>
+<div class="pt-4 mt-auto border-t border-surface-variant/30 flex flex-col gap-3">
+<div class="flex items-center gap-2 text-tertiary font-semibold">
+<span class="material-symbols-outlined text-sm">local_shipping</span>
+<span class="text-sm">Previsão de chegada na quinta-feira</span>
+</div>
+<div class="flex items-center gap-2 text-outline text-[11px] font-medium uppercase tracking-wider">
+<span class="material-symbols-outlined text-xs">schedule</span>
+                        Atualizado hoje às 10:30
+                    </div>
+</div>
+</div>
+<!-- Available Card 2 -->
+<div class="bg-surface-container-lowest rounded-xl p-6 transition-all hover:translate-y-[-4px]">
+<div class="flex justify-between items-start mb-4">
+<div class="p-3 rounded-xl bg-secondary-container text-on-secondary-container">
+<span class="material-symbols-outlined">vaccines</span>
+</div>
+<div class="flex items-center gap-1.5 px-3 py-1 rounded-full bg-green-100 text-green-800 text-xs font-bold">
+<span class="material-symbols-outlined text-sm" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+                        Disponível
+                    </div>
+</div>
+<h3 class="text-xl font-bold text-on-surface mb-1">Dipirona Monoidratada</h3>
+<p class="text-sm text-on-surface-variant mb-4">Analgésico e Antitérmico</p>
+<div class="pt-4 mt-auto border-t border-surface-variant/30 flex flex-col gap-3">
+<div class="flex items-center gap-2 text-primary font-semibold">
+<span class="material-symbols-outlined text-sm">inventory_2</span>
+<span class="text-sm">Disponível em estoque</span>
+</div>
+<div class="flex items-center gap-2 text-outline text-[11px] font-medium uppercase tracking-wider">
+<span class="material-symbols-outlined text-xs">schedule</span>
+                        Atualizado hoje às 10:30
+                    </div>
+</div>
+</div>
+</section>
+<!-- Empty State (Demonstration of specific layout request) -->
+<section class="py-16 flex flex-col items-center text-center max-w-md mx-auto">
+<div class="w-64 h-64 mb-6 relative">
+<div class="absolute inset-0 bg-secondary-container/30 rounded-full blur-3xl"></div>
+<div class="relative w-full h-full flex items-center justify-center">
+<span class="material-symbols-outlined text-primary/40 text-8xl" style="font-variation-settings: 'FILL' 0, 'wght' 200;">search_off</span>
+</div>
+</div>
+<h4 class="text-2xl font-bold text-on-surface mb-2">Nenhum medicamento encontrado</h4>
+<p class="text-on-surface-variant mb-8 leading-relaxed">
+                Não encontramos resultados para sua busca. Tente conferir o nome do medicamento ou buscar por categorias.
+            </p>
+<button class="px-8 py-4 bg-primary text-on-primary rounded-xl font-bold transition-all active:scale-95 shadow-lg shadow-primary/20">
+                Limpar filtros de busca
+            </button>
+</section>
+</main>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 pb-6 pt-3 bg-white/90 dark:bg-slate-950/90 backdrop-blur-2xl border-t border-green-50 dark:border-slate-800 shadow-[0_-4px_24px_rgba(0,107,44,0.06)]">
+<!-- Início -->
+<a class="flex flex-col items-center justify-center text-slate-400 dark:text-slate-500 px-5 py-2 tap-highlight-transparent active:scale-95 transition-transform duration-200" href="#">
+<span class="material-symbols-outlined mb-1">home</span>
+<span class="font-['Inter'] text-[11px] font-semibold uppercase tracking-wider">Início</span>
+</a>
+<!-- Medicamentos (ACTIVE) -->
+<a class="flex flex-col items-center justify-center bg-green-100 dark:bg-green-900/40 text-green-800 dark:text-green-200 rounded-2xl px-5 py-2 tap-highlight-transparent active:scale-95 transition-transform duration-200" href="#">
+<span class="material-symbols-outlined mb-1" style="font-variation-settings: 'FILL' 1;">medication</span>
+<span class="font-['Inter'] text-[11px] font-semibold uppercase tracking-wider">Medicamentos</span>
+</a>
+<!-- Avisos -->
+<a class="flex flex-col items-center justify-center text-slate-400 dark:text-slate-500 px-5 py-2 tap-highlight-transparent active:scale-95 transition-transform duration-200" href="#">
+<span class="material-symbols-outlined mb-1">notifications</span>
+<span class="font-['Inter'] text-[11px] font-semibold uppercase tracking-wider">Avisos</span>
+</a>
+<!-- Agenda -->
+<a class="flex flex-col items-center justify-center text-slate-400 dark:text-slate-500 px-5 py-2 tap-highlight-transparent active:scale-95 transition-transform duration-200" href="#">
+<span class="material-symbols-outlined mb-1">calendar_today</span>
+<span class="font-['Inter'] text-[11px] font-semibold uppercase tracking-wider">Agenda</span>
+</a>
+</nav>
+</body></html>

@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+
+<html lang="pt-BR"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>UBS Central - Painel de Gestão</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "on-secondary-fixed-variant": "#23502c",
+                    "on-primary-fixed": "#002109",
+                    "surface-bright": "#f6faf6",
+                    "on-tertiary-fixed": "#3f0016",
+                    "background": "#f6faf6",
+                    "primary-container": "#00873a",
+                    "on-tertiary": "#ffffff",
+                    "secondary-container": "#baecbc",
+                    "primary": "#006b2c",
+                    "on-secondary-fixed": "#002109",
+                    "inverse-primary": "#62df7d",
+                    "surface-container": "#ebefeb",
+                    "tertiary-container": "#c74668",
+                    "on-secondary": "#ffffff",
+                    "surface": "#f6faf6",
+                    "inverse-surface": "#2d312f",
+                    "surface-container-lowest": "#ffffff",
+                    "on-surface-variant": "#3e4a3d",
+                    "on-error": "#ffffff",
+                    "on-primary": "#ffffff",
+                    "secondary-fixed-dim": "#a1d3a4",
+                    "secondary-fixed": "#bdefbe",
+                    "surface-variant": "#dfe3e0",
+                    "surface-tint": "#006e2d",
+                    "on-tertiary-container": "#fffbff",
+                    "tertiary-fixed-dim": "#ffb2bf",
+                    "surface-dim": "#d7dbd7",
+                    "outline": "#6e7b6c",
+                    "error-container": "#ffdad6",
+                    "on-error-container": "#93000a",
+                    "tertiary-fixed": "#ffd9de",
+                    "primary-fixed-dim": "#62df7d",
+                    "on-primary-fixed-variant": "#005320",
+                    "tertiary": "#a72d51",
+                    "surface-container-low": "#f1f5f1",
+                    "error": "#ba1a1a",
+                    "surface-container-highest": "#dfe3e0",
+                    "on-background": "#181d1a",
+                    "outline-variant": "#bdcaba",
+                    "on-tertiary-fixed-variant": "#8a143c",
+                    "surface-container-high": "#e5e9e5",
+                    "on-primary-container": "#f7fff2",
+                    "inverse-on-surface": "#eef2ee",
+                    "on-surface": "#181d1a",
+                    "on-secondary-container": "#406c46",
+                    "secondary": "#3b6842",
+                    "primary-fixed": "#7ffc97"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "fontFamily": {
+                    "headline": ["Manrope"],
+                    "body": ["Inter"],
+                    "label": ["Inter"]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f6faf6;
+            color: #181d1a;
+        }
+        h1, h2, h3, .font-headline {
+            font-family: 'Manrope', sans-serif;
+        }
+    </style>
+</head>
+<body class="bg-surface text-on-surface antialiased">
+<!-- TopNavBar -->
+<header class="fixed top-0 left-0 right-0 z-40 bg-white/80 dark:bg-zinc-950/80 backdrop-blur-md flex justify-between items-center w-full px-8 py-4">
+<div class="flex items-center gap-4">
+<span class="text-xl font-extrabold text-emerald-800 dark:text-emerald-300 font-headline">UBS Central</span>
+</div>
+<div class="flex items-center gap-6">
+<span class="font-headline font-bold text-lg tracking-tight text-zinc-600">Ricardo Silva</span>
+<button class="text-emerald-700 font-bold hover:text-emerald-600 transition-colors active:scale-95 duration-150">Sair</button>
+</div>
+</header>
+<!-- SideNavBar -->
+<aside class="fixed left-0 top-0 h-full w-64 pt-24 bg-[#f1f5f1] flex flex-col p-4 z-30">
+<div class="mb-8 px-2">
+<h2 class="text-lg font-bold text-emerald-900 font-headline">UBS Central</h2>
+<p class="text-xs font-medium text-zinc-500 uppercase tracking-widest">Administração</p>
+</div>
+<nav class="flex flex-col gap-2 flex-grow">
+<a class="flex items-center gap-3 px-4 py-3 bg-white text-emerald-700 rounded-lg shadow-sm font-bold transition-transform scale-98" href="#">
+<span class="material-symbols-outlined">corporate_fare</span>
+<span class="font-['Manrope'] font-medium text-sm">Unidades</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-zinc-600 hover:bg-zinc-200/50 rounded-lg transition-transform hover:scale-98" href="#">
+<span class="material-symbols-outlined">assessment</span>
+<span class="font-['Manrope'] font-medium text-sm">Relatórios</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-zinc-600 hover:bg-zinc-200/50 rounded-lg transition-transform hover:scale-98" href="#">
+<span class="material-symbols-outlined">settings</span>
+<span class="font-['Manrope'] font-medium text-sm">Configurações</span>
+</a>
+</nav>
+<div class="mt-auto pt-4 border-t border-zinc-200/50">
+<a class="flex items-center gap-3 px-4 py-3 text-zinc-600 hover:bg-zinc-200/50 rounded-lg transition-transform hover:scale-98" href="#">
+<span class="material-symbols-outlined">help_outline</span>
+<span class="font-['Manrope'] font-medium text-sm">Suporte</span>
+</a>
+</div>
+</aside>
+<!-- Main Content -->
+<main class="ml-64 pt-24 min-h-screen px-10 pb-12">
+<!-- Search & Welcome Header -->
+<section class="max-w-6xl mx-auto mb-10">
+<div class="flex flex-col gap-6">
+<div>
+<h1 class="text-4xl font-extrabold tracking-tight text-on-surface mb-2">Painel do Gestor</h1>
+<p class="text-on-surface-variant text-lg">Gerencie o fluxo de pacientes e prioridades da unidade.</p>
+</div>
+<div class="relative group">
+<div class="absolute inset-y-0 left-5 flex items-center pointer-events-none">
+<span class="material-symbols-outlined text-outline">search</span>
+</div>
+<input class="w-full pl-14 pr-6 py-5 bg-surface-container-high border-none rounded-xl text-lg focus:ring-2 focus:ring-primary/20 transition-all outline-none" placeholder="Buscar paciente por nome ou número CRA..." type="text"/>
+</div>
+</div>
+</section>
+<!-- Stats Bento Grid (Design System Enrichment) -->
+<section class="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
+<div class="bg-surface-container-lowest p-6 rounded-xl flex flex-col gap-1 border-b-4 border-tertiary-container">
+<span class="text-on-surface-variant font-medium text-sm">Urgências Ativas</span>
+<div class="flex items-end justify-between">
+<span class="text-4xl font-extrabold font-headline text-tertiary-container">12</span>
+<span class="material-symbols-outlined text-tertiary-container text-3xl" style="font-variation-settings: 'FILL' 1;">emergency</span>
+</div>
+</div>
+<div class="bg-surface-container-lowest p-6 rounded-xl flex flex-col gap-1 border-b-4 border-primary">
+<span class="text-on-surface-variant font-medium text-sm">Aguardando Triagem</span>
+<div class="flex items-end justify-between">
+<span class="text-4xl font-extrabold font-headline text-primary">28</span>
+<span class="material-symbols-outlined text-primary text-3xl">hourglass_empty</span>
+</div>
+</div>
+<div class="bg-surface-container-lowest p-6 rounded-xl flex flex-col gap-1 border-b-4 border-secondary">
+<span class="text-on-surface-variant font-medium text-sm">Total de Atendimentos</span>
+<div class="flex items-end justify-between">
+<span class="text-4xl font-extrabold font-headline text-secondary">142</span>
+<span class="material-symbols-outlined text-secondary text-3xl">group</span>
+</div>
+</div>
+</section>
+<!-- Filters & Table Section -->
+<section class="max-w-6xl mx-auto bg-surface-container-lowest rounded-xl shadow-sm overflow-hidden">
+<!-- Filter Tabs -->
+<div class="flex items-center gap-8 px-8 py-5 border-b border-surface-container">
+<button class="text-primary font-bold border-b-2 border-primary pb-5 -mb-5">Todos</button>
+<button class="text-on-surface-variant font-medium hover:text-primary transition-colors pb-5 -mb-5">Urgentes</button>
+<button class="text-on-surface-variant font-medium hover:text-primary transition-colors pb-5 -mb-5">Aguardando atualização</button>
+</div>
+<!-- Table Container -->
+<div class="w-full overflow-x-auto">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="bg-surface-container-low">
+<th class="px-8 py-4 font-headline font-bold text-sm text-on-surface-variant uppercase tracking-wider">Nome</th>
+<th class="px-8 py-4 font-headline font-bold text-sm text-on-surface-variant uppercase tracking-wider">CRA</th>
+<th class="px-8 py-4 font-headline font-bold text-sm text-on-surface-variant uppercase tracking-wider">Status</th>
+<th class="px-8 py-4 font-headline font-bold text-sm text-on-surface-variant uppercase tracking-wider text-right">Ação</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-surface-container">
+<!-- Urgent Row -->
+<tr class="bg-[#fee2e2] transition-colors">
+<td class="px-8 py-5">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full bg-tertiary-container/20 flex items-center justify-center overflow-hidden">
+<img alt="Avatar" class="w-full h-full object-cover" data-alt="Close up portrait of an elderly woman with kind eyes and soft natural lighting in a clinic environment" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBsw6ECfviGgmvDvvrgE2MJ64-a-ip6Bb66Cx44905gbg11VMPbvO3nUxOCBVVi1X1uIBBh3gYf_khVs34jw5ANzaW1z3zWEKofExsb2DMVCwWFL7_UIl3hnP4AAdEIQRHVnlN6Avu_XNCjy-D0pR91ap0EgXc76ORKQM0vHwJLanrMJ1UIO3tzQ7RrnUtqyqTm13X3HpZQ1WDBtJDzdOb4eMuCxRTPIQ7xp1acbV4l8wghhUJ2IoB-HwkoSZ5cjUS_2s5AC7vp"/>
+</div>
+<div>
+<p class="font-bold text-on-surface">Maria Oliveira Santos</p>
+<p class="text-xs text-on-surface-variant">Entrada: 08:30 AM</p>
+</div>
+</div>
+</td>
+<td class="px-8 py-5 font-mono text-sm">492.302-8</td>
+<td class="px-8 py-5">
+<span class="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-tertiary text-on-tertiary text-xs font-bold uppercase tracking-tight">
+<span class="material-symbols-outlined text-xs" style="font-variation-settings: 'FILL' 1;">priority_high</span>
+                                    Urgente
+                                </span>
+</td>
+<td class="px-8 py-5 text-right">
+<button class="px-4 py-2 bg-primary text-on-primary rounded-lg font-bold text-sm hover:bg-primary-container transition-all active:scale-95">
+                                    Ver perfil
+                                </button>
+</td>
+</tr>
+<!-- Standard Row -->
+<tr class="hover:bg-surface-container-low transition-colors">
+<td class="px-8 py-5">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full bg-secondary-container flex items-center justify-center overflow-hidden">
+<img alt="Avatar" class="w-full h-full object-cover" data-alt="Professional studio portrait of a middle-aged man with a neat beard and friendly expression against a neutral background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBLaHL8aBKMb0dEy6YexYRua7yDm96yqmVK4_KazfSZpg-t2y3SeKD3V8WP3jK92ZU_XxWOwfYdg4dkW5rfJHBorlmZIEtP8_4ltxqMV7HsDV3y0Poi3N6w1kkI1r-T6yUmpk6uqZm8YLOeTMtllq29Cd4lCSnPwBvCXeTsTKJhyX3rrGt2iVGY88RjX4O6u4vtYB9cmyXerT_-ZeWCfbwAfl7weP4e99WtCZKHJ0cjyJrq3iqoSWpqT-6k7U3jlYn4az26Ne9H"/>
+</div>
+<div>
+<p class="font-bold text-on-surface">João Pereira da Costa</p>
+<p class="text-xs text-on-surface-variant">Entrada: 09:15 AM</p>
+</div>
+</div>
+</td>
+<td class="px-8 py-5 font-mono text-sm">283.441-2</td>
+<td class="px-8 py-5">
+<span class="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-secondary-container text-on-secondary-container text-xs font-bold uppercase tracking-tight">
+                                    Estável
+                                </span>
+</td>
+<td class="px-8 py-5 text-right">
+<button class="px-4 py-2 bg-primary text-on-primary rounded-lg font-bold text-sm hover:bg-primary-container transition-all active:scale-95">
+                                    Ver perfil
+                                </button>
+</td>
+</tr>
+<!-- Urgent Row -->
+<tr class="bg-[#fee2e2] transition-colors">
+<td class="px-8 py-5">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full bg-tertiary-container/20 flex items-center justify-center overflow-hidden">
+<img alt="Avatar" class="w-full h-full object-cover" data-alt="Headshot of a young man with glasses looking directly at the camera with a calm expression in a bright indoor setting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBqkzcpEcuicCKL0LL9AP06qmLfnONl_xEV4jG5vZ5zuqnGbx1cctfujPG8KATqlNd2ykzKDPL5BxBI2iAsh3K0OXsI9zPeppoiRLn86CCVdjgO2n5JctATBpA10_za5qlH7qdavwvEUA-ws8J5nq5mgcexa8RaIknwcm_QK8CO11iwfwNNvorZrYDo2mbfyBGtE8ACK6swlfbhdUoRPcqNw0uTOOFqud-KrCaQyTgd5xsikqApHS7mecQj3E2o6HhDpvTrOPCI"/>
+</div>
+<div>
+<p class="font-bold text-on-surface">Carlos Eduardo Lima</p>
+<p class="text-xs text-on-surface-variant">Entrada: 09:45 AM</p>
+</div>
+</div>
+</td>
+<td class="px-8 py-5 font-mono text-sm">115.890-5</td>
+<td class="px-8 py-5">
+<span class="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-tertiary text-on-tertiary text-xs font-bold uppercase tracking-tight">
+<span class="material-symbols-outlined text-xs" style="font-variation-settings: 'FILL' 1;">priority_high</span>
+                                    Urgente
+                                </span>
+</td>
+<td class="px-8 py-5 text-right">
+<button class="px-4 py-2 bg-primary text-on-primary rounded-lg font-bold text-sm hover:bg-primary-container transition-all active:scale-95">
+                                    Ver perfil
+                                </button>
+</td>
+</tr>
+<!-- Standard Row -->
+<tr class="hover:bg-surface-container-low transition-colors">
+<td class="px-8 py-5">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full bg-secondary-container flex items-center justify-center overflow-hidden">
+<img alt="Avatar" class="w-full h-full object-cover" data-alt="Natural portrait of a woman with a slight smile in soft daylight outdoors" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCfP4wF77kZKJMRAIxBd4OwwoJD6tzC6ZgxE4bvAw3PYt_quwzrRjGXxYkGq0fXkX1LuUx-rSCs9SrbvVOkgYD-i23GJBU4eJl9N7gD3sZKF40tcM-_kZtNVnbVCkOdIMfSdweLYWks6NzpC3VEx6Cb_2xBbG2dqOY2GqOpJUCFcM7y36lT0Q8mJ5pLJ85jfRRBVhjRg1vGEMaAUDWfii1qRQ_QhtDxbQ6KF_p6Gn8qh_177NBb0XWAYImQv159bj5-fxMHw188"/>
+</div>
+<div>
+<p class="font-bold text-on-surface">Ana Beatriz Mendes</p>
+<p class="text-xs text-on-surface-variant">Entrada: 10:05 AM</p>
+</div>
+</div>
+</td>
+<td class="px-8 py-5 font-mono text-sm">882.003-1</td>
+<td class="px-8 py-5">
+<span class="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-tertiary-fixed text-on-tertiary-fixed-variant text-xs font-bold uppercase tracking-tight">
+                                    Aguardando
+                                </span>
+</td>
+<td class="px-8 py-5 text-right">
+<button class="px-4 py-2 bg-primary text-on-primary rounded-lg font-bold text-sm hover:bg-primary-container transition-all active:scale-95">
+                                    Ver perfil
+                                </button>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<!-- Pagination Placeholder -->
+<div class="px-8 py-6 flex items-center justify-between text-on-surface-variant text-sm">
+<span>Mostrando 4 de 142 pacientes</span>
+<div class="flex gap-2">
+<button class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-surface-container transition-colors">
+<span class="material-symbols-outlined">chevron_left</span>
+</button>
+<button class="w-8 h-8 flex items-center justify-center rounded-lg bg-primary text-on-primary font-bold">1</button>
+<button class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-surface-container transition-colors">2</button>
+<button class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-surface-container transition-colors">3</button>
+<button class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-surface-container transition-colors">
+<span class="material-symbols-outlined">chevron_right</span>
+</button>
+</div>
+</div>
+</section>
+<!-- Floating Action Button for Dashboard -->
+<button class="fixed bottom-10 right-10 w-16 h-16 bg-primary text-on-primary rounded-full shadow-2xl flex items-center justify-center group transition-transform hover:scale-110 active:scale-95 z-50">
+<span class="material-symbols-outlined text-3xl">add</span>
+<span class="absolute right-20 bg-inverse-surface text-inverse-on-surface px-4 py-2 rounded-lg text-sm font-bold opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">Novo Paciente</span>
+</button>
+</main>
+</body></html>
