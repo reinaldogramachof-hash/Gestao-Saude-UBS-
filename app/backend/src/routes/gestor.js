@@ -18,6 +18,7 @@
  *   PUT    /api/gestor/paciente/:id              → edita dados do paciente
  *   POST   /api/gestor/paciente/:id/solicitacao  → cria solicitação para paciente
  *   PUT    /api/gestor/solicitacao/:id/status    → atualiza status + grava histórico
+ *   GET    /api/gestor/solicitacao/:id/historico → lista o histórico da solicitação
  *   GET    /api/gestor/medicamentos              → lista medicamentos da UBS
  *   PUT    /api/gestor/medicamento/:id           → atualiza disponibilidade/observação
  *   POST   /api/gestor/medicamento               → adiciona novo medicamento
@@ -57,17 +58,46 @@ router.get('/pacientes', async (req, res) => {
     const { busca, pagina = 1, limite = 20 } = req.query;
     const offset = (Number(pagina) - 1) * Number(limite);
 
+    // O LEFT JOIN preserva pacientes sem solicitações. As duas agregações
+    // resumem apenas o necessário para a tabela e evitam consultas por linha.
     let query = knex('pacientes')
+      .leftJoin('solicitacoes as s', 's.paciente_id', 'pacientes.id')
       .where('pacientes.ubs_id', req.user.ubs_id)
-      .select('id', 'nome', 'cra', 'cpf', 'telefone', 'data_nascimento')
-      .orderBy('nome')
+      .select(
+        'pacientes.id',
+        'pacientes.nome',
+        'pacientes.cra',
+        'pacientes.telefone',
+        'pacientes.email',
+        'pacientes.data_nascimento',
+        knex.raw(
+          'COUNT(CASE WHEN s.status NOT IN (?, ?) THEN 1 END) as solicitacoes_ativas',
+          ['concluido', 'cancelado']
+        ),
+        knex.raw(
+          'COALESCE(BOOL_OR(s.prioridade = ? AND s.status NOT IN (?, ?)), false) as tem_urgente',
+          ['urgente', 'concluido', 'cancelado']
+        )
+      )
+      // Todos os campos públicos não agregados precisam estar no GROUP BY.
+      // CPF fica deliberadamente fora da seleção para cumprir a LGPD.
+      .groupBy(
+        'pacientes.id',
+        'pacientes.nome',
+        'pacientes.cra',
+        'pacientes.telefone',
+        'pacientes.email',
+        'pacientes.data_nascimento'
+      )
+      .orderBy('pacientes.nome')
       .limit(Number(limite))
       .offset(offset);
 
     // Filtra por nome ou CRA se a busca foi enviada
     if (busca) {
       query = query.where(function () {
-        this.whereILike('nome', `%${busca}%`).orWhereILike('cra', `%${busca}%`);
+        this.whereILike('pacientes.nome', `%${busca}%`)
+          .orWhereILike('pacientes.cra', `%${busca}%`);
       });
     }
 
@@ -76,6 +106,47 @@ router.get('/pacientes', async (req, res) => {
   } catch (err) {
     console.error('[GET /gestor/pacientes]', err);
     return res.status(500).json({ error: 'Erro ao buscar pacientes.' });
+  }
+});
+
+
+// ─── GET /api/gestor/solicitacao/:id/historico ──────────────────────────────
+// Retorna a linha do tempo de uma solicitação somente quando o paciente
+// vinculado pertence à UBS autenticada. Nenhum dado pessoal é retornado.
+router.get('/solicitacao/:id/historico', async (req, res) => {
+  try {
+    // A solicitação é validada pela relação com pacientes, fonte de verdade
+    // para o vínculo com a UBS, antes de qualquer leitura do histórico.
+    const solicitacao = await knex('solicitacoes')
+      .join('pacientes', 'solicitacoes.paciente_id', 'pacientes.id')
+      .where('solicitacoes.id', req.params.id)
+      .where('pacientes.ubs_id', req.user.ubs_id)
+      .select('solicitacoes.id')
+      .first();
+
+    if (!solicitacao) {
+      return res.status(404).json({ error: 'Solicitação não encontrada nesta UBS.' });
+    }
+
+    // LEFT JOIN preserva eventos automáticos ou antigos cujo gestor tenha sido
+    // removido. A ordenação crescente monta a linha do tempo da origem ao atual.
+    const historico = await knex('historico_status')
+      .leftJoin('usuarios_gestores', 'historico_status.gestor_id', 'usuarios_gestores.id')
+      .where('historico_status.solicitacao_id', req.params.id)
+      .select(
+        'historico_status.id',
+        'historico_status.status_anterior',
+        'historico_status.status_novo',
+        'historico_status.observacao',
+        'historico_status.alterado_em',
+        'usuarios_gestores.nome as gestor_nome'
+      )
+      .orderBy('historico_status.alterado_em', 'asc');
+
+    return res.json(historico);
+  } catch (err) {
+    console.error('[GET /gestor/solicitacao/:id/historico]', err);
+    return res.status(500).json({ error: 'Erro ao buscar histórico da solicitação.' });
   }
 });
 
@@ -314,6 +385,8 @@ router.post('/paciente', async (req, res) => {
       })
       .returning('*');
 
+    // O CPF é aceito para cadastro, mas nunca retorna pela API do gestor.
+    delete paciente.cpf;
     return res.status(201).json(paciente);
   } catch (err) {
     console.error('[POST /gestor/paciente]', err);
@@ -353,6 +426,8 @@ router.put('/paciente/:id', async (req, res) => {
       })
       .returning('*');
 
+    // Mantém a resposta compatível com a regra de minimização de dados da LGPD.
+    delete atualizado.cpf;
     return res.json(atualizado);
   } catch (err) {
     console.error('[PUT /gestor/paciente/:id]', err);
@@ -513,7 +588,7 @@ router.get('/alertas', async (req, res) => {
         'pacientes.nome as paciente_nome',
         knex.raw('EXTRACT(DAY FROM NOW() - solicitacoes.atualizado_em) AS dias_parado'),
         knex.raw(`
-          CASE 
+          CASE
             WHEN solicitacoes.prioridade = 'urgente' THEN 'A'
             WHEN solicitacoes.prioridade = 'prioritario' THEN 'B'
             ELSE 'C'

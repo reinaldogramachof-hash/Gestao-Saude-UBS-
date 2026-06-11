@@ -1,7 +1,9 @@
 /**
  * PÁGINA: GestorPacientes.jsx + Responsividade
  * ─────────────────────────────────────────────────────────────────────────────
- * FUNÇÃO: Listagem, busca e cadastro de novos pacientes pelo gestor.
+ * FUNÇÃO: Lista, busca, pagina e cadastra pacientes, exibindo a carga de
+ *         solicitações ativas e destacando prioridades urgentes.
+ * PROPS: Nenhuma. Navegação e autenticação são resolvidas pelo roteador/api.js.
  *         Usa GestorLayout para layout responsivo com sidebar drawer.
  *         Tabela com scroll horizontal no mobile. Modal inalterado.
  *
@@ -20,6 +22,8 @@ export default function GestorPacientes() {
   const [pacientes, setPacientes] = useState([]);
   const [busca, setBusca] = useState('');
   const [loading, setLoading] = useState(true);
+  const [erro, setErro] = useState('');
+  const [paginaAtual, setPaginaAtual] = useState(1);
   const [modalAberto, setModalAberto] = useState(false);
   const [enviando, setEnviando] = useState(false);
   const [erroCRA, setErroCRA] = useState('');
@@ -27,19 +31,25 @@ export default function GestorPacientes() {
     nome: '', cra: '', data_nascimento: '', cpf: '', telefone: '', email: ''
   });
 
-  // Debounce de 400ms na busca para não sobrecarregar a API
+  // Debounce de 400ms evita requisições a cada tecla e respeita a página atual.
   useEffect(() => {
     const timer = setTimeout(() => fetchPacientes(), busca ? 400 : 0);
     return () => clearTimeout(timer);
-  }, [busca]);
+  }, [busca, paginaAtual]);
 
   const fetchPacientes = async () => {
     try {
       setLoading(true);
-      const res = await api.get(`/gestor/pacientes?busca=${busca}`);
+      setErro('');
+      const params = new URLSearchParams({
+        busca,
+        pagina: String(paginaAtual),
+        limite: '20',
+      });
+      const res = await api.get(`/gestor/pacientes?${params.toString()}`);
       setPacientes(res.data);
     } catch {
-      toast.error('Erro ao carregar lista de pacientes.');
+      setErro('Não foi possível carregar a lista de pacientes.');
     } finally {
       setLoading(false);
     }
@@ -97,21 +107,31 @@ export default function GestorPacientes() {
           type="text"
           placeholder="Buscar por nome ou CRA..."
           value={busca}
-          onChange={(e) => setBusca(e.target.value)}
+          onChange={(e) => {
+            setBusca(e.target.value);
+            setPaginaAtual(1);
+          }}
           className="w-full h-12 pl-12 pr-4 bg-surface-container-lowest border border-outline-variant rounded-2xl focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all outline-none font-medium text-sm"
         />
       </div>
 
       {/* ── Tabela com scroll horizontal no mobile ── */}
+      {erro && !loading ? (
+        <div className="bg-surface-container-lowest rounded-2xl border border-red-200 p-8 text-center">
+          <p className="font-bold text-on-background">{erro}</p>
+          <button onClick={fetchPacientes} className="mt-4 h-12 px-6 bg-primary text-white font-bold rounded-2xl">Tentar novamente</button>
+        </div>
+      ) : (
       <div className="bg-surface-container-lowest rounded-3xl border border-surface-variant shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[640px] text-left">
+          <table className="w-full min-w-[760px] text-left">
             <thead className="bg-surface-container-low border-b border-surface-variant">
               <tr>
                 <th className="p-4 md:p-6 text-xs font-bold text-on-surface-variant uppercase tracking-wider">Nome</th>
                 <th className="p-4 md:p-6 text-xs font-bold text-on-surface-variant uppercase tracking-wider">CRA</th>
                 <th className="p-4 md:p-6 text-xs font-bold text-on-surface-variant uppercase tracking-wider">Telefone</th>
                 <th className="p-4 md:p-6 text-xs font-bold text-on-surface-variant uppercase tracking-wider">Nascimento</th>
+                <th className="p-4 md:p-6 text-xs font-bold text-on-surface-variant uppercase tracking-wider">Solicitações</th>
                 <th className="p-4 md:p-6 text-xs font-bold text-on-surface-variant uppercase tracking-wider text-right">Ação</th>
               </tr>
             </thead>
@@ -119,7 +139,7 @@ export default function GestorPacientes() {
               {loading ? (
                 Array(3).fill(0).map((_, i) => (
                   <tr key={i} className="animate-pulse">
-                    <td colSpan="5" className="p-4 md:p-6">
+                    <td colSpan="6" className="p-4 md:p-6">
                       <div className="h-5 bg-surface-container-high rounded w-full"></div>
                     </td>
                   </tr>
@@ -140,6 +160,17 @@ export default function GestorPacientes() {
                     <td className="p-4 md:p-6 font-medium text-on-surface-variant text-sm">
                       {new Date(p.data_nascimento).toLocaleDateString('pt-BR')}
                     </td>
+                    <td className="p-4 md:p-6">
+                      <span className={`inline-flex px-3 py-1 rounded-full text-xs font-bold ${
+                        p.tem_urgente
+                          ? 'bg-red-100 text-red-700'
+                          : Number(p.solicitacoes_ativas) > 0
+                            ? 'bg-emerald-100 text-emerald-700'
+                            : 'bg-surface-container-high text-on-surface-variant'
+                      }`}>
+                        {Number(p.solicitacoes_ativas) || 0} ativas
+                      </span>
+                    </td>
                     <td className="p-4 md:p-6 text-right">
                       <button
                         onClick={() => navigate(`/gestor/paciente/${p.id}`)}
@@ -152,7 +183,7 @@ export default function GestorPacientes() {
                 ))
               ) : (
                 <tr>
-                  <td colSpan="5" className="p-16 text-center text-on-surface-variant font-medium">
+                  <td colSpan="6" className="p-16 text-center text-on-surface-variant font-medium">
                     Nenhum paciente cadastrado ainda.
                   </td>
                 </tr>
@@ -160,7 +191,25 @@ export default function GestorPacientes() {
             </tbody>
           </table>
         </div>
+        <div className="p-4 md:p-6 border-t border-surface-variant flex items-center justify-between gap-3">
+          <button
+            onClick={() => setPaginaAtual((pagina) => Math.max(1, pagina - 1))}
+            disabled={paginaAtual === 1 || loading}
+            className="h-11 px-5 rounded-xl border border-outline font-bold disabled:opacity-40"
+          >
+            Anterior
+          </button>
+          <span className="text-sm font-bold text-on-surface-variant">Página {paginaAtual}</span>
+          <button
+            onClick={() => setPaginaAtual((pagina) => pagina + 1)}
+            disabled={pacientes.length < 20 || loading}
+            className="h-11 px-5 rounded-xl bg-primary text-white font-bold disabled:opacity-40"
+          >
+            Próxima
+          </button>
+        </div>
       </div>
+      )}
 
       {/* ── Modal de Cadastro (inalterado) ── */}
       {modalAberto && (

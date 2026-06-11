@@ -1,7 +1,9 @@
 /**
  * PÁGINA: AgendamentosGestor.jsx — Épico 4 + Responsividade
  * ─────────────────────────────────────────────────────────────────────────────
- * FUNÇÃO: Gerenciamento de slots de agendamento da UBS pelo gestor.
+ * FUNÇÃO: Gerencia slots de atendimento, cria horários únicos ou repetidos,
+ *         resume a agenda e vincula reservas ao perfil do paciente.
+ * PROPS: Nenhuma. Usa useNavigate para abrir pacientes vinculados.
  *         Usa GestorLayout para layout responsivo.
  *         Cards adaptativos para mobile com ações contextuais.
  *
@@ -12,6 +14,7 @@
  * ─────────────────────────────────────────────────────────────────────────────
  */
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import api from '../../services/api';
 import GestorLayout from '../../components/gestor/GestorLayout';
@@ -31,18 +34,22 @@ const STATUS_LABEL = {
 };
 
 export default function AgendamentosGestor() {
+  const navigate = useNavigate();
   const [agendamentos, setAgendamentos] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [erro, setErro] = useState('');
   const [filtroStatus, setFiltroStatus] = useState('todos');
   const [modalAberto, setModalAberto] = useState(false);
   const [enviando, setEnviando] = useState(false);
-  const [form, setForm] = useState({ data_hora: '', duracao_minutos: 30 });
+  const [form, setForm] = useState({ data_hora: '', duracao_minutos: 30, repetir_dias: 1 });
+  const [progressoCriacao, setProgressoCriacao] = useState({ atual: 0, total: 0 });
 
   const carregarAgendamentos = () => {
     setLoading(true);
+    setErro('');
     api.get('/gestor/agendamentos')
       .then(r => setAgendamentos(r.data))
-      .catch(() => toast.error('Erro ao carregar agendamentos.'))
+      .catch(() => setErro('Não foi possível carregar os agendamentos.'))
       .finally(() => setLoading(false));
   };
 
@@ -53,19 +60,44 @@ export default function AgendamentosGestor() {
     ? agendamentos
     : agendamentos.filter(a => a.status === filtroStatus);
 
+  // O resumo usa a lista completa para não mudar quando o gestor troca de aba.
+  const hoje = new Date().toDateString();
+  const resumo = {
+    disponiveis: agendamentos.filter((item) => item.status === 'disponivel').length,
+    reservados: agendamentos.filter((item) => item.status === 'reservado').length,
+    concluidosHoje: agendamentos.filter(
+      (item) => item.status === 'concluido' && new Date(item.data_hora).toDateString() === hoje
+    ).length,
+  };
+
   const handleCriar = async (e) => {
     e.preventDefault();
     setEnviando(true);
+    const total = Number(form.repetir_dias);
+    let criados = 0;
+    setProgressoCriacao({ atual: 0, total });
     try {
-      await api.post('/gestor/agendamento', form);
-      toast.success('Horário criado com sucesso!');
+      // As chamadas são sequenciais para refletir o progresso real e evitar
+      // rajadas de escrita. Cada dia mantém a mesma hora informada no formulário.
+      for (let indice = 0; indice < total; indice += 1) {
+        const dataHora = new Date(form.data_hora);
+        dataHora.setDate(dataHora.getDate() + indice);
+        await api.post('/gestor/agendamento', {
+          data_hora: dataHora.toISOString(),
+          duracao_minutos: form.duracao_minutos,
+        });
+        criados = indice + 1;
+        setProgressoCriacao({ atual: criados, total });
+      }
+      toast.success(total === 1 ? 'Horário criado com sucesso!' : `${total} horários criados com sucesso!`);
       setModalAberto(false);
-      setForm({ data_hora: '', duracao_minutos: 30 });
+      setForm({ data_hora: '', duracao_minutos: 30, repetir_dias: 1 });
       carregarAgendamentos();
     } catch {
-      toast.error('Erro ao criar agendamento.');
+      toast.error(`Erro ao criar o horário ${criados + 1} de ${total}. ${criados} concluído(s).`);
     } finally {
       setEnviando(false);
+      setProgressoCriacao({ atual: 0, total: 0 });
     }
   };
 
@@ -113,6 +145,20 @@ export default function AgendamentosGestor() {
         </button>
       </div>
 
+      {/* Resumo derivado localmente da agenda já carregada. */}
+      <div className="grid grid-cols-3 gap-2 md:gap-4 mb-6">
+        {[
+          { label: 'Disponíveis', valor: resumo.disponiveis, cor: 'text-emerald-700' },
+          { label: 'Reservados', valor: resumo.reservados, cor: 'text-amber-700' },
+          { label: 'Concluídos hoje', valor: resumo.concluidosHoje, cor: 'text-primary' },
+        ].map((item) => (
+          <div key={item.label} className="bg-surface-container-lowest rounded-2xl border border-surface-variant shadow-sm p-3 md:p-5 text-center">
+            <p className={`text-2xl md:text-3xl font-extrabold ${item.cor}`}>{item.valor}</p>
+            <p className="text-xs md:text-sm font-bold text-on-surface-variant mt-1">{item.label}</p>
+          </div>
+        ))}
+      </div>
+
       {/* ── Tabs de filtro com scroll horizontal ── */}
       <div className="flex gap-2 mb-6 overflow-x-auto pb-1">
         {ABAS.map(aba => (
@@ -129,6 +175,11 @@ export default function AgendamentosGestor() {
       {/* ── Lista de Agendamentos ── */}
       {loading ? (
         <div className="space-y-4">{Array(4).fill(0).map((_, i) => <div key={i} className="h-20 bg-surface-container-low rounded-2xl animate-pulse" />)}</div>
+      ) : erro ? (
+        <div className="py-16 text-center bg-surface-container-lowest rounded-2xl border border-red-200">
+          <p className="font-bold text-on-background">{erro}</p>
+          <button onClick={carregarAgendamentos} className="mt-4 h-12 px-6 bg-primary text-white font-bold rounded-2xl">Tentar novamente</button>
+        </div>
       ) : agendamentosFiltrados.length > 0 ? (
         <div className="space-y-3 md:space-y-4">
           {agendamentosFiltrados.map(ag => (
@@ -152,6 +203,11 @@ export default function AgendamentosGestor() {
                     )}
                   </div>
                   {ag.motivo && <p className="text-xs text-on-surface-variant italic mt-0.5">{ag.motivo}</p>}
+                  {ag.status === 'reservado' && ag.paciente_id && (
+                    <button onClick={() => navigate(`/gestor/paciente/${ag.paciente_id}`)} className="mt-2 text-xs font-bold text-primary hover:underline">
+                      → Ver paciente
+                    </button>
+                  )}
                 </div>
               </div>
               {/* Ações contextuais por status */}
@@ -203,6 +259,20 @@ export default function AgendamentosGestor() {
                 <input type="number" min={15} step={15} value={form.duracao_minutos} onChange={e => setForm(p => ({ ...p, duracao_minutos: Number(e.target.value) }))}
                   className="w-full h-12 px-4 bg-surface-container-high border-none rounded-xl outline-none font-medium" />
               </div>
+              <div className="space-y-2">
+                <label className="text-sm font-bold text-on-surface-variant">Repetir por X dias</label>
+                <select value={form.repetir_dias} onChange={e => setForm(p => ({ ...p, repetir_dias: Number(e.target.value) }))}
+                  className="w-full h-12 px-4 bg-surface-container-high border-none rounded-xl outline-none font-medium">
+                  {[1, 5, 10, 15, 20, 30].map((dias) => (
+                    <option key={dias} value={dias}>{dias} {dias === 1 ? 'dia' : 'dias'}</option>
+                  ))}
+                </select>
+              </div>
+              {enviando && progressoCriacao.total > 1 && (
+                <div className="p-3 rounded-xl bg-primary/10 text-primary font-bold text-center">
+                  Criando {progressoCriacao.atual}/{progressoCriacao.total}...
+                </div>
+              )}
               <div className="flex gap-3 pt-2">
                 <button type="button" onClick={() => setModalAberto(false)} className="flex-1 h-12 rounded-2xl border border-outline font-bold">Cancelar</button>
                 <button type="submit" disabled={enviando} className="flex-1 h-12 rounded-2xl bg-primary text-white font-bold disabled:opacity-50">

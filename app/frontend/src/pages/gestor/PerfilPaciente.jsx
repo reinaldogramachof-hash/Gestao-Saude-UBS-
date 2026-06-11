@@ -1,11 +1,15 @@
 /**
  * PÁGINA: PerfilPaciente.jsx — Épico 2 + Responsividade
  * ─────────────────────────────────────────────────────────────────────────────
- * FUNÇÃO: Exibe o perfil completo de um paciente para o gestor.
+ * FUNÇÃO: Exibe e edita o perfil do paciente, gerencia solicitações e consulta
+ *         o histórico de status de cada solicitação sob demanda.
+ * PROPS: Nenhuma. O identificador do paciente vem de useParams().
  *         Usa GestorLayout para layout responsivo com sidebar drawer.
  *         Modais de solicitação e status inalterados.
  *
  * API: GET /api/gestor/paciente/:id
+ *      PUT /api/gestor/paciente/:id
+ *      GET /api/gestor/solicitacao/:id/historico
  *      POST /api/gestor/paciente/:id/solicitacao
  *      PUT  /api/gestor/solicitacao/:id/status
  * ─────────────────────────────────────────────────────────────────────────────
@@ -55,6 +59,11 @@ export default function PerfilPaciente() {
   const [solicitacaoSelecionada, setSolicitacaoSelecionada] = useState(null);
   const [enviandoStatus, setEnviandoStatus] = useState(false);
   const [formStatus, setFormStatus] = useState({ status_novo: 'em_analise', observacao: '' });
+  const [editandoDados, setEditandoDados] = useState(false);
+  const [salvandoDados, setSalvandoDados] = useState(false);
+  const [formDados, setFormDados] = useState({ nome: '', telefone: '', email: '' });
+  const [historicos, setHistoricos] = useState({});
+  const [historicosAbertos, setHistoricosAbertos] = useState({});
 
   const [modalEscalarAberto, setModalEscalarAberto] = useState(false);
   const [enviandoEscalar, setEnviandoEscalar] = useState(false);
@@ -69,6 +78,62 @@ export default function PerfilPaciente() {
   };
 
   useEffect(() => { carregarPaciente(); }, [id]);
+
+  const iniciarEdicaoDados = () => {
+    setFormDados({
+      nome: paciente?.nome || '',
+      telefone: paciente?.telefone || '',
+      email: paciente?.email || '',
+    });
+    setEditandoDados(true);
+  };
+
+  const handleSalvarDados = async (event) => {
+    event.preventDefault();
+    setSalvandoDados(true);
+    try {
+      await api.put(`/gestor/paciente/${id}`, formDados);
+      toast.success('Dados do paciente atualizados!');
+      setEditandoDados(false);
+      carregarPaciente();
+    } catch (error) {
+      toast.error(error.response?.data?.error || 'Erro ao atualizar dados do paciente.');
+    } finally {
+      setSalvandoDados(false);
+    }
+  };
+
+  // O histórico é buscado apenas na primeira expansão e mantido em cache local.
+  const carregarHistorico = async (solicitacaoId, forcar = false) => {
+    setHistoricos((prev) => ({
+      ...prev,
+      [solicitacaoId]: { ...prev[solicitacaoId], loading: true, erro: '' },
+    }));
+    try {
+      const response = await api.get(`/gestor/solicitacao/${solicitacaoId}/historico`);
+      setHistoricos((prev) => ({
+        ...prev,
+        [solicitacaoId]: { itens: response.data, loading: false, erro: '' },
+      }));
+    } catch {
+      setHistoricos((prev) => ({
+        ...prev,
+        [solicitacaoId]: {
+          itens: forcar ? [] : (prev[solicitacaoId]?.itens || []),
+          loading: false,
+          erro: 'Não foi possível carregar o histórico.',
+        },
+      }));
+    }
+  };
+
+  const alternarHistorico = (solicitacaoId) => {
+    const vaiAbrir = !historicosAbertos[solicitacaoId];
+    setHistoricosAbertos((prev) => ({ ...prev, [solicitacaoId]: vaiAbrir }));
+    if (vaiAbrir && !historicos[solicitacaoId]) {
+      carregarHistorico(solicitacaoId);
+    }
+  };
 
   const handleSalvarSolicitacao = async (e) => {
     e.preventDefault();
@@ -157,19 +222,52 @@ export default function PerfilPaciente() {
         </div>
       </div>
 
-      {/* ── Card de dados: grid responsivo ── */}
-      <div className="bg-surface-container-lowest rounded-2xl md:rounded-3xl border border-surface-variant p-5 md:p-8 mb-6 grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
-        {[
-          { label: 'CRA', value: paciente?.cra },
-          { label: 'Telefone', value: paciente?.telefone || '---' },
-          { label: 'Nascimento', value: paciente?.data_nascimento ? new Date(paciente.data_nascimento).toLocaleDateString('pt-BR') : '---' },
-          { label: 'E-mail', value: paciente?.email || '---' },
-        ].map(({ label, value }) => (
-          <div key={label}>
-            <p className="text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-1">{label}</p>
-            <p className="font-bold text-on-background text-sm md:text-base">{value}</p>
+      {/* ── Card de dados: leitura e edição inline ── */}
+      <div className="bg-surface-container-lowest rounded-2xl md:rounded-3xl border border-surface-variant p-5 md:p-8 mb-6">
+        <div className="flex items-center justify-between gap-4 mb-5">
+          <h2 className="text-lg font-extrabold text-on-background">Dados pessoais</h2>
+          {!editandoDados && (
+            <button onClick={iniciarEdicaoDados} className="px-4 py-2 border border-outline rounded-xl font-bold text-sm hover:bg-surface-container-high">
+              Editar Dados
+            </button>
+          )}
+        </div>
+        {editandoDados ? (
+          <form onSubmit={handleSalvarDados} className="space-y-5">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <label className="space-y-2">
+                <span className="text-sm font-bold text-on-surface-variant">Nome*</span>
+                <input required value={formDados.nome} onChange={(e) => setFormDados((prev) => ({ ...prev, nome: e.target.value }))} className="w-full h-12 px-4 bg-surface-container-high border-none rounded-xl outline-none font-medium" />
+              </label>
+              <label className="space-y-2">
+                <span className="text-sm font-bold text-on-surface-variant">Telefone</span>
+                <input value={formDados.telefone} onChange={(e) => setFormDados((prev) => ({ ...prev, telefone: e.target.value }))} className="w-full h-12 px-4 bg-surface-container-high border-none rounded-xl outline-none font-medium" />
+              </label>
+              <label className="space-y-2">
+                <span className="text-sm font-bold text-on-surface-variant">E-mail</span>
+                <input type="email" value={formDados.email} onChange={(e) => setFormDados((prev) => ({ ...prev, email: e.target.value }))} className="w-full h-12 px-4 bg-surface-container-high border-none rounded-xl outline-none font-medium" />
+              </label>
+            </div>
+            <div className="flex justify-end gap-3">
+              <button type="button" onClick={() => setEditandoDados(false)} className="h-12 px-5 rounded-2xl border border-outline font-bold">Cancelar</button>
+              <button type="submit" disabled={salvandoDados} className="h-12 px-6 rounded-2xl bg-primary text-white font-bold disabled:opacity-50">{salvandoDados ? 'Salvando...' : 'Salvar'}</button>
+            </div>
+          </form>
+        ) : (
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
+            {[
+              { label: 'CRA', value: paciente?.cra },
+              { label: 'Telefone', value: paciente?.telefone || '---' },
+              { label: 'Nascimento', value: paciente?.data_nascimento ? new Date(paciente.data_nascimento).toLocaleDateString('pt-BR') : '---' },
+              { label: 'E-mail', value: paciente?.email || '---' },
+            ].map(({ label, value }) => (
+              <div key={label}>
+                <p className="text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-1">{label}</p>
+                <p className="font-bold text-on-background text-sm md:text-base">{value}</p>
+              </div>
+            ))}
           </div>
-        ))}
+        )}
       </div>
 
       {/* ── Cabeçalho de Solicitações ── */}
@@ -221,6 +319,52 @@ export default function PerfilPaciente() {
                     Atualizar Status
                   </button>
                 </div>
+              </div>
+              <div className="mt-4 pt-4 border-t border-surface-variant">
+                <button
+                  onClick={() => alternarHistorico(sol.id)}
+                  className="flex items-center gap-2 text-sm font-bold text-primary"
+                  aria-expanded={Boolean(historicosAbertos[sol.id])}
+                >
+                  <span className="material-symbols-outlined text-lg">
+                    {historicosAbertos[sol.id] ? 'expand_less' : 'history'}
+                  </span>
+                  {historicosAbertos[sol.id] ? 'Ocultar histórico' : 'Ver histórico'}
+                </button>
+                {historicosAbertos[sol.id] && (
+                  <div className="mt-4">
+                    {historicos[sol.id]?.loading ? (
+                      <div className="space-y-2 animate-pulse">
+                        <div className="h-14 bg-surface-container-high rounded-xl" />
+                        <div className="h-14 bg-surface-container-high rounded-xl" />
+                      </div>
+                    ) : historicos[sol.id]?.erro ? (
+                      <div className="p-4 rounded-xl bg-red-50 text-red-700 flex flex-wrap items-center justify-between gap-3">
+                        <span className="text-sm font-bold">{historicos[sol.id].erro}</span>
+                        <button onClick={() => carregarHistorico(sol.id, true)} className="px-3 py-2 bg-white rounded-lg font-bold text-xs">Tentar novamente</button>
+                      </div>
+                    ) : historicos[sol.id]?.itens?.length > 0 ? (
+                      <ol className="space-y-3">
+                        {historicos[sol.id].itens.map((item) => (
+                          <li key={item.id} className="p-4 rounded-xl bg-surface-container-low border border-surface-variant">
+                            <p className="text-xs font-bold text-on-surface-variant">
+                              {new Date(item.alterado_em).toLocaleString('pt-BR')}
+                              {item.gestor_nome ? ` • ${item.gestor_nome}` : ''}
+                            </p>
+                            <p className="font-bold text-on-background mt-1">
+                              De: {item.status_anterior ? (STATUS_LABEL[item.status_anterior] || item.status_anterior) : 'Início'}
+                              {' → '}
+                              Para: {STATUS_LABEL[item.status_novo] || item.status_novo}
+                            </p>
+                            {item.observacao && <p className="text-sm text-on-surface-variant mt-1">{item.observacao}</p>}
+                          </li>
+                        ))}
+                      </ol>
+                    ) : (
+                      <p className="text-sm text-on-surface-variant">Nenhum evento de histórico registrado.</p>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           ))
