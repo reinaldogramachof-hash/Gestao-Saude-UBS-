@@ -35,11 +35,19 @@ const ETAPA = {
 export default function CadastroPaciente() {
   const [etapa, setEtapa] = useState(ETAPA.ESCOLHER_UBS);
 
-  // ── Estado da lista de UBSs ───────────────────────────────────────────────
+  // ── Modo de Seleção ───────────────────────────────────────────────────────
+  const [modoSelecao, setModoSelecao] = useState('busca_bairro'); // 'busca_bairro' | 'lista_completa'
+
+  // ── Estado da lista de UBSs (lista completa) ──────────────────────────────
   const [ubsLista, setUbsLista] = useState([]);
   const [ubsLoading, setUbsLoading] = useState(true);
   const [ubsErro, setUbsErro] = useState('');
   const [buscaUbs, setBuscaUbs] = useState('');
+
+  // ── Estado da busca por Bairro ────────────────────────────────────────────
+  const [buscaBairroStr, setBuscaBairroStr] = useState('');
+  const [bairroResultados, setBairroResultados] = useState([]);
+  const [bairroLoading, setBairroLoading] = useState(false);
 
   // ── Formulário ────────────────────────────────────────────────────────────
   const [ubsSelecionada, setUbsSelecionada] = useState(null);
@@ -64,6 +72,26 @@ export default function CadastroPaciente() {
       .catch(() => setUbsErro('Não foi possível carregar as unidades de saúde.'))
       .finally(() => setUbsLoading(false));
   }, []);
+
+  // Debounce para busca de bairro
+  useEffect(() => {
+    if (modoSelecao !== 'busca_bairro') return;
+    
+    if (buscaBairroStr.trim().length < 2) {
+      setBairroResultados([]);
+      return;
+    }
+
+    const delayDebounceFn = setTimeout(() => {
+      setBairroLoading(true);
+      api.get(`/auth/buscar-bairro?q=${buscaBairroStr}`)
+        .then(r => setBairroResultados(r.data))
+        .catch(() => {})
+        .finally(() => setBairroLoading(false));
+    }, 350);
+
+    return () => clearTimeout(delayDebounceFn);
+  }, [buscaBairroStr, modoSelecao]);
 
   // Filtra UBSs em tempo real pela busca de bairro ou nome
   const ubsFiltradas = ubsLista.filter(u =>
@@ -139,74 +167,161 @@ export default function CadastroPaciente() {
           ════════════════════════════════════════════════════════════════════ */}
       {etapa === ETAPA.ESCOLHER_UBS && (
         <div className="w-full max-w-lg bg-surface-container-lowest rounded-3xl shadow-md overflow-hidden">
-          <div className="p-6 border-b border-surface-variant">
-            <h2 className="text-lg font-extrabold text-on-background">Qual é a sua unidade de saúde?</h2>
-            <p className="text-sm text-on-surface-variant mt-1">
-              Escolha a UBS do seu bairro. Se não souber, use a busca abaixo.
-            </p>
-          </div>
+          {modoSelecao === 'busca_bairro' ? (
+            // ── MODO 1: Busca por Bairro (Padrão) ──
+            <>
+              <div className="p-6 border-b border-surface-variant">
+                <h2 className="text-lg font-extrabold text-on-background">Qual é o seu bairro?</h2>
+                <p className="text-sm text-on-surface-variant mt-1">
+                  Digite seu bairro para encontrarmos a UBS que atende sua região.
+                </p>
+              </div>
 
-          {/* Campo de busca por bairro */}
-          <div className="p-4 border-b border-surface-variant">
-            <div className="relative">
-              <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-xl">search</span>
-              <input
-                type="text"
-                placeholder="Digite seu bairro ou nome da UBS..."
-                value={buscaUbs}
-                onChange={e => setBuscaUbs(e.target.value)}
-                className="w-full h-11 pl-10 pr-4 bg-surface-container-high rounded-xl outline-none font-medium text-sm border-none"
-                autoFocus
-              />
-            </div>
-          </div>
-
-          {/* Lista de UBSs */}
-          <div className="max-h-[50vh] overflow-y-auto divide-y divide-surface-variant">
-            {ubsLoading ? (
-              Array.from({ length: 6 }, (_, i) => (
-                <div key={i} className="p-4 animate-pulse">
-                  <div className="h-4 bg-surface-container-high rounded w-3/4 mb-2" />
-                  <div className="h-3 bg-surface-container-high rounded w-1/2" />
+              <div className="p-4 border-b border-surface-variant">
+                <div className="relative">
+                  <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-xl">search</span>
+                  <input
+                    type="text"
+                    placeholder="Digite seu bairro..."
+                    value={buscaBairroStr}
+                    onChange={e => setBuscaBairroStr(e.target.value)}
+                    className="w-full h-11 pl-10 pr-4 bg-surface-container-high rounded-xl outline-none font-medium text-sm border-none"
+                    autoFocus
+                  />
                 </div>
-              ))
-            ) : ubsErro ? (
-              <div className="p-8 text-center">
-                <p className="text-red-600 font-semibold text-sm mb-3">{ubsErro}</p>
-                <button onClick={() => window.location.reload()} className="text-primary font-bold text-sm underline">
-                  Tentar novamente
-                </button>
               </div>
-            ) : ubsFiltradas.length > 0 ? (
-              ubsFiltradas.map(ubs => (
-                <button
-                  key={ubs.id}
-                  onClick={() => handleSelecionarUbs(ubs)}
-                  className="w-full p-4 text-left hover:bg-primary/5 transition-colors flex items-start gap-3 group"
+
+              <div className="max-h-[50vh] overflow-y-auto divide-y divide-surface-variant">
+                {bairroLoading ? (
+                  Array.from({ length: 3 }, (_, i) => (
+                    <div key={i} className="p-4 animate-pulse">
+                      <div className="h-4 bg-surface-container-high rounded w-3/4 mb-2" />
+                      <div className="h-3 bg-surface-container-high rounded w-1/2" />
+                    </div>
+                  ))
+                ) : buscaBairroStr.trim().length < 2 ? (
+                  <div className="p-10 text-center text-on-surface-variant">
+                    <span className="material-symbols-outlined text-4xl block mb-3 opacity-30">location_on</span>
+                    <p className="font-semibold text-sm">Digite pelo menos 2 letras do seu bairro</p>
+                  </div>
+                ) : bairroResultados.length > 0 ? (
+                  bairroResultados.map((item, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => handleSelecionarUbs({
+                        id: item.ubs_id,
+                        nome: item.ubs_nome,
+                        bairro: item.bairro, // usamos o bairro encontrado como o bairro do paciente
+                        endereco: item.ubs_endereco,
+                        telefone: item.ubs_telefone
+                      })}
+                      className="w-full p-4 text-left hover:bg-primary/5 transition-colors flex items-start gap-3 group"
+                    >
+                      <div className="w-9 h-9 bg-primary/10 rounded-xl flex items-center justify-center flex-shrink-0 group-hover:bg-primary/20 mt-0.5">
+                        <span className="material-symbols-outlined text-primary text-lg">location_city</span>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-bold text-on-background text-sm leading-tight">{item.bairro}</p>
+                        <p className="text-xs text-on-surface-variant mt-0.5 font-medium">
+                          → atendido pela <span className="font-bold">{item.ubs_nome}</span>
+                        </p>
+                      </div>
+                      <span className="material-symbols-outlined text-on-surface-variant group-hover:text-primary text-xl flex-shrink-0 mt-1">chevron_right</span>
+                    </button>
+                  ))
+                ) : (
+                  <div className="p-10 text-center text-on-surface-variant">
+                    <span className="material-symbols-outlined text-4xl block mb-3 opacity-30">search_off</span>
+                    <p className="font-semibold text-sm mb-3">Bairro não encontrado.</p>
+                    <button onClick={() => setModoSelecao('lista_completa')} className="text-primary font-bold text-sm underline">
+                      Ver lista completa →
+                    </button>
+                  </div>
+                )}
+              </div>
+            </>
+          ) : (
+            // ── MODO 2: Lista Completa (Fallback) ──
+            <>
+              <div className="p-4 bg-surface-container-high border-b border-surface-variant flex items-center">
+                <button 
+                  onClick={() => setModoSelecao('busca_bairro')}
+                  className="text-primary font-bold text-sm flex items-center gap-1 hover:underline"
                 >
-                  <div className="w-9 h-9 bg-primary/10 rounded-xl flex items-center justify-center flex-shrink-0 group-hover:bg-primary/20 mt-0.5">
-                    <span className="material-symbols-outlined text-primary text-lg">local_hospital</span>
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-bold text-on-background text-sm leading-tight">{ubs.nome}</p>
-                    <p className="text-xs text-on-surface-variant mt-0.5 font-medium">
-                      {ubs.bairro} — {ubs.endereco}
-                    </p>
-                    {ubs.telefone && (
-                      <p className="text-xs text-on-surface-variant mt-0.5">{ubs.telefone}</p>
-                    )}
-                  </div>
-                  <span className="material-symbols-outlined text-on-surface-variant group-hover:text-primary text-xl flex-shrink-0 mt-1">chevron_right</span>
+                  <span className="material-symbols-outlined text-lg">arrow_back</span>
+                  Buscar pelo meu bairro
                 </button>
-              ))
-            ) : (
-              <div className="p-10 text-center text-on-surface-variant">
-                <span className="material-symbols-outlined text-4xl block mb-3 opacity-30">search_off</span>
-                <p className="font-semibold text-sm">Nenhuma unidade encontrada para "{buscaUbs}"</p>
-                <p className="text-xs mt-1">Tente o nome do bairro vizinho ou procure a UBS mais próxima.</p>
               </div>
-            )}
-          </div>
+
+              <div className="p-6 border-b border-surface-variant">
+                <h2 className="text-lg font-extrabold text-on-background">Lista de Unidades de Saúde</h2>
+                <p className="text-sm text-on-surface-variant mt-1">
+                  Selecione manualmente a UBS mais próxima de você.
+                </p>
+              </div>
+
+              {/* Campo de busca por nome na lista completa */}
+              <div className="p-4 border-b border-surface-variant">
+                <div className="relative">
+                  <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-xl">search</span>
+                  <input
+                    type="text"
+                    placeholder="Digite o nome da UBS..."
+                    value={buscaUbs}
+                    onChange={e => setBuscaUbs(e.target.value)}
+                    className="w-full h-11 pl-10 pr-4 bg-surface-container-high rounded-xl outline-none font-medium text-sm border-none"
+                    autoFocus
+                  />
+                </div>
+              </div>
+
+              {/* Lista de UBSs */}
+              <div className="max-h-[50vh] overflow-y-auto divide-y divide-surface-variant">
+                {ubsLoading ? (
+                  Array.from({ length: 6 }, (_, i) => (
+                    <div key={i} className="p-4 animate-pulse">
+                      <div className="h-4 bg-surface-container-high rounded w-3/4 mb-2" />
+                      <div className="h-3 bg-surface-container-high rounded w-1/2" />
+                    </div>
+                  ))
+                ) : ubsErro ? (
+                  <div className="p-8 text-center">
+                    <p className="text-red-600 font-semibold text-sm mb-3">{ubsErro}</p>
+                    <button onClick={() => window.location.reload()} className="text-primary font-bold text-sm underline">
+                      Tentar novamente
+                    </button>
+                  </div>
+                ) : ubsFiltradas.length > 0 ? (
+                  ubsFiltradas.map(ubs => (
+                    <button
+                      key={ubs.id}
+                      onClick={() => handleSelecionarUbs(ubs)}
+                      className="w-full p-4 text-left hover:bg-primary/5 transition-colors flex items-start gap-3 group"
+                    >
+                      <div className="w-9 h-9 bg-primary/10 rounded-xl flex items-center justify-center flex-shrink-0 group-hover:bg-primary/20 mt-0.5">
+                        <span className="material-symbols-outlined text-primary text-lg">local_hospital</span>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-bold text-on-background text-sm leading-tight">{ubs.nome}</p>
+                        <p className="text-xs text-on-surface-variant mt-0.5 font-medium">
+                          {ubs.bairro} — {ubs.endereco}
+                        </p>
+                        {ubs.telefone && (
+                          <p className="text-xs text-on-surface-variant mt-0.5">{ubs.telefone}</p>
+                        )}
+                      </div>
+                      <span className="material-symbols-outlined text-on-surface-variant group-hover:text-primary text-xl flex-shrink-0 mt-1">chevron_right</span>
+                    </button>
+                  ))
+                ) : (
+                  <div className="p-10 text-center text-on-surface-variant">
+                    <span className="material-symbols-outlined text-4xl block mb-3 opacity-30">search_off</span>
+                    <p className="font-semibold text-sm">Nenhuma unidade encontrada para "{buscaUbs}"</p>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
         </div>
       )}
 

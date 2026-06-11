@@ -2,12 +2,13 @@
  * COMPONENTE: GestorLayout.jsx
  * ─────────────────────────────────────────────────────────────────────────────
  * FUNÇÃO: Layout base de todas as páginas do portal do gestor.
- *         Gerencia o estado da sidebar (aberto/fechado) para mobile
- *         e garante o layout correto em desktop (sidebar fixo) e mobile (drawer).
+ *         Gerencia a abertura do drawer no mobile e o modo retraído persistente
+ *         no desktop, garantindo que os dois comportamentos sejam independentes.
  *
  * COMPORTAMENTO:
- *   - Desktop (lg+): sidebar sempre visível à esquerda (w-72), sem overlay
+ *   - Desktop (lg+): sidebar sempre visível, alternando entre w-72 e w-16
  *   - Mobile (<lg): sidebar oculta por padrão, aparece como drawer ao clicar no hamburger
+ *   - Mobile ignora o modo retraído e sempre usa a largura completa w-72
  *   - Overlay escuro semi-transparente cobre o conteúdo quando sidebar está aberta no mobile
  *
  * PROPS:
@@ -21,6 +22,18 @@ import TopBarGestor from './TopBarGestor';
 export default function GestorLayout({ children }) {
   // Estado controla visibilidade do sidebar — fechado por padrão no mobile
   const [sidebarAberta, setSidebarAberta] = useState(false);
+  // A preferência de largura pertence apenas ao desktop e sobrevive ao refresh.
+  const [retraida, setRetraida] = useState(() =>
+    localStorage.getItem('gestao_ubs_sidebar_retraida') === 'true'
+  );
+
+  // Persiste imediatamente a preferência para manter a interface consistente
+  // quando o gestor navega, recarrega a página ou inicia uma nova sessão.
+  const toggleSidebar = () => {
+    const novoValor = !retraida;
+    setRetraida(novoValor);
+    localStorage.setItem('gestao_ubs_sidebar_retraida', String(novoValor));
+  };
 
   return (
     <div className="bg-surface min-h-screen flex text-on-surface font-body">
@@ -39,11 +52,16 @@ export default function GestorLayout({ children }) {
       {/* No desktop (lg+): position sticky, sempre visível, sem transform */}
       <div className={`
         fixed lg:sticky top-0 h-screen z-40
-        transition-transform duration-300 ease-in-out
+        transition-all duration-300 ease-in-out
         ${sidebarAberta ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
+        ${retraida ? 'lg:w-16' : 'lg:w-72'} w-72
       `}>
-        {/* Passa callback para o SideNav fechar o drawer ao clicar num link */}
-        <SideNavGestor onFechar={() => setSidebarAberta(false)} />
+        {/* O SideNav recebe separadamente o fechamento mobile e o toggle desktop. */}
+        <SideNavGestor
+          onFechar={() => setSidebarAberta(false)}
+          retraida={retraida}
+          onToggle={toggleSidebar}
+        />
       </div>
 
       {/* ── Área principal: topbar + conteúdo da página ── */}

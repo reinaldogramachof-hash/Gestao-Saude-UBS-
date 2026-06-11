@@ -216,4 +216,50 @@ router.post('/cadastro-paciente', async (req, res) => {
 });
 
 
+// Função auxiliar para remover acentos, trim e lowercase
+function normalizar(str) {
+  if (!str) return '';
+  return str
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim();
+}
+
+// ─── GET /api/auth/buscar-bairro ───────────────────────────────────────────────
+// Rota pública: busca bairros para direcionar o paciente à UBS correta
+// no momento do auto-cadastro.
+router.get('/buscar-bairro', async (req, res) => {
+  try {
+    const { q } = req.query;
+    
+    if (!q || q.length < 2) {
+      return res.json([]);
+    }
+
+    const normalizadoQ = normalizar(q);
+
+    const resultados = await knex('bairros_ubs as b')
+      .join('ubs as u', 'u.id', 'b.ubs_id')
+      .where('u.ativa', true)
+      .where('b.bairro_busca', 'like', `%${normalizadoQ}%`)
+      .select(
+        'b.bairro',
+        'b.ubs_id',
+        'u.nome as ubs_nome',
+        'u.endereco as ubs_endereco',
+        'u.bairro as ubs_bairro',
+        'u.telefone as ubs_telefone'
+      )
+      .orderByRaw(`CASE WHEN b.bairro_busca = ? THEN 0 ELSE 1 END`, [normalizadoQ])
+      .orderBy('b.bairro', 'asc')
+      .limit(8);
+
+    return res.json(resultados);
+  } catch (err) {
+    console.error('[GET /auth/buscar-bairro]', err);
+    return res.status(500).json({ error: 'Erro ao buscar bairro.' });
+  }
+});
+
 module.exports = router;

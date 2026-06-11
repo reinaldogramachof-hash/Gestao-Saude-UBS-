@@ -7,6 +7,7 @@
  *
  * ESTRUTURA DE ROTAS:
  *   /api/auth/*     → rotas públicas de autenticação (sem token)
+ *   /api/admin/*    → gestão de usuários da UBS (exige JWT perfil admin)
  *   /api/gestor/*   → rotas protegidas do Portal do Gestor (exige JWT tipo gestor)
  *   /api/paciente/* → rotas protegidas do Portal do Paciente (exige JWT tipo paciente)
  *   /api/ping       → rota de teste de saúde da API
@@ -21,6 +22,7 @@ const authMiddleware  = require('./src/middleware/auth');
 const rotasAuth       = require('./src/routes/auth');
 const rotasGestor     = require('./src/routes/gestor');
 const rotasPaciente   = require('./src/routes/paciente');
+const adminRouter     = require('./src/routes/admin');
 
 const app = express();
 
@@ -71,6 +73,7 @@ app.use('/api/auth', rotasAuth);
 // O authMiddleware verifica o token antes de qualquer rota abaixo
 app.use('/api/gestor',   authMiddleware, rotasGestor);
 app.use('/api/paciente', authMiddleware, rotasPaciente);
+app.use('/api/admin', authMiddleware, adminRouter);
 
 // ─── Inicialização ────────────────────────────────────────────────────────────
 const PORT = process.env.PORT || 3001;

@@ -30,6 +30,7 @@ import PerfilPaciente from './pages/gestor/PerfilPaciente';
 import MedicamentosGestor from './pages/gestor/MedicamentosGestor';
 import ComunicadosGestor from './pages/gestor/ComunicadosGestor';   // Épico 3
 import AgendamentosGestor from './pages/gestor/AgendamentosGestor'; // Épico 4
+import GestorUsuarios from './pages/gestor/GestorUsuarios';         // Administração da equipe
 
 // ─── Componente de Rota Protegida ─────────────────────────────────────────
 // Impede acesso direto por URL sem autenticação e garante que o tipo de
@@ -78,6 +79,7 @@ export default function App() {
           <Route path="/gestor/medicamentos"  element={<ProtectedRoute tipo="gestor"><MedicamentosGestor /></ProtectedRoute>} />
           <Route path="/gestor/comunicados"   element={<ProtectedRoute tipo="gestor"><ComunicadosGestor /></ProtectedRoute>} />
           <Route path="/gestor/agendamentos"  element={<ProtectedRoute tipo="gestor"><AgendamentosGestor /></ProtectedRoute>} />
+          <Route path="/gestor/usuarios"       element={<ProtectedRoute tipo="gestor"><GestorUsuarios /></ProtectedRoute>} />
         </Routes>
       </BrowserRouter>
     </AuthProvider>
