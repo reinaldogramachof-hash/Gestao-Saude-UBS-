@@ -24,8 +24,38 @@ const rotasPaciente   = require('./src/routes/paciente');
 
 const app = express();
 
-// ─── Middlewares globais ──────────────────────────────────────────────────────
-app.use(cors());           // Libera acesso para origens externas (frontend Vite em localhost:5173)
+// ─── CORS: define quais origens podem acessar a API ──────────────────────────
+// Em desenvolvimento: localhost do Vite (5173) e IP da rede local
+// Em produção: domínio da Vercel (qualquer subdomínio *.vercel.app ou domínio customizado)
+const ORIGENS_PERMITIDAS = [
+  // Desenvolvimento local
+  'http://localhost:5173',
+  'http://localhost:3000',
+  // Rede local (smartphone na mesma rede Wi-Fi durante testes)
+  /^http:\/\/192\.168\.\d{1,3}\.\d{1,3}(:\d+)?$/,
+  // Vercel: qualquer deploy do projeto (preview + produção)
+  /^https:\/\/.*\.vercel\.app$/,
+];
+
+// Se existir um domínio customizado configurado via variável de ambiente, adiciona também
+if (process.env.FRONTEND_URL) {
+  ORIGENS_PERMITIDAS.push(process.env.FRONTEND_URL);
+}
+
+app.use(cors({
+  origin: (origin, callback) => {
+    // Permite requisições sem origin (ex: curl, Postman, mobile app nativo)
+    if (!origin) return callback(null, true);
+    // Verifica se a origin bate com alguma entrada da lista (string ou regex)
+    const permitida = ORIGENS_PERMITIDAS.some(o =>
+      typeof o === 'string' ? o === origin : o.test(origin)
+    );
+    if (permitida) return callback(null, true);
+    callback(new Error(`CORS bloqueado: origem não permitida — ${origin}`));
+  },
+  credentials: true,
+}));
+
 app.use(express.json());   // Permite JSON no corpo das requisições (req.body)
 
 // ─── Rota de verificação de saúde (health check) ─────────────────────────────
