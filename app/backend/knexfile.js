@@ -10,8 +10,12 @@ module.exports = {
   // Ambiente de desenvolvimento local
   development: {
     client: 'pg',                                              // Usar o driver do PostgreSQL
-    connection: process.env.DATABASE_URL
-      || 'postgres://postgres:postgres@localhost:5432/gestao_saude_ubs',
+    connection: {
+      connectionString: process.env.DATABASE_URL
+        || 'postgres://postgres:postgres@localhost:5432/gestao_saude_ubs',
+      // Neon exige SSL. rejectUnauthorized: false aceita o certificado deles sem precisar instalá-lo localmente
+      ssl: process.env.DATABASE_URL ? { rejectUnauthorized: false } : false,
+    },
     pool: { min: 2, max: 10 },                                 // Pool de conexões simultâneas
     migrations: {
       directory: './src/db/migrations'                         // Onde estão os arquivos de migration
@@ -21,10 +25,13 @@ module.exports = {
     }
   },
 
-  // Ambiente de produção (Railway ou similar)
+  // Ambiente de produção (Neon ou similar)
   production: {
     client: 'pg',
-    connection: process.env.DATABASE_URL,
+    connection: {
+      connectionString: process.env.DATABASE_URL,
+      ssl: { rejectUnauthorized: false },
+    },
     pool: { min: 2, max: 10 },
     migrations: {
       directory: './src/db/migrations'

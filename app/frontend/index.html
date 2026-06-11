@@ -2,8 +2,43 @@
 <html lang="pt-BR">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- viewport: impede zoom acidental em inputs mobile, mantém layout intacto -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>Gestão Saúde UBS+</title>
+    <meta name="description" content="Portal de saúde das Unidades Básicas de Saúde de São José dos Campos" />
+
+    <!-- ── PWA: Manifest e identidade nativa ─────────────────────────────── -->
+    <link rel="manifest" href="/manifest.json" />
+
+    <!-- Cor da barra de status no Android (igual ao theme_color do manifest) -->
+    <meta name="theme-color" content="#16a34a" />
+
+    <!-- iOS: permite adicionar à tela inicial como app nativo -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="UBS+" />
+    <link rel="apple-touch-icon" href="/icon-192.svg" />
+
+    <!-- Windows/Edge: tile da tela inicial -->
+    <meta name="msapplication-TileColor" content="#16a34a" />
+    <meta name="msapplication-TileImage" content="/icon-192.svg" />
+
+    <!-- Ícone padrão da aba do browser -->
+    <link rel="icon" type="image/svg+xml" href="/icon-72.svg" />
+
+    <!-- Fontes do Google: Manrope (títulos) + Inter (corpo de texto) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+
+    <!-- Material Symbols: ícones usados em todos os componentes -->
+    <link
+      href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200"
+      rel="stylesheet"
+    />
   </head>
   <body>
     <div id="root"></div>

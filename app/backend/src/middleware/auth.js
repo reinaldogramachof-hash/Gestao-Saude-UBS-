@@ -19,8 +19,8 @@ module.exports = (req, res, next) => {
   try {
     // Tenta decodificar. Se o token foi adulterado, ele atira um erro caindo no 'catch'
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    req.userId = decoded.id; // Guarda o ID no request para o controller usar
-    
+    req.userId = decoded.id; // Compatibilidade com código existente
+    req.user   = decoded;    // Payload completo: { id, nome, ubs_id, tipo, perfil }
     // next() libera a passagem. O request pode seguir viagem!
     next();
   } catch (error) {

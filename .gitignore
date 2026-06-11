@@ -17,12 +17,20 @@ migrate_output.txt
 seed_output.txt
 dev.sqlite3
 
-# Scripts de scaffold (utilitários do agente, não fazem parte do produto)
+# Scripts de scaffold e build (utilitários dos agentes, não fazem parte do produto)
 buildMigrations.js
 scaffold.js
+build_backend.js
+build_frontend_core.js
+build_paciente_pages.cjs
+build_gestor_and_remaining_pages.cjs
 
 # Assets brutos do Stitch (imagens brutas — telas organizadas estão em /screens)
 stitch_gest_o_sa_de_ubs/
+
+# Configurações locais do Claude Code (settings pessoais, tokens de MCP)
+.claude/
+.mcp.json
 
 # Sistema operacional
 .DS_Store
