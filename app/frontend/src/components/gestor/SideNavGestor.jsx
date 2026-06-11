@@ -102,7 +102,6 @@ export default function SideNavGestor({ onFechar, retraida, onToggle }) {
       <nav className="p-3 pt-4 flex-1 overflow-y-auto overflow-x-hidden">
         <NavItem
           to="/gestor/dashboard"
-          routeKey="dashboard"
           icon="dashboard"
           label="Painel Principal"
           retraida={retraida}
@@ -113,7 +112,6 @@ export default function SideNavGestor({ onFechar, retraida, onToggle }) {
         <SectionLabel label="ATENDIMENTO" retraida={retraida} />
         <NavItem
           to="/gestor/pacientes"
-          routeKey="pacientes"
           icon="people"
           label="Pacientes"
           retraida={retraida}
@@ -122,7 +120,6 @@ export default function SideNavGestor({ onFechar, retraida, onToggle }) {
         />
         <NavItem
           to="/gestor/agendamentos"
-          routeKey="agendamentos"
           icon="calendar_month"
           label="Agendamentos"
           retraida={retraida}
@@ -133,7 +130,6 @@ export default function SideNavGestor({ onFechar, retraida, onToggle }) {
         <SectionLabel label="FARMÁCIA" retraida={retraida} />
         <NavItem
           to="/gestor/medicamentos"
-          routeKey="medicamentos"
           icon="medication"
           label="Medicamentos"
           retraida={retraida}
@@ -144,7 +140,6 @@ export default function SideNavGestor({ onFechar, retraida, onToggle }) {
         <SectionLabel label="COMUNICAÇÃO" retraida={retraida} />
         <NavItem
           to="/gestor/comunicados"
-          routeKey="comunicados"
           icon="campaign"
           label="Comunicados"
           retraida={retraida}
@@ -157,7 +152,6 @@ export default function SideNavGestor({ onFechar, retraida, onToggle }) {
             <SectionLabel label="ADMINISTRAÇÃO" retraida={retraida} />
             <NavItem
               to="/gestor/usuarios"
-              routeKey="usuarios"
               icon="manage_accounts"
               label="Usuários"
               retraida={retraida}
