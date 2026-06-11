@@ -9,7 +9,7 @@
  * ─────────────────────────────────────────────────────────────────────────────
  */
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import api from '../../services/api';
 
@@ -97,11 +97,25 @@ export default function LoginPaciente() {
         </p>
       </div>
 
-      {/* ── Link para o portal do gestor ── */}
-      <p className="text-on-surface-variant text-sm font-medium mt-6">
-        Equipe da UBS? {' '}
-        <a href="/login-gestor" className="text-primary font-bold hover:underline">Acesse o Portal do Gestor</a>
-      </p>
+      {/* ── Cadastro + link do gestor ── */}
+      <div className="mt-6 text-center space-y-3">
+        {/* CTA de cadastro — destaque para quem ainda não tem CRA */}
+        <div className="bg-surface-container-lowest rounded-2xl p-4 max-w-md w-full border border-surface-variant">
+          <p className="text-sm font-semibold text-on-surface-variant mb-2">Ainda não tem cadastro?</p>
+          <Link
+            to="/cadastro-paciente"
+            className="inline-flex items-center gap-2 h-11 px-6 bg-primary/10 text-primary font-bold rounded-xl hover:bg-primary/20 transition-colors text-sm"
+          >
+            <span className="material-symbols-outlined text-lg">person_add</span>
+            Solicitar Cadastro na UBS
+          </Link>
+        </div>
+
+        <p className="text-on-surface-variant text-sm font-medium">
+          Equipe da UBS?{' '}
+          <a href="/login-gestor" className="text-primary font-bold hover:underline">Acesse o Portal do Gestor</a>
+        </p>
+      </div>
     </div>
   );
 }

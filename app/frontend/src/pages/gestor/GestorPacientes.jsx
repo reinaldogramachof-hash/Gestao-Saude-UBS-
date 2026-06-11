@@ -1,14 +1,15 @@
 /**
- * PÁGINA: GestorPacientes.jsx + Responsividade
+ * PÁGINA: GestorPacientes.jsx
  * ─────────────────────────────────────────────────────────────────────────────
- * FUNÇÃO: Lista, busca, pagina e cadastra pacientes, exibindo a carga de
- *         solicitações ativas e destacando prioridades urgentes.
- * PROPS: Nenhuma. Navegação e autenticação são resolvidas pelo roteador/api.js.
- *         Usa GestorLayout para layout responsivo com sidebar drawer.
- *         Tabela com scroll horizontal no mobile. Modal inalterado.
+ * FUNÇÃO: Lista, busca, pagina e cadastra pacientes, exibindo solicitações
+ *         ativas e urgências. Inclui aba "Aguardando aprovação" para validar
+ *         cadastros feitos pelo portal público (auto-cadastro do munícipe).
  *
- * API: GET  /api/gestor/pacientes
- *      POST /api/gestor/paciente
+ * API: GET    /api/gestor/pacientes                → lista paginada (ativos)
+ *      GET    /api/gestor/pacientes/pendentes      → cadastros aguardando aprovação
+ *      POST   /api/gestor/paciente                 → cadastro manual pelo gestor
+ *      PATCH  /api/gestor/paciente/:id/ativar      → aprova cadastro pendente
+ *      DELETE /api/gestor/paciente/:id/rejeitar    → rejeita cadastro pendente
  * ─────────────────────────────────────────────────────────────────────────────
  */
 import React, { useState, useEffect } from 'react';
@@ -19,11 +20,19 @@ import GestorLayout from '../../components/gestor/GestorLayout';
 
 export default function GestorPacientes() {
   const navigate = useNavigate();
+
+  // ── Aba ativa: 'ativos' ou 'pendentes' ───────────────────────────────────
+  const [aba, setAba] = useState('ativos');
+
   const [pacientes, setPacientes] = useState([]);
   const [busca, setBusca] = useState('');
   const [loading, setLoading] = useState(true);
   const [erro, setErro] = useState('');
   const [paginaAtual, setPaginaAtual] = useState(1);
+
+  // ── Estado da aba de pendentes ────────────────────────────────────────────
+  const [pendentes, setPendentes] = useState([]);
+  const [loadingPendentes, setLoadingPendentes] = useState(false);
   const [modalAberto, setModalAberto] = useState(false);
   const [enviando, setEnviando] = useState(false);
   const [erroCRA, setErroCRA] = useState('');
@@ -31,11 +40,47 @@ export default function GestorPacientes() {
     nome: '', cra: '', data_nascimento: '', cpf: '', telefone: '', email: ''
   });
 
-  // Debounce de 400ms evita requisições a cada tecla e respeita a página atual.
+  // Carrega a aba correta quando muda
   useEffect(() => {
-    const timer = setTimeout(() => fetchPacientes(), busca ? 400 : 0);
-    return () => clearTimeout(timer);
-  }, [busca, paginaAtual]);
+    if (aba === 'ativos') {
+      const timer = setTimeout(() => fetchPacientes(), busca ? 400 : 0);
+      return () => clearTimeout(timer);
+    } else {
+      fetchPendentes();
+    }
+  }, [busca, paginaAtual, aba]);
+
+  const fetchPendentes = async () => {
+    setLoadingPendentes(true);
+    try {
+      const res = await api.get('/gestor/pacientes/pendentes');
+      setPendentes(res.data);
+    } catch {
+      toast.error('Erro ao carregar cadastros pendentes.');
+    } finally {
+      setLoadingPendentes(false);
+    }
+  };
+
+  const handleAtivar = async (id, nome) => {
+    try {
+      await api.patch(`/gestor/paciente/${id}/ativar`);
+      toast.success(`Cadastro de ${nome} ativado!`);
+      fetchPendentes();
+    } catch {
+      toast.error('Erro ao ativar cadastro.');
+    }
+  };
+
+  const handleRejeitar = async (id, nome) => {
+    try {
+      await api.delete(`/gestor/paciente/${id}/rejeitar`);
+      toast.success(`Cadastro de ${nome} rejeitado e removido.`);
+      fetchPendentes();
+    } catch {
+      toast.error('Erro ao rejeitar cadastro.');
+    }
+  };
 
   const fetchPacientes = async () => {
     try {
@@ -86,7 +131,7 @@ export default function GestorPacientes() {
   return (
     <GestorLayout>
       {/* ── Cabeçalho responsivo ── */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 lg:mb-10">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 lg:mb-8">
         <div>
           <h1 className="text-2xl md:text-4xl font-extrabold tracking-tight text-on-background">Pacientes</h1>
           <p className="text-on-surface-variant font-medium mt-1 text-sm">Gerencie os prontuários da sua unidade.</p>
@@ -100,6 +145,103 @@ export default function GestorPacientes() {
         </button>
       </div>
 
+      {/* ── Abas: Pacientes ativos / Aguardando aprovação ── */}
+      <div className="flex gap-2 mb-6 border-b border-surface-variant">
+        <button
+          onClick={() => setAba('ativos')}
+          className={`pb-3 px-4 font-bold text-sm border-b-2 transition-colors ${
+            aba === 'ativos'
+              ? 'border-primary text-primary'
+              : 'border-transparent text-on-surface-variant hover:text-on-surface'
+          }`}
+        >
+          Pacientes Ativos
+        </button>
+        <button
+          onClick={() => setAba('pendentes')}
+          className={`pb-3 px-4 font-bold text-sm border-b-2 transition-colors flex items-center gap-2 ${
+            aba === 'pendentes'
+              ? 'border-amber-500 text-amber-700'
+              : 'border-transparent text-on-surface-variant hover:text-on-surface'
+          }`}
+        >
+          Aguardando Aprovação
+          {/* Badge com contagem de pendentes — visível mesmo na aba de ativos */}
+          {pendentes.length > 0 && (
+            <span className="bg-amber-100 text-amber-700 text-xs font-extrabold px-2 py-0.5 rounded-full">
+              {pendentes.length}
+            </span>
+          )}
+        </button>
+      </div>
+
+      {/* ════════════════════════════════════════════════════════════════
+          ABA: AGUARDANDO APROVAÇÃO
+          ════════════════════════════════════════════════════════════════ */}
+      {aba === 'pendentes' && (
+        <div className="space-y-3">
+          {loadingPendentes ? (
+            Array(3).fill(0).map((_, i) => (
+              <div key={i} className="h-20 bg-surface-container-low rounded-2xl animate-pulse" />
+            ))
+          ) : pendentes.length === 0 ? (
+            <div className="py-20 text-center bg-surface-container-lowest rounded-2xl border border-surface-variant">
+              <span className="material-symbols-outlined text-5xl block mb-3 opacity-30">how_to_reg</span>
+              <p className="text-on-surface-variant font-semibold">Nenhum cadastro aguardando aprovação.</p>
+              <p className="text-xs text-on-surface-variant mt-1">Quando um munícipe se cadastrar pelo portal, aparecerá aqui.</p>
+            </div>
+          ) : (
+            pendentes.map(p => (
+              <div key={p.id} className="bg-surface-container-lowest rounded-2xl border border-amber-200 p-4 md:p-5 flex flex-wrap items-center gap-4">
+                {/* Ícone de pendente */}
+                <div className="w-10 h-10 bg-amber-100 rounded-xl flex items-center justify-center flex-shrink-0">
+                  <span className="material-symbols-outlined text-amber-600">pending_actions</span>
+                </div>
+
+                {/* Dados do cadastro */}
+                <div className="flex-1 min-w-0">
+                  <p className="font-extrabold text-on-background">{p.nome}</p>
+                  <div className="flex flex-wrap gap-3 mt-0.5">
+                    <span className="text-xs text-on-surface-variant font-medium">
+                      CRA: <strong>{p.cra}</strong>
+                    </span>
+                    <span className="text-xs text-on-surface-variant font-medium">
+                      Nasc.: {new Date(p.data_nascimento).toLocaleDateString('pt-BR')}
+                    </span>
+                    {p.telefone && (
+                      <span className="text-xs text-on-surface-variant font-medium">{p.telefone}</span>
+                    )}
+                    <span className="text-xs text-on-surface-variant font-medium">
+                      Solicitado em {new Date(p.criado_em).toLocaleDateString('pt-BR')}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Ações de aprovação / rejeição */}
+                <div className="flex gap-2 flex-shrink-0">
+                  <button
+                    onClick={() => handleRejeitar(p.id, p.nome)}
+                    className="px-3 py-2 border border-red-200 text-red-600 font-bold rounded-xl text-xs hover:bg-red-50 transition-colors"
+                  >
+                    Rejeitar
+                  </button>
+                  <button
+                    onClick={() => handleAtivar(p.id, p.nome)}
+                    className="px-4 py-2 bg-emerald-600 text-white font-bold rounded-xl text-xs hover:bg-emerald-700 transition-colors shadow-sm"
+                  >
+                    Aprovar
+                  </button>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      )}
+
+      {/* ════════════════════════════════════════════════════════════════
+          ABA: PACIENTES ATIVOS
+          ════════════════════════════════════════════════════════════════ */}
+      {aba === 'ativos' && (<>
       {/* ── Barra de busca ── */}
       <div className="relative mb-6 max-w-2xl">
         <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant">search</span>
@@ -266,6 +408,10 @@ export default function GestorPacientes() {
           </div>
         </div>
       )}
+
+      </>
+      )}
+
     </GestorLayout>
   );
 }

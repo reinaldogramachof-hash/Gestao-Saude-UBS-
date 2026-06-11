@@ -15,6 +15,7 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 
 // ── Portal do Paciente ─────────────────────────────────────────────────────
 import LoginPaciente from './pages/paciente/LoginPaciente';
+import CadastroPaciente from './pages/paciente/CadastroPaciente';
 import DashboardPaciente from './pages/paciente/DashboardPaciente';
 import Medicamentos from './pages/paciente/Medicamentos';
 import DetalheSolicitacao from './pages/paciente/DetalheSolicitacao';
@@ -59,8 +60,9 @@ export default function App() {
           <Route path="/" element={<Navigate to="/login-paciente" replace />} />
 
           {/* ── Rotas públicas ── */}
-          <Route path="/login-paciente" element={<LoginPaciente />} />
-          <Route path="/login-gestor"   element={<LoginGestor />} />
+          <Route path="/login-paciente"    element={<LoginPaciente />} />
+          <Route path="/login-gestor"      element={<LoginGestor />} />
+          <Route path="/cadastro-paciente" element={<CadastroPaciente />} />
 
           {/* ── Portal do Paciente (autenticado) ── */}
           <Route path="/paciente/dashboard"       element={<ProtectedRoute tipo="paciente"><DashboardPaciente /></ProtectedRoute>} />

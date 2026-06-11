@@ -1,18 +1,22 @@
 /**
  * ROTAS DE AUTENTICAÇÃO (routes/auth.js)
  * ─────────────────────────────────────────────────────────────────────────────
- * FUNÇÃO: Define as rotas públicas de login para os dois portais do sistema.
+ * FUNÇÃO: Define as rotas públicas de login e auto-cadastro do sistema.
  *         Não exige autenticação (são as portas de entrada).
  *
  * ROTAS:
- *   POST /api/auth/login-gestor   → e-mail + senha → JWT (perfil gestor)
- *   POST /api/auth/login-paciente → CRA + data_nascimento → JWT (perfil paciente)
+ *   POST /api/auth/login-gestor        → e-mail + senha → JWT (perfil gestor)
+ *   POST /api/auth/login-paciente      → CRA + data_nascimento → JWT (paciente)
+ *   GET  /api/auth/ubs                 → lista UBSs ativas para auto-cadastro
+ *   POST /api/auth/cadastro-paciente   → auto-cadastro de novo paciente
  *
- * FLUXO:
- *   1. Recebe credenciais no body da requisição
- *   2. Busca o usuário no banco de dados
- *   3. Valida a senha (bcrypt) ou a combinação CRA + data
- *   4. Assina e devolve um JWT com os dados básicos do usuário
+ * AUTO-CADASTRO:
+ *   O paciente escolhe a UBS pelo bairro, preenche seus dados e recebe um CRA
+ *   gerado automaticamente. O cadastro fica com status "pendente" até a UBS
+ *   ativá-lo — isso evita que qualquer pessoa acesse dados de saúde sem validação
+ *   presencial. Na tela de login, o paciente vê a mensagem de aguardar aprovação.
+ *
+ * LGPD: CPF não é retornado em nenhuma rota deste arquivo.
  * ─────────────────────────────────────────────────────────────────────────────
  */
 const express = require('express');
@@ -106,5 +110,110 @@ router.post('/login-paciente', async (req, res) => {
     return res.status(500).json({ error: 'Erro interno do servidor.' });
   }
 });
+
+// ─── GET /api/auth/ubs ───────────────────────────────────────────────────────
+// Rota pública: retorna todas as UBSs ativas para exibir no select do cadastro.
+// Ordenadas por bairro para facilitar a busca do munícipe.
+// Não retorna dados sensíveis — apenas id, nome, bairro, endereco, telefone.
+router.get('/ubs', async (req, res) => {
+  try {
+    const ubs = await knex('ubs')
+      .where({ ativa: true })
+      .select('id', 'nome', 'bairro', 'endereco', 'telefone')
+      .orderBy('bairro');
+
+    return res.json(ubs);
+  } catch (err) {
+    console.error('[GET /auth/ubs]', err);
+    return res.status(500).json({ error: 'Erro ao buscar unidades de saúde.' });
+  }
+});
+
+
+// ─── POST /api/auth/cadastro-paciente ────────────────────────────────────────
+// Rota pública: permite que um munícipe se cadastre sem passar pelo gestor.
+//
+// FLUXO DE SEGURANÇA:
+//   O cadastro é criado com ativo: false (pendente de aprovação pela UBS).
+//   O paciente não consegue fazer login até a equipe da UBS ativar o cadastro.
+//   Isso evita acesso não autorizado a dados de saúde sem validação presencial.
+//
+// CRA GERADO AUTOMATICAMENTE:
+//   Formato: AAMMDD + 4 dígitos aleatórios (ex: 260611-4721)
+//   Exibido na confirmação para o paciente anotar e levar à UBS.
+//
+// Body: { nome*, data_nascimento*, ubs_id*, bairro*, telefone, email, cpf }
+router.post('/cadastro-paciente', async (req, res) => {
+  try {
+    const { nome, data_nascimento, ubs_id, bairro, telefone, email, cpf } = req.body;
+
+    // Validação dos campos obrigatórios
+    if (!nome || !data_nascimento || !ubs_id || !bairro) {
+      return res.status(400).json({
+        error: 'Nome completo, data de nascimento, unidade de saúde e bairro são obrigatórios.',
+      });
+    }
+
+    // Verifica se a UBS escolhida existe e está ativa
+    const ubs = await knex('ubs').where({ id: ubs_id, ativa: true }).first();
+    if (!ubs) {
+      return res.status(404).json({ error: 'Unidade de saúde não encontrada ou inativa.' });
+    }
+
+    // Verifica CPF duplicado se fornecido (campo único na tabela)
+    if (cpf) {
+      const cpfExiste = await knex('pacientes').where({ cpf }).first();
+      if (cpfExiste) {
+        return res.status(409).json({ error: 'CPF já cadastrado no sistema.' });
+      }
+    }
+
+    // Gera o CRA automaticamente: AAMMDD + 4 dígitos aleatórios
+    // Exemplo: 2606114721 (26 de junho de 2026 + 4721 aleatório)
+    const hoje = new Date();
+    const aammdd = String(hoje.getFullYear()).slice(2)
+      + String(hoje.getMonth() + 1).padStart(2, '0')
+      + String(hoje.getDate()).padStart(2, '0');
+    const sufixo = String(Math.floor(Math.random() * 9000) + 1000); // 1000–9999
+    const craNovo = `${aammdd}${sufixo}`;
+
+    // Garante que o CRA gerado não colide com algum já existente (improvável mas seguro)
+    const craExiste = await knex('pacientes').where({ cra: craNovo }).first();
+    if (craExiste) {
+      return res.status(500).json({
+        error: 'Erro ao gerar número de cadastro. Tente novamente.',
+      });
+    }
+
+    // Insere o paciente com ativo: false — aguarda validação presencial da UBS
+    const [paciente] = await knex('pacientes')
+      .insert({
+        ubs_id,
+        cra:            craNovo,
+        nome:           nome.trim(),
+        cpf:            cpf || null,
+        data_nascimento,
+        telefone:       telefone || null,
+        email:          email || null,
+        ativo:          false, // Pendente de aprovação — não pode fazer login ainda
+      })
+      .returning(['id', 'cra', 'nome', 'ubs_id']);
+
+    return res.status(201).json({
+      mensagem: 'Cadastro realizado com sucesso! Aguarde a aprovação da sua UBS para acessar o portal.',
+      cra:      paciente.cra,   // O paciente deve anotar este número
+      nome:     paciente.nome,
+      ubs:      ubs.nome,
+    });
+  } catch (err) {
+    console.error('[POST /auth/cadastro-paciente]', err);
+    // Constraint única violada (CRA ou CPF duplicado por race condition)
+    if (err.code === '23505') {
+      return res.status(409).json({ error: 'Dados já cadastrados. Tente novamente.' });
+    }
+    return res.status(500).json({ error: 'Erro ao realizar cadastro.' });
+  }
+});
+
 
 module.exports = router;

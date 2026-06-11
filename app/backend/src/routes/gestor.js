@@ -50,6 +50,72 @@ const soGestor = (req, res, next) => {
 router.use(soGestor);
 
 
+// ─── GET /api/gestor/pacientes/pendentes ─────────────────────────────────────
+// Retorna pacientes com ativo: false que se cadastraram pelo portal público
+// e aguardam aprovação presencial da equipe da UBS.
+// Usado no painel de gestão para ativação de novos cadastros.
+router.get('/pacientes/pendentes', async (req, res) => {
+  try {
+    const pendentes = await knex('pacientes')
+      .where({ ubs_id: req.user.ubs_id, ativo: false })
+      .select('id', 'nome', 'cra', 'telefone', 'email', 'data_nascimento', 'criado_em')
+      .orderBy('criado_em', 'desc');
+
+    return res.json(pendentes);
+  } catch (err) {
+    console.error('[GET /gestor/pacientes/pendentes]', err);
+    return res.status(500).json({ error: 'Erro ao buscar cadastros pendentes.' });
+  }
+});
+
+
+// ─── PATCH /api/gestor/paciente/:id/ativar ────────────────────────────────────
+// Ativa um cadastro pendente após validação presencial da equipe da UBS.
+// Apenas ativa — não altera outros dados do paciente.
+router.patch('/paciente/:id/ativar', async (req, res) => {
+  try {
+    const paciente = await knex('pacientes')
+      .where({ id: req.params.id, ubs_id: req.user.ubs_id, ativo: false })
+      .first();
+
+    if (!paciente) {
+      return res.status(404).json({ error: 'Cadastro pendente não encontrado nesta UBS.' });
+    }
+
+    await knex('pacientes')
+      .where({ id: req.params.id })
+      .update({ ativo: true, atualizado_em: knex.fn.now() });
+
+    return res.json({ mensagem: `Cadastro de ${paciente.nome} ativado com sucesso.` });
+  } catch (err) {
+    console.error('[PATCH /gestor/paciente/:id/ativar]', err);
+    return res.status(500).json({ error: 'Erro ao ativar cadastro.' });
+  }
+});
+
+
+// ─── DELETE /api/gestor/paciente/:id/rejeitar ─────────────────────────────────
+// Remove um cadastro pendente que não pôde ser validado presencialmente.
+// Só funciona com pacientes inativos — não apaga cadastros já ativados.
+router.delete('/paciente/:id/rejeitar', async (req, res) => {
+  try {
+    const paciente = await knex('pacientes')
+      .where({ id: req.params.id, ubs_id: req.user.ubs_id, ativo: false })
+      .first();
+
+    if (!paciente) {
+      return res.status(404).json({ error: 'Cadastro pendente não encontrado nesta UBS.' });
+    }
+
+    await knex('pacientes').where({ id: req.params.id }).del();
+    return res.status(204).send();
+  } catch (err) {
+    console.error('[DELETE /gestor/paciente/:id/rejeitar]', err);
+    return res.status(500).json({ error: 'Erro ao rejeitar cadastro.' });
+  }
+});
+
+
 // ─── GET /api/gestor/pacientes ────────────────────────────────────────────────
 // Retorna lista paginada dos pacientes vinculados à UBS do gestor logado.
 // Query params opcionais: ?busca=texto&pagina=1&limite=20
