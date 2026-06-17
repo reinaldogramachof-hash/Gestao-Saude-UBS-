@@ -1,7 +1,7 @@
 # Início de Sessão — Gestão Saúde UBS+
 > Este arquivo é atualizado pelo Arquiteto (Claude) ao final de cada fase ou sessão relevante.
 > Todo agente deve ler este arquivo ANTES de qualquer execução.
-> **Última atualização:** 2026-06-17 — Claude Sonnet 4.6 (Arquiteto)
+> **Última atualização:** 2026-06-17 18:30 — Claude Sonnet 4.6 (Arquiteto)
 
 ---
 
@@ -31,7 +31,10 @@
 **Testes automáticos:** 28 contratos passando (cobertura parcial)
 **Testes E2E:** ❌ Nunca executados contra banco real
 **Validação visual 375px:** ❌ Nunca executada de fato
-**Deploy:** ❌ Não realizado — aplicação roda apenas localmente
+**Deploy:** ✅ REALIZADO em 17/06/2026
+  - Frontend: https://gestao-saude-ubs.vercel.app
+  - Backend: https://gestao-saude-ubs-api.vercel.app
+  - Banco: Supabase (`crdtguvjuyfszxbpnwms`) com dados de demo
 
 ---
 
@@ -82,13 +85,19 @@
 - [ ] Data de atualização nos medicamentos (paciente vê "atualizado em X")
 - [ ] Correção de datas: `new Date('YYYY-MM-DD')` exibe dia anterior em SJC (M-17)
 
-### Deploy (bloqueador de demo)
-- [ ] Confirmar banco Neon ativo (Reinaldo verificando)
-- [ ] Deploy frontend no Vercel
-- [ ] Deploy backend no Railway ou Render
-- [ ] Configurar variáveis de ambiente de produção
-- [ ] CORS restrito ao domínio do frontend
-- [ ] Rewrite SPA no vercel.json (BrowserRouter)
+### Deploy — ✅ CONCLUÍDO em 17/06
+- [x] Frontend no Vercel: `gestao-saude-ubs.vercel.app`
+- [x] Backend no Vercel (serverless): `gestao-saude-ubs-api.vercel.app`
+- [x] Variáveis de ambiente configuradas (DATABASE_URL, JWT_SECRET, VAPID_*)
+- [x] VITE_API_URL corrigida no projeto frontend
+- [x] Banco populado com dados de demo (003_demo_data.js)
+
+### Pendentes para Demo (próxima sessão)
+- [ ] Auto-refresh dashboard gestor (polling 30s + badge de novos cadastros)
+- [ ] Seção "Encaminhamentos" simulada no DashboardGestor.jsx
+- [ ] Rotacionar SUPABASE_SECRET_KEY no Supabase dashboard
+- [ ] Testar fluxo completo pré-cadastro → aprovação (usar UBS Alto da Ponte)
+- [ ] Painel do paciente: linguagem simples, logout visível, erro amigável
 
 ---
 
@@ -130,10 +139,13 @@ npm run dev
 
 ## Banco de Dados
 
-- **Plataforma:** Neon (PostgreSQL serverless) — ⚠️ confirmar se ativo
+- **Plataforma:** Supabase (PostgreSQL) — projeto `crdtguvjuyfszxbpnwms`, região us-east-1
+- **Pooler:** PgBouncer porta 6543 (transaction mode) — usar este em produção
 - **SSL:** obrigatório — `knexfile.js` configurado com `ssl: { rejectUnauthorized: false }`
-- **Variável:** `DATABASE_URL` em `app/backend/.env` (não commitado — ver `.env.example`)
-- **Migrations:** 12 arquivos JS em `app/backend/src/db/migrations/` via Knex
+- **Variável:** `DATABASE_URL` em `app/backend/.env` (não commitado) e nas env vars da Vercel
+- **Migrations:** 12 arquivos JS em `app/backend/src/db/migrations/` via Knex — todas aplicadas
+- **Seeds:** `001_ubs_sjc.js` (47 UBSs + gestores), `002_bairros_ubs.js`, `003_demo_data.js` (dados de demo)
+- **⚠️ SEGURANÇA:** `SUPABASE_SECRET_KEY` foi exposta em sessão de 17/06 — ROTACIONAR no dashboard do Supabase
 
 ---
 
@@ -151,14 +163,14 @@ npm run dev
 
 ## Relatório Mais Recente
 
-`.Agent/reports/2026-06-17_diagnostico-arquitetural-sessao-abertura.md`
+`.Agent/reports/2026-06-17_deploy-vercel-seed-demo.md`
 
 ---
 
 ## Próximas Ações Imediatas
 
-1. **Reinaldo** — confirmar status do Neon e retornar para o Arquiteto
-2. **Arquiteto** — montar plano de execução dia a dia para os 8 dias restantes
-3. **Antigravity** — iniciar com C-01, C-02, C-03 (correções cirúrgicas de segurança)
-4. **Reinaldo** — testar fluxos após cada correção (papel de QA)
-5. **Arquiteto + Reinaldo** — configurar deploy no Vercel assim que banco confirmado
+1. **Reinaldo** — rotacionar SUPABASE_SECRET_KEY no dashboard do Supabase (exposta em sessão 17/06)
+2. **Reinaldo** — testar fluxo completo: auto-cadastro no portal do paciente (usar bairro do Alto da Ponte) → aprovar no painel do gestor
+3. **Antigravity** — implementar auto-refresh no DashboardGestor.jsx (polling 30s + badge de novos cadastros)
+4. **Antigravity** — adicionar card "Encaminhamentos" simulado no DashboardGestor.jsx
+5. **Arquiteto** — briefing do painel do paciente para otimização mobile (próxima sessão)

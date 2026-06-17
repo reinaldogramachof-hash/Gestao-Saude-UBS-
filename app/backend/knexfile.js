@@ -35,6 +35,9 @@ module.exports = {
     pool: { min: 2, max: 10 },
     migrations: {
       directory: './src/db/migrations'
+    },
+    seeds: {
+      directory: './src/db/seeds'
     }
   }
 };
