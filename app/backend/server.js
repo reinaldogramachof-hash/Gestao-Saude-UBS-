@@ -76,8 +76,17 @@ app.use('/api/paciente', authMiddleware, rotasPaciente);
 app.use('/api/admin', authMiddleware, adminRouter);
 
 // ─── Inicialização ────────────────────────────────────────────────────────────
-const PORT = process.env.PORT || 3001;
-// '0.0.0.0' expõe o servidor em todas as interfaces de rede (necessário para acesso via smartphone na rede local)
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`Backend Gestão Saúde UBS+ rodando na porta ${PORT}`);
-});
+// Em ambiente Vercel (serverless), não há servidor persistente.
+// O Vercel injeta VERCEL=1 automaticamente — nesse caso, apenas exportamos
+// o app para que a Vercel Function o execute diretamente por request.
+// Localmente (sem VERCEL=1), o app.listen() sobe normalmente.
+if (!process.env.VERCEL) {
+  const PORT = process.env.PORT || 3001;
+  // '0.0.0.0' expõe o servidor em todas as interfaces de rede (necessário para acesso via smartphone na rede local)
+  app.listen(PORT, '0.0.0.0', () => {
+    console.log(`Backend Gestão Saúde UBS+ rodando na porta ${PORT}`);
+  });
+}
+
+// Exporta o app para uso como Vercel Serverless Function
+module.exports = app;

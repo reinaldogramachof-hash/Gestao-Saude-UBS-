@@ -18,11 +18,11 @@ test('autenticacao consulta somente contas ativas', async () => {
   assert.match(source, /\.where\(\{\s*cra,\s*ativo:\s*true\s*\}\)/);
 });
 
-test('atualizacao de status valida a UBS e responde 403 fora do escopo', async () => {
+test('atualizacao de status valida a UBS e responde 404 fora do escopo', async () => {
   const source = await read('app/backend/src/routes/gestor.js');
 
   assert.match(source, /solicitacoes\.ubs_id['"],\s*req\.user\.ubs_id/);
-  assert.match(source, /status\(403\).*Solicita.*outra UBS/s);
+  assert.match(source, /status\(404\).*Solicita.*não encontrada/s);
   assert.match(source, /trx\('solicitacoes'\)[\s\S]*solicitacoes\.ubs_id['"],\s*req\.user\.ubs_id[\s\S]*trx\('historico_status'\)/);
 });
 

@@ -1,0 +1,15 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# ARQUIVO: .gitignore
+# FUNÇÃO: Evita versionar arquivos locais temporários do diretório do backend.
+# ─────────────────────────────────────────────────────────────────────────────
+
+# Automações visuais e scripts de auditoria temporários
+test_visual.js
+check_db.js
+
+# Variáveis locais e logs específicos
+.env
+node_modules/
+*.log
+migrate_output.txt
+seed_output.txt

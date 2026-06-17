@@ -1,93 +1,107 @@
 # Início de Sessão — Gestão Saúde UBS+
 > Este arquivo é atualizado pelo Arquiteto (Claude) ao final de cada fase ou sessão relevante.
 > Todo agente deve ler este arquivo ANTES de qualquer execução.
+> **Última atualização:** 2026-06-17 — Claude Sonnet 4.6 (Arquiteto)
 
 ---
 
-## Status Atual do Projeto
+## ⚠️ LEIA ISTO PRIMEIRO — Contexto Crítico
 
-**Fase:** 2 — MVP completo (todos os módulos implementados + responsividade aplicada)
-**Data da última atualização:** 2026-04-20
-**Próxima etapa:** Testes end-to-end completos de ambos os portais
+**Prazo:** Validação com banca acadêmica em **25/06/2026 (8 dias).**
+**Natureza da demo:** Dados simulados. A banca avalia interface e fluxo, não backend ao vivo.
+**Deploy obrigatório:** Frontend no Vercel. Backend em Railway ou Render. SEM deploy, não há demo.
+**Banco:** Neon (PostgreSQL serverless) — status a confirmar por Reinaldo.
+
+---
+
+## Time Ativo nesta Fase
+
+| Papel | Quem | Responsabilidade |
+|---|---|---|
+| **QA / Orquestrador** | Reinaldo | Valida entregas, aprova direções, testa fluxos |
+| **Arquiteto** | Claude Sonnet 4.6 | Define o quê e como. Não executa código salvo emergência |
+| **Dev Sênior Executor** | Google Antigravity | Executa código, segue briefings do Arquiteto |
+
+---
+
+## Status Real do Projeto — 17/06/2026
+
+**Fase:** 2 — Parcial Avançado *(NÃO "completo" — a auditoria de 11/06 confirmou)*
+**Build:** ✅ Passando (111 módulos, ~2.7s)
+**Testes automáticos:** 28 contratos passando (cobertura parcial)
+**Testes E2E:** ❌ Nunca executados contra banco real
+**Validação visual 375px:** ❌ Nunca executada de fato
+**Deploy:** ❌ Não realizado — aplicação roda apenas localmente
 
 ---
 
 ## O que foi feito até agora
 
-- [x] Análise completa do ecossistema de saúde de SJC
-- [x] Definição de escopo, stack e entidades core
-- [x] Criação do `CLAUDE.md`, documentação acadêmica em `docs/` (5 documentos)
-- [x] Repositório GitHub inicializado e sincronizado
-- [x] `app/frontend/` — React + Vite + Tailwind, AuthContext, roteamento, axios
-- [x] `app/backend/` — Node.js + Express + Knex, server.js, auth middleware, rotas
-- [x] `app/backend/src/db/migrations/` — 8 migrations PostgreSQL (001–008) com comentários
-- [x] `app/backend/src/db/seeds/` — seed de desenvolvimento com 3 UBSs e gestores de teste
-- [x] Banco PostgreSQL no **Neon** (migrado do Railway — Railway gratuito expirou)
-- [x] `app/backend/src/routes/auth.js` — POST /login-gestor e /login-paciente com JWT
-- [x] `app/backend/src/routes/gestor.js` — CRUD completo de pacientes + solicitações + dashboard/stats + comunicados + agendamentos
-- [x] `app/backend/src/routes/paciente.js` — meus-dados, solicitações, medicamentos, comunicados, agendamentos (reservar/meus/disponíveis)
-- [x] `app/frontend/src/pages/` — 12 páginas JSX completas (6 paciente + 6 gestor)
-- [x] **Épico 1:** DashboardGestor com métricas reais (Promise.all, 4 cards, tabela atividade recente)
-- [x] **Épico 2:** PerfilPaciente com modal de nova solicitação + modal de atualizar status (sem prompt())
-- [x] **Épico 3:** ComunicadosGestor (CRUD) + ComunicadosPaciente (leitura) — backend + frontend
-- [x] **Épico 4:** AgendamentosGestor (criação/gestão de slots) + AgendamentosPaciente (reserva) — backend + frontend
-- [x] `<Toaster />` adicionado ao `App.jsx` — toasts funcionais em todas as páginas
-- [x] **Responsividade completa:**
-  - `GestorLayout.jsx` — sidebar drawer no mobile, fixo no desktop (lg+)
-  - `SideNavGestor.jsx` — prop `onFechar` + botão × + logout no rodapé
-  - `TopBarGestor.jsx` — hamburger mobile + padding responsivo
-  - `PacienteLayout.jsx` — container max-w-md centralizado no desktop
-  - `BottomNavPaciente.jsx` — `absolute` ao container do PacienteLayout
-  - Todas as 6 páginas do gestor → `GestorLayout`
-  - Todas as 5 páginas do paciente → `PacienteLayout`
-  - Tabelas com `overflow-x-auto` + `min-w-[640px]` para scroll horizontal no mobile
-  - Grid de métricas: `grid-cols-1 sm:grid-cols-2 lg:grid-cols-4`
+- [x] Documentação base em `docs/` (5 documentos acadêmicos)
+- [x] Repositório e estrutura de pastas
+- [x] Frontend React + Vite + Tailwind — 15 páginas JSX (7 gestor, 7 paciente + cadastro)
+- [x] Backend Node.js + Express + Knex — server.js, auth middleware, 5 arquivos de rotas
+- [x] 12 migrations PostgreSQL (001–012) no Neon via Knex
+- [x] Seeds de desenvolvimento (UBSs de SJC + gestores de teste)
+- [x] Autenticação JWT: gestor (e-mail + senha) e paciente (CRA + data nascimento)
+- [x] Portal do Gestor: Dashboard, Pacientes, Perfil/Solicitações, Medicamentos, Comunicados, Agendamentos, Usuários
+- [x] Portal do Paciente: Dashboard, Solicitações, Detalhe, Medicamentos, Comunicados, Agendamentos, Cadastro
+- [x] Layouts responsivos: GestorLayout com drawer mobile, PacienteLayout mobile-first
+- [x] Módulo admin de gestores (criado 11/06) — CRUD de usuários da UBS
+- [x] Sidebar retrátil do gestor com persistência no localStorage (11/06)
+- [x] PWA básico: manifest.json + sw.js + ícones
 
 ---
 
-## O que está pendente
+## Bugs Críticos Abertos (BLOQUEADORES)
 
-- [ ] Testes end-to-end completos dos dois portais
-  - [ ] Login gestor → dashboard → cadastrar paciente → abrir perfil → criar solicitação → atualizar status
-  - [ ] Login paciente → dashboard → ver solicitações → medicamentos → comunicados → agendamentos
-  - [ ] Gestor cria comunicado → paciente visualiza
-  - [ ] Gestor cria slot → paciente reserva → gestor conclui
-- [ ] Deploy no Vercel (frontend) + Railway/Render (backend) — Fase 3
-- [ ] Documentação acadêmica (docs/) atualizada para Fase 2 concluída
+> Devem ser corrigidos ANTES da demo. São simples de resolver — o Antigravity executa.
 
----
+| ID | Descrição | Arquivo(s) | Esforço |
+|---|---|---|---|
+| **C-01** | Gestor pode alterar solicitação de outra UBS por ID | `routes/gestor.js:123-146` | Baixo |
+| **C-02** | `observacao_gestor` (nota interna) exposta ao paciente via API | `routes/paciente.js:108-122` | Baixo |
+| **C-03** | Contas com `ativo=false` conseguem fazer login | `routes/auth.js:36-48,80-88` | Baixo |
+| **C-05** | Zero rate limit no login (força bruta possível) | `routes/auth.js` + `server.js` | Baixo |
 
-## Contexto Essencial para o Agente
-
-**Projeto:** Aplicação web acadêmica (UFBRA) para UBSs de São José dos Campos (SP).
-
-**Dois portais:**
-- **Gestor da UBS:** cadastra e atualiza status de pacientes, exames, consultas, medicamentos, comunicados e gerencia slots de agendamento
-- **Paciente:** visualiza suas informações, status de solicitações, disponibilidade de medicamentos, comunicados e reserva atendimento com a gestão
-
-**NÃO faz:** Integração com e-SUS, SISREG, CROSS ou qualquer sistema do SUS. O gestor alimenta manualmente.
-
-**Autenticação:** Paciente usa CRA + Data de Nascimento. Gestor usa e-mail + senha.
-
-**Regra crítica:** TODO arquivo de código deve ter comentários explicativos (equipe tem membros júniores).
-
-**Desenvolvedor líder:** Reinaldo — toda decisão arquitetural passa por ele.
-
-**Leia também:** `CLAUDE.md` na raiz do projeto para regras completas.
+> **C-04 (RBAC)** e **C-06 (dependências vulneráveis)** ficam para pós-25/06.
 
 ---
 
-## Arquitetura de Layout (IMPORTANTE)
+## Pendências Funcionais Prioritárias para a Demo
+
+### Portal do Paciente (prioridade máxima — banca vai testar como usuário)
+- [ ] Linguagem simples: remover status bruto e texto técnico das telas
+- [ ] Separar solicitações ativas do histórico
+- [ ] Logout visível
+- [ ] Estado de erro com mensagem amigável (não skeleton infinito)
+- [ ] `observacao_gestor` invisível ao paciente (C-02)
 
 ### Portal do Gestor
-- Todas as páginas usam `<GestorLayout>` em vez de importar `SideNavGestor` + `TopBarGestor` diretamente
-- `GestorLayout` gerencia o estado `sidebarAberta` — drawer animado no mobile
-- Padding do `<main>` é gerenciado pelo GestorLayout: `p-4 md:p-6 lg:p-10`
+- [ ] Histórico inicial gravado ao criar solicitação (timeline nasce vazia — M-02)
+- [ ] Data de atualização nos medicamentos (paciente vê "atualizado em X")
+- [ ] Correção de datas: `new Date('YYYY-MM-DD')` exibe dia anterior em SJC (M-17)
 
-### Portal do Paciente
-- Todas as páginas usam `<PacienteLayout>` em vez de importar `BottomNavPaciente` diretamente
-- `PacienteLayout` tem `position: relative` e `max-w-md` — necessário para o `BottomNavPaciente` (absolute) funcionar corretamente
-- `BottomNavPaciente` usa `absolute` (não `fixed`) para ancorar ao container do PacienteLayout
+### Deploy (bloqueador de demo)
+- [ ] Confirmar banco Neon ativo (Reinaldo verificando)
+- [ ] Deploy frontend no Vercel
+- [ ] Deploy backend no Railway ou Render
+- [ ] Configurar variáveis de ambiente de produção
+- [ ] CORS restrito ao domínio do frontend
+- [ ] Rewrite SPA no vercel.json (BrowserRouter)
+
+---
+
+## O que está pendente (pós-25/06)
+
+- RBAC completo (C-04) — perfis recepcionista/gestor/admin com permissões distintas
+- Suite de testes automatizados E2E
+- Atualização de dependências vulneráveis (C-06)
+- Filtros avançados na lista de pacientes (RF-G02)
+- Lido/não lido em comunicados (RF-P04)
+- Dashboard analítico completo (RF-G09)
+- Notificações WhatsApp Business API (Fase 2 original)
+- Domínio Hostgator (pós-validação)
 
 ---
 
@@ -97,12 +111,12 @@
 # Terminal 1 — Backend
 cd app/backend
 npm run dev
-# Servidor sobe em http://localhost:3001
+# Sobe em http://localhost:3001
 
 # Terminal 2 — Frontend
 cd app/frontend
 npm run dev
-# Aplicação abre em http://localhost:5173
+# Abre em http://localhost:5173
 ```
 
 **Credenciais de teste (gestor):**
@@ -110,27 +124,41 @@ npm run dev
 - industrial@gestaoubs.dev / senha123
 - satelite@gestaoubs.dev / senha123
 
-**Credenciais de teste (paciente):** cadastrar via Portal do Gestor e usar o CRA + data_nascimento registrados.
+**Credencial paciente:** cadastrar via Portal do Gestor, usar CRA + data_nascimento.
 
 ---
 
 ## Banco de Dados
 
-- **Plataforma:** Neon (PostgreSQL serverless)
+- **Plataforma:** Neon (PostgreSQL serverless) — ⚠️ confirmar se ativo
 - **SSL:** obrigatório — `knexfile.js` configurado com `ssl: { rejectUnauthorized: false }`
-- `DATABASE_URL` no arquivo `app/backend/.env` (não commitado — ver `.env.example`)
+- **Variável:** `DATABASE_URL` em `app/backend/.env` (não commitado — ver `.env.example`)
+- **Migrations:** 12 arquivos JS em `app/backend/src/db/migrations/` via Knex
 
 ---
 
-## Último Relatório de Sessão
+## Arquitetura de Layout (não alterar sem autorização)
 
-`.Agent/reports/Relatorio_Fase2_Modulos_Funcionais.md` — Fase 2 executada (Épicos 1–4 + Responsividade).
+### Portal do Gestor
+- Todas as páginas usam `<GestorLayout>` — gerencia estado `sidebarAberta` (drawer animado mobile)
+- `GestorLayout` aplica padding: `p-4 md:p-6 lg:p-10`
+
+### Portal do Paciente
+- Todas as páginas usam `<PacienteLayout>` — `max-w-md`, `position: relative`
+- `BottomNavPaciente` usa `absolute` (não `fixed`) ancorado ao container do PacienteLayout
 
 ---
 
-## Próximas Ações (próxima sessão)
+## Relatório Mais Recente
 
-1. Subir ambos os servidores (`npm run dev` em backend e frontend)
-2. Executar roteiro de testes end-to-end nos dois portais
-3. Identificar e corrigir qualquer bug encontrado durante os testes
-4. Após testes aprovados: iniciar planejamento do deploy (Fase 3)
+`.Agent/reports/2026-06-17_diagnostico-arquitetural-sessao-abertura.md`
+
+---
+
+## Próximas Ações Imediatas
+
+1. **Reinaldo** — confirmar status do Neon e retornar para o Arquiteto
+2. **Arquiteto** — montar plano de execução dia a dia para os 8 dias restantes
+3. **Antigravity** — iniciar com C-01, C-02, C-03 (correções cirúrgicas de segurança)
+4. **Reinaldo** — testar fluxos após cada correção (papel de QA)
+5. **Arquiteto + Reinaldo** — configurar deploy no Vercel assim que banco confirmado

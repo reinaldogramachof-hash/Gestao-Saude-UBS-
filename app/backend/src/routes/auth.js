@@ -19,17 +19,34 @@
  * LGPD: CPF não é retornado em nenhuma rota deste arquivo.
  * ─────────────────────────────────────────────────────────────────────────────
  */
-const express = require('express');
-const bcrypt  = require('bcrypt');
-const jwt     = require('jsonwebtoken');
-const knex    = require('../db/knex');
+const express   = require('express');
+const bcrypt    = require('bcrypt');
+const jwt       = require('jsonwebtoken');
+const rateLimit = require('express-rate-limit'); // Middleware para prevenir ataques de força bruta no login
+const knex      = require('../db/knex');
 
 const router = express.Router();
+
+// ─────────────────────────────────────────────────────────────────────────────
+// MIDDLEWARE: loginRateLimiter
+// FUNÇÃO: Limita as tentativas de login a 10 requisições por IP a cada 15 minutos.
+//         Isso é crítico para segurança, pois o login do paciente usa dados de 
+//         baixa entropia (CRA + Data de Nascimento) fáceis de sofrer força bruta.
+// ─────────────────────────────────────────────────────────────────────────────
+const loginRateLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutos
+  max: 10, // limite de 10 tentativas por IP
+  message: {
+    error: 'Muitas tentativas de login a partir deste IP. Por favor, tente novamente após 15 minutos.'
+  },
+  standardHeaders: true, // Retorna os cabeçalhos de limite padrão (RateLimit-Limit, RateLimit-Remaining)
+  legacyHeaders: false, // Desativa os cabeçalhos antigos X-RateLimit-*
+});
 
 // ─── POST /api/auth/login-gestor ─────────────────────────────────────────────
 // Autentica um membro da equipe gestora (recepcionista, gestor, admin) via
 // e-mail institucional + senha. Retorna JWT com 8h de validade.
-router.post('/login-gestor', async (req, res) => {
+router.post('/login-gestor', loginRateLimiter, async (req, res) => {
   try {
     const { email, senha } = req.body;
 
@@ -76,7 +93,7 @@ router.post('/login-gestor', async (req, res) => {
 // Autentica um paciente via CRA (Cadastro de Regulação Ambulatorial) + data
 // de nascimento. Não usa senha para facilitar o acesso por pessoas idosas.
 // Retorna JWT com 12h de validade.
-router.post('/login-paciente', async (req, res) => {
+router.post('/login-paciente', loginRateLimiter, async (req, res) => {
   try {
     const { cra, data_nascimento } = req.body;
 

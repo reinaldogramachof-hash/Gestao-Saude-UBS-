@@ -263,10 +263,14 @@ router.put('/solicitacao/:id/status', async (req, res) => {
     // A leitura, a validação de pertencimento, o update e o histórico ficam na
     // mesma transação. Assim, nenhuma alteração parcial é persistida e a UBS
     // não pode mudar entre a verificação e a escrita.
+    // Para garantir o isolamento de dados, a busca filtra pelo ID da solicitação
+    // E pelo ubs_id do gestor autenticado. Se pertencer a outra UBS, a query
+    // não retornará nada e responderemos com 404 para ocultar a existência do ID.
     const resultado = await knex.transaction(async (trx) => {
       const solicitacao = await trx('solicitacoes')
         .join('pacientes', 'solicitacoes.paciente_id', 'pacientes.id')
         .where('solicitacoes.id', req.params.id)
+        .where('solicitacoes.ubs_id', req.user.ubs_id)
         .select(
           'solicitacoes.*',
           'pacientes.ubs_id as paciente_ubs_id'
@@ -275,12 +279,6 @@ router.put('/solicitacao/:id/status', async (req, res) => {
 
       if (!solicitacao) {
         return { tipo: 'nao_encontrada' };
-      }
-
-      // O vínculo é validado pelo paciente, que é a fonte de verdade para a
-      // unidade responsável pelo atendimento e pelos dados pessoais.
-      if (Number(solicitacao.paciente_ubs_id) !== Number(req.user.ubs_id)) {
-        return { tipo: 'outra_ubs' };
       }
 
       await trx('solicitacoes')
@@ -305,12 +303,6 @@ router.put('/solicitacao/:id/status', async (req, res) => {
 
     if (resultado.tipo === 'nao_encontrada') {
       return res.status(404).json({ error: 'Solicitação não encontrada.' });
-    }
-
-    if (resultado.tipo === 'outra_ubs') {
-      return res.status(403).json({
-        error: 'Solicitação pertence a outra UBS e não pode ser alterada.',
-      });
     }
 
     // Dispara push notification para o paciente informando a mudança de status.

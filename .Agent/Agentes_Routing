@@ -1,177 +1,213 @@
-# Roteamento de Agentes — Tem No Bairro
+# Roteamento de Agentes — Gestão Saúde UBS+
 
-> Documento de referência para Claude (Arquiteto) ao designar tarefas ao time Antigravity.
-> Última atualização: 2026-04-11
-
----
-
-## Composição Atual do Time
-
-**Arquiteto:** Claude Sonnet 4.6 (este agente) — planejamento, briefing, validação final e execução de emergência.
-**Executores Técnicos:** Agentes do Google Antigravity (Fast Mode, Deep Think, Subagente de Navegador) e Agente Stitch MCP (Design UI/UX e Frontend Web).
-
-> ATLAS (OpenClaw) foi removido do projeto. Automações 24/7 e scripts agendados que antes eram delegados ao ATLAS devem ser reavaliados caso a caso: tarefas simples vão para Antigravity Fast Mode; tarefas recorrentes devem ser implementadas como Skills ou Workflows dentro do próprio Antigravity.
+> Documento de referência para o time. Leitura obrigatória antes de qualquer execução.
+> **Última atualização:** 2026-06-17 — Claude Sonnet 4.6 (Arquiteto)
 
 ---
 
-## Hierarquia de Agentes
+## Composição do Time
+
+| Papel | Quem | Função |
+|---|---|---|
+| **QA / Orquestrador** | Reinaldo | Valida entregas, aprova direções, define prioridades, testa fluxos como usuário final |
+| **Arquiteto** | Claude Sonnet 4.6 | Planejamento, briefings, decisões técnicas, validação de artefatos. Não executa código salvo emergência |
+| **Dev Sênior Executor** | Google Antigravity (Fast Mode / Deep Think) | Executa todo o código. Segue briefings do Arquiteto. Reporta ao Arquiteto e ao QA após cada tarefa |
+| **Validador Visual** | Antigravity Subagente de Navegador | Valida UI/UX, responsividade, fluxos visuais — acionado explicitamente |
+
+---
+
+## Hierarquia de Decisão
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│  TIER 3 — RESERVA / LAST RESORT                             │
-│  Claude Sonnet 4.6 — Arquiteto + Executor de emergência     │
-├─────────────────────────────────────────────────────────────┤
-│  TIER 2 — ALTA COMPLEXIDADE / PLANEJAMENTO                  │
-│  Antigravity Deep Think (Gemini 3 Deep Think / Opus)        │
-├─────────────────────────────────────────────────────────────┤
-│  TIER 1C — GERAÇÃO VISUAL / FRONTEND UI                     │
-│  Agente Stitch MCP (Geração UI / Design System web)         │
-├─────────────────────────────────────────────────────────────┤
-│  TIER 1B — VALIDAÇÃO VISUAL / UI/E2E                        │
-│  Antigravity Subagente de Navegador                         │
-├─────────────────────────────────────────────────────────────┤
-│  TIER 1A — SIMPLES / REPETITIVO / CIRÚRGICO                 │
-│  Antigravity Fast Mode (Gemini 3 Flash / Pro)               │
-└─────────────────────────────────────────────────────────────┘
+Reinaldo (QA / Orquestrador)
+│
+├── Aprova ou rejeita direções arquiteturais
+├── Valida entregas como usuário final
+└── Define prioridades quando há conflito
+
+Claude Sonnet 4.6 (Arquiteto)
+│
+├── Define O QUÊ fazer e COMO
+├── Gera briefings para o Antigravity
+├── Valida código entregue antes de reportar ao Reinaldo
+└── Executa APENAS em emergência confirmada
+
+Google Antigravity (Dev Sênior)
+│
+├── Executa código conforme briefings
+├── Reporta resultado com formato padronizado (ver abaixo)
+└── Escala dúvidas ao Arquiteto, nunca decide sozinho
 ```
 
 ---
 
-## Perfil de Cada Agente
+## Perfil de Cada Agente Executor
 
-### 🟢 Antigravity Fast Mode — Gemini 3 Flash / Pro (Tier 1A)
-**Interface:** Editor View (inline via Cmd+I) ou Terminal.
-**Motor:** Gemini 3 Flash ou Gemini 3 Pro — baixa latência, sem geração de artefatos pesados.
-**Melhor para:** Ajustes cirúrgicos em arquivo único, renomeação de variáveis, criação de funções utilitárias, regex simples, comandos de terminal de rotina, boilerplate baseado em template já existente, atualização de CSS/cores/textos, refatoração localizada.
-**Pontos fortes:** Rapidez, custo baixo, execução direta ("Vibe Coding"). Ideal para tarefas que não tocam em mais de um arquivo.
-**Evitar:** Tarefas que cruzam múltiplos arquivos, lógica de negócio nova, debugging de erros desconhecidos, decisões arquiteturais.
-**Como acionar:** Abrir arquivo alvo → Cmd+I → prompt ancorando com `@Arquivo` para evitar alucinações de variáveis.
-**Diretriz de briefing:** Seja cirúrgico — especifique o arquivo, a função e o que exatamente mudar. Sem isso, o agente pode generalizar demais.
+### 🟢 Antigravity Fast Mode (Tier 1 — Execução Padrão)
+**Motor:** Gemini 3 Flash / Pro — baixa latência.
+**Melhor para:**
+- Ajustes cirúrgicos em arquivo único
+- Correções de segurança localizadas (ex: adicionar `ubs_id` numa query)
+- Atualização de CSS, textos, labels, cores
+- Adição de validação em rota existente
+- Boilerplate baseado em padrão já existente no projeto
+- Scripts de terminal pontuais
 
----
-
-### 🔵 Antigravity Deep Think — Gemini 3 Deep Think / Claude Opus (Tier 2)
-**Interface:** Manager View (Mission Control) — orquestração assíncrona, pode durar horas.
-**Motor:** Gemini 3 Deep Think com suporte a Claude Opus. Janela de contexto de até 2 milhões de tokens.
-**Melhor para:** Engenharia de sistemas complexos do zero, refatoração estrutural multi-arquivo, debugging de erros intermitentes, implementação de lógica de negócio crítica, migração de stack (ex: JS → TypeScript), investigações de segurança (fluxos de auth, validação de API), criação de módulos que impactam outros módulos.
-**Pontos fortes:** Gera automaticamente Lista de Tarefas + Plano de Implementação antes de alterar qualquer linha de código. O Plano funciona como "portão de revisão" — Claude valida antes de autorizar execução.
-**Evitar:** Tarefas simples — custo de tokens alto, não justifica.
-**Como acionar:** Manager View → prompt estruturado no formato Missão (ver seção abaixo) → validar o Plano gerado → autorizar execução.
-**Diretriz de briefing:** Sempre use o formato Missão completo: Contexto + Diretiva + Restrições + Verificação. Se o plano parecer errado, corrija antes de executar — briefing ruim gera código ruim.
+**Evitar:** Tarefas que cruzam 3+ arquivos ou exigem raciocínio sobre trade-offs.
+**Como acionar:** Arquivo alvo → Cmd+I → usar `@Arquivo` para ancorar contexto.
+**Regra de briefing:** Especifique arquivo, função e exatamente o que mudar. Sem âncora, o agente pode alucinam variáveis.
 
 ---
 
-### 🌐 Antigravity Subagente de Navegador (Tier 1B)
-**Interface:** Acionado explicitamente dentro de uma Missão (Deep Think ou Fast Mode).
-**Capacidade:** Executa a aplicação localmente, navega por rotas, interage com UI, tira screenshots e anexa como evidência no Walkthrough.
-**Melhor para:** Validação de layouts responsivos (mobile-first 375px), testes de fluxos visuais (onboarding, modais, PWA offline), auditoria de Dark Mode / transições CSS, validação de componentes após refatoração.
-**Evitar:** Usar como substituto de testes lógicos — ele valida aparência e fluxo, não lógica de dados.
-**Como acionar:** Incluir explicitamente no prompt da Missão: *"Inicie o subagente de navegador e valide visualmente [o que testar]. Anexe screenshot ao Walkthrough."* — sem essa instrução, o agente assume que o CSS está correto sem verificar.
+### 🔵 Antigravity Deep Think (Tier 2 — Alta Complexidade)
+**Motor:** Gemini 3 Deep Think / Claude Opus — janela 2M tokens, raciocínio longo.
+**Melhor para:**
+- Módulos novos do zero (ex: RBAC completo, rate limiting com Redis)
+- Refatoração estrutural multi-arquivo
+- Debugging de erros desconhecidos ou intermitentes
+- Lógica de negócio crítica (máquina de estados, transações atômicas)
+- Implementação de segurança (auth, isolamento por UBS, validação Joi)
+- Auditoria de sistema multi-arquivo
+
+**Evitar:** Tarefas simples — custo alto de tokens não justifica.
+**Como acionar:** Manager View → Missão estruturada (ver formato abaixo) → Arquiteto valida o Plano antes da execução.
 
 ---
 
-### 🎨 Agente Stitch MCP — Geração UI e Design (Tier 1C)
-**Interface:** Chamadas de ferramentas via Stitch MCP (gera projetos, design systems, telas baseadas em texto ou imagem, edita telas).
-**Motor:** Stitch MCP e modelos Gemini para design de interface.
-**Melhor para:** Prototipagem visual rápida, criação de telas frontend inteiras usando linguagem natural e design moderno (Gestão Saúde UBS+).
-**Evitar:** Tarefas de backend puras, lógicas pesadas de negócio sem interface, manipulação de banco de dados.
-**Como acionar:** Instruções via prompt do desenvolvedor, acionando ferramentas de criação/edição e aplicação de Design Systems.
-**Diretriz de briefing:** Descreva detalhadamente as necessidades visuais, informações para exibir para gestores e pacientes, e interações na UI.
+### 🌐 Antigravity Subagente de Navegador (Tier 1B — Validação Visual)
+**Capacidade:** Executa a aplicação localmente, navega por rotas, interage com UI, tira screenshots.
+**Melhor para:**
+- Validação de layouts em 375px (mobile-first obrigatório)
+- Testes de fluxo visual: login → dashboard → ação → resultado
+- Auditoria de responsividade após alterações de CSS/layout
+- Confirmação de que modais, drawers e toasts funcionam
+
+**Acionamento obrigatoriamente explícito:** Incluir no briefing: *"Inicie o subagente de navegador e valide [o que testar] em 375px. Anexe screenshot."*
 
 ---
 
-### ⚪ Claude Sonnet 4.6 — Arquiteto (Tier 3 / Last Resort)
-**Papel primário:** Definir briefings, designar tarefas ao time Antigravity, validar artefatos (Planos, Walkthroughs), tomar decisões de arquitetura, gerenciar o `CLAUDE.md` e este documento.
-**Execução direta apenas quando:** Falha confirmada de agente Antigravity, task arquitetural exclusiva (ex: reestruturação de pastas, decisão de stack), ou tarefa que requer contexto acumulado de múltiplas sessões.
-**Nunca executa:** Por comodidade ou impaciência — o custo de contexto do Arquiteto é alto e deve ser reservado para decisões que os executores não conseguem resolver.
+## Formato de Missão — Briefing para Deep Think
 
----
-
-## Formato de Missão (Briefing para Deep Think)
-
-Toda Missão delegada ao Deep Think deve seguir a estrutura:
+Toda tarefa delegada ao Deep Think segue este template:
 
 ```
 Missão: [nome descritivo]
 
 Contexto:
-[Arquivo(s) relevante(s) com @referência, estado atual, o que está causando o problema]
+[Arquivo(s) com @referência, estado atual, o que está causando o problema]
 
 Diretiva:
-[O que exatamente precisa ser feito, em passos numerados quando possível]
+[O que exatamente fazer, em passos numerados]
 
 Restrições:
-[O que NÃO pode ser tocado. Padrões obrigatórios do projeto (ver @CLAUDE.md)]
+[O que NÃO pode ser tocado. Padrão obrigatório: ver @CLAUDE.md]
 
 Verificação:
-[Como confirmar que a entrega está correta — testes, screenshot via subagente, log antes/depois]
+[Como confirmar que está correto: testes, build, screenshot via subagente]
+```
+
+---
+
+## Formato de Retorno do Antigravity (obrigatório após cada tarefa)
+
+O Antigravity DEVE retornar no seguinte formato ao concluir qualquer tarefa:
+
+```
+✅ TAREFA CONCLUÍDA: [nome da tarefa]
+
+📁 Arquivos alterados:
+- `caminho/do/arquivo.js` — [o que mudou]
+- `caminho/do/outro.jsx` — [o que mudou]
+
+🔍 O que foi feito:
+[Descrição técnica em 3-5 linhas do que foi implementado e por quê]
+
+⚠️ Pontos de atenção para o QA:
+[O que Reinaldo deve testar, qual fluxo validar, o que pode ter colateral]
+
+🏗️ Resultado do build:
+[✅ Passou / ❌ Falhou — cole o output relevante]
+
+📋 Pendências abertas (se houver):
+- [ ] [o que ficou fora do escopo desta tarefa]
+```
+
+Se a tarefa falhar ou ficar bloqueada:
+
+```
+❌ TAREFA BLOQUEADA: [nome da tarefa]
+
+🔎 Motivo do bloqueio:
+[Descrição do erro ou impedimento]
+
+📁 Estado atual dos arquivos:
+[O que foi alterado antes do bloqueio, se algo foi]
+
+🆘 Solicitação ao Arquiteto:
+[O que precisa ser decidido ou fornecido para desbloquear]
+```
+
+---
+
+## Formato de Designação de Tarefas pelo Arquiteto
+
+Ao designar uma tarefa ao Antigravity, o Arquiteto usa:
+
+```
+📋 TAREFA: [descrição]
+🤖 AGENTE: [Fast Mode | Deep Think | Subagente de Navegador]
+📁 ARQUIVOS ALVO: [lista dos arquivos a tocar]
+💡 MOTIVO DA ESCOLHA: [1 linha]
+```
+
+Se houver escalação:
+
+```
+⚠️ ESCALAÇÃO: [agente atual] → [próximo agente]
+💡 MOTIVO: [o que falhou no anterior]
 ```
 
 ---
 
 ## Matriz de Roteamento por Tipo de Tarefa
 
-| Tipo de Tarefa | Agente Primário | Agente Backup |
-|---|---|---|
-| Ajuste cirúrgico em arquivo único | Fast Mode | — |
-| Atualização de CSS / cores / textos | Fast Mode | — |
-| Boilerplate / replicação de padrão existente | Fast Mode | — |
-| Comandos de terminal / scripts pontuais | Fast Mode | — |
-| Criação de módulo novo do zero | Deep Think | — |
-| Refatoração multi-arquivo | Deep Think | — |
-| Debugging de erro desconhecido | Deep Think | — |
-| Lógica de negócio crítica (auth, licença, caixa) | Deep Think | — |
-| Revisão de segurança (fluxos de API, RLS) | Deep Think | — |
-| Auditoria de sistema (leitura multi-arquivo) | Deep Think | — |
-| Migração de stack / extração de módulo legado | Deep Think | — |
-| Geração e prototipagem de Telas Frontend Web | Agente Stitch MCP | Fast Mode |
-| Criação e aplicação de Design Systems visuais| Agente Stitch MCP | Fast Mode |
-| Validação visual de UI / layout responsivo | Subagente de Navegador | — |
-| Testes de fluxo PWA / onboarding / modal | Subagente de Navegador | — |
-| Documentação / comentários / README | Fast Mode | Deep Think |
-| Decisão de arquitetura | Claude (arquiteto) | — |
-| Execução de código em falha de agente | Claude (last resort) | — |
+| Tipo de Tarefa | Agente Primário |
+|---|---|
+| Ajuste cirúrgico em arquivo único | Fast Mode |
+| Correção de segurança localizada (query, select, validação) | Fast Mode |
+| Atualização de CSS / textos / labels | Fast Mode |
+| Boilerplate baseado em padrão existente | Fast Mode |
+| Rate limit, CORS, headers de segurança | Fast Mode |
+| Módulo novo do zero | Deep Think |
+| Refatoração multi-arquivo | Deep Think |
+| Debugging de erro desconhecido | Deep Think |
+| Lógica de negócio crítica (máquina de estados, transação) | Deep Think |
+| RBAC / autorizações por perfil | Deep Think |
+| Validação visual em 375px | Subagente de Navegador |
+| Testes de fluxo UI (login → ação → resultado) | Subagente de Navegador |
+| Decisão arquitetural | Claude (Arquiteto) |
+| Execução em falha confirmada de agente | Claude (emergência) |
 
 ---
 
-## Cadeia de Escalação (Fallback)
+## Cadeia de Escalação
 
 ```
-Falhou ou resultado ruim?
-│
-▼
-Fast Mode  →  Deep Think  →  Claude (arquiteto / last resort)
+Fast Mode  →  (resultado ruim)  →  Deep Think  →  (bloqueio)  →  Claude Arquiteto
 ```
 
-**Regra:** Antes de escalar, Claude valida se o briefing foi claro o suficiente.
-Um agente inferior com briefing preciso bate um agente superior com briefing vago.
+**Regra:** Antes de escalar, Claude verifica se o briefing foi claro.
+Um agente simples com briefing preciso supera um agente avançado com briefing vago.
 
 ---
 
-## Como Claude Designa Tarefas
+## Regras Gerais Invioláveis
 
-A cada ação do fluxo de trabalho, Claude vai indicar:
-
-```
-📋 TAREFA: [descrição]
-🤖 AGENTE: [Fast Mode | Deep Think | Subagente de Navegador]
-💡 MOTIVO: [1 linha explicando a escolha]
-```
-
-Se o agente falhar ou o resultado for impreciso:
-
-```
-⚠️ ESCALAÇÃO: [agente atual] → [próximo agente]
-💡 MOTIVO: [o que falhou]
-```
-
----
-
-## Regras Gerais
-
-1. **Claude nunca executa código diretamente** salvo em falha confirmada de agente ou tarefa arquitetural exclusiva.
-2. **Briefings sempre incluem:** contexto do projeto com `@referências`, arquivos a ler, output esperado, padrão a seguir (com exemplo quando possível).
-3. **Deep Think é reservado** para tarefas que cruzam múltiplos arquivos ou exigem raciocínio sobre trade-offs — não usar para ajustes simples.
-4. **Subagente de Navegador deve ser explicitamente invocado** no prompt — nunca é ativado automaticamente.
-5. **Validação final sempre com Claude** — independente de qual agente executou.
-6. **Regras do workspace (.agent/rules/) são a "Constituição"** — nenhum agente pode ignorá-las. Se um agente produzir código que viola o CLAUDE.md, o briefing foi insuficiente.
+1. **Todo arquivo de código** gerado ou modificado DEVE ter comentários explicativos conforme `CLAUDE.md`.
+2. **Nenhuma decisão arquitetural** é tomada pelo Antigravity sem aprovação do Arquiteto.
+3. **Nenhuma alteração de banco** (migration) é executada sem revisão do Arquiteto e aprovação do Reinaldo.
+4. **Mobile-first obrigatório:** Toda tela deve funcionar em 375px antes de desktop.
+5. **LGPD:** Nenhuma rota expõe dados de pacientes sem autenticação. Nunca.
+6. **Relatório de sessão** ao final de toda tarefa que altere arquivos — pasta `.Agent/reports/`.
+7. **Build deve passar** após cada entrega. Se quebrar, o agente corrige antes de reportar concluído.
+8. **Reinaldo é o QA final.** Nenhuma tarefa é "concluída" até ele validar.
