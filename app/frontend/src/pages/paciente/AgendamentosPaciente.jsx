@@ -37,9 +37,11 @@ export default function AgendamentosPaciente() {
   const [slotSelecionado, setSlotSelecionado] = useState(null);
   const [motivo, setMotivo] = useState('');
   const [reservando, setReservando] = useState(false);
+  const [erro, setErro] = useState(false);
 
   const carregarTodos = () => {
     setLoading(true);
+    setErro(false);
     Promise.all([
       api.get('/paciente/agendamentos/disponiveis'),
       api.get('/paciente/agendamentos/meus'),
@@ -48,7 +50,7 @@ export default function AgendamentosPaciente() {
         setDisponiveis(resDisp.data);
         setMeus(resMeus.data);
       })
-      .catch(() => {})
+      .catch(() => setErro(true))
       .finally(() => setLoading(false));
   };
 
@@ -76,8 +78,9 @@ export default function AgendamentosPaciente() {
   };
 
   const formatarDataHora = (dt) => {
-    const data = new Date(dt).toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' });
-    const hora = new Date(dt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    const dateStr = dt.includes('T') ? dt : dt + 'T12:00:00';
+    const data = new Date(dateStr).toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' });
+    const hora = new Date(dateStr).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
     return `${data}, às ${hora}`;
   };
 
@@ -92,6 +95,23 @@ export default function AgendamentosPaciente() {
       <main className="px-6 py-6 space-y-8">
         {loading ? (
           Array(3).fill(0).map((_, i) => <div key={i} className="h-24 bg-surface-container-low rounded-2xl animate-pulse" />)
+        ) : erro ? (
+          <>
+            {/* Estado de erro com retry — exibido quando a API não responde ou retorna falha. */}
+            {/* Evita que o paciente veja uma lista vazia enganosa por falha de rede. */}
+            <div className="flex flex-col items-center justify-center h-64 gap-4 px-6">
+              <span className="material-symbols-outlined text-5xl text-red-400">wifi_off</span>
+              <p className="text-on-surface-variant text-center text-sm">
+                Não foi possível carregar os dados.<br />Verifique sua conexão e tente novamente.
+              </p>
+              <button
+                onClick={carregarTodos}
+                className="bg-primary text-on-primary px-6 py-2 rounded-full text-sm font-semibold"
+              >
+                Tentar novamente
+              </button>
+            </div>
+          </>
         ) : (
           <>
             {/* ── Horários Disponíveis ── */}

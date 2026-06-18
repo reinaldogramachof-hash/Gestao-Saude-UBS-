@@ -21,12 +21,36 @@ export default function LoginPaciente() {
   const { login } = useAuth();
   const navigate = useNavigate();
 
+  // Aplica máscara de data DD/MM/AAAA durante a digitação, removendo não-dígitos
+  const aplicarMascaraData = (value) => {
+    let v = value.replace(/\D/g, ''); // Remove tudo que não for número
+    if (v.length > 8) v = v.substring(0, 8); // Limita em 8 dígitos (DDMMAAAA)
+    if (v.length > 4) {
+      v = `${v.substring(0, 2)}/${v.substring(2, 4)}/${v.substring(4)}`;
+    } else if (v.length > 2) {
+      v = `${v.substring(0, 2)}/${v.substring(2)}`;
+    }
+    return v;
+  };
+
   const handleLogin = async (e) => {
     e.preventDefault();
     setLoading(true);
     setError('');
+
+    // Valida se o usuário preencheu a data por completo
+    if (dataNascimento.length !== 10) {
+      setError('Por favor, informe a data de nascimento completa no formato DD/MM/AAAA.');
+      setLoading(false);
+      return;
+    }
+
     try {
-      const res = await api.post('/auth/login-paciente', { cra, data_nascimento: dataNascimento });
+      // Converte data de nascimento do formato DD/MM/AAAA para YYYY-MM-DD exigido pela API
+      const [dia, mes, ano] = dataNascimento.split('/');
+      const dataNascimentoISO = `${ano}-${mes}-${dia}`;
+
+      const res = await api.post('/auth/login-paciente', { cra, data_nascimento: dataNascimentoISO });
       login(res.data, res.data.token);
       navigate('/paciente/dashboard');
     } catch {
@@ -75,9 +99,12 @@ export default function LoginPaciente() {
             <label className="block text-sm font-bold text-on-surface-variant">Data de Nascimento</label>
             <input
               value={dataNascimento}
-              onChange={e => setData(e.target.value)}
+              onChange={e => setData(aplicarMascaraData(e.target.value))}
               required
-              type="date"
+              type="text"
+              inputMode="numeric"
+              maxLength={10}
+              placeholder="Ex: 25/10/1995"
               className="w-full h-12 bg-surface-container-high border-none rounded-xl px-4 text-on-surface focus:ring-2 focus:ring-primary/20 outline-none font-medium"
             />
           </div>

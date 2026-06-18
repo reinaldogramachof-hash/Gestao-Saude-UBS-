@@ -35,3 +35,10 @@ stitch_gest_o_sa_de_ubs/
 # Sistema operacional
 .DS_Store
 Thumbs.db
+
+# Scripts temporários de validação e tarefas com credenciais
+app/backend/validar_banco.js
+TASK_07_infra_vercel.md
+
+# Skills de agentes (não fazem parte do produto — gerenciadas externamente)
+.agents/

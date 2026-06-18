@@ -14,10 +14,10 @@ import { useEffect, useState, useCallback } from 'react';
 import api from '../../services/api';
 import PacienteLayout from '../../components/paciente/PacienteLayout';
 
-// Formata a data de atualização do estoque em linguagem simples
 function formatarData(iso) {
   if (!iso) return null;
-  const d = new Date(iso);
+  const dateStr = iso.includes('T') ? iso : iso + 'T12:00:00';
+  const d = new Date(dateStr);
   return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
 }
 

@@ -116,8 +116,24 @@ export default function GestorPacientes() {
     }
   };
 
+  // Aplica máscara de data DD/MM/AAAA ao digitar no campo do formulário, removendo caracteres não numéricos
+  const aplicarMascaraData = (value) => {
+    let v = value.replace(/\D/g, ''); // Remove não-números
+    if (v.length > 8) v = v.substring(0, 8); // Limite em DDMMAAAA
+    if (v.length > 4) {
+      v = `${v.substring(0, 2)}/${v.substring(2, 4)}/${v.substring(4)}`;
+    } else if (v.length > 2) {
+      v = `${v.substring(0, 2)}/${v.substring(2)}`;
+    }
+    return v;
+  };
+
   const handleInputChange = (e) => {
-    const { name, value } = e.target;
+    let { name, value } = e.target;
+    // Se o input modificado for a data de nascimento, aplica a máscara
+    if (name === 'data_nascimento') {
+      value = aplicarMascaraData(value);
+    }
     setFormData(prev => ({ ...prev, [name]: value }));
     if (name === 'cra') setErroCRA('');
   };
@@ -126,8 +142,23 @@ export default function GestorPacientes() {
     e.preventDefault();
     setEnviando(true);
     setErroCRA('');
+
+    // Valida se a data de nascimento foi totalmente preenchida
+    if (formData.data_nascimento.length !== 10) {
+      toast.error('Informe a data de nascimento completa no formato DD/MM/AAAA.');
+      setEnviando(false);
+      return;
+    }
+
     try {
-      await api.post('/gestor/paciente', formData);
+      // Converte data de nascimento de DD/MM/AAAA para YYYY-MM-DD para salvar corretamente no banco
+      const [dia, mes, ano] = formData.data_nascimento.split('/');
+      const dataNascimentoISO = `${ano}-${mes}-${dia}`;
+
+      await api.post('/gestor/paciente', {
+        ...formData,
+        data_nascimento: dataNascimentoISO
+      });
       toast.success('Paciente cadastrado com sucesso!');
       setModalAberto(false);
       setFormData({ nome: '', cra: '', data_nascimento: '', cpf: '', telefone: '', email: '' });
@@ -455,8 +486,17 @@ export default function GestorPacientes() {
                 </div>
                 <div className="space-y-2">
                   <label className="text-sm font-bold text-on-surface-variant">Data de Nascimento*</label>
-                  <input required name="data_nascimento" value={formData.data_nascimento} onChange={handleInputChange} type="date"
-                    className="w-full h-12 px-4 bg-surface-container-high border-none rounded-xl outline-none font-medium" />
+                  <input
+                    required
+                    name="data_nascimento"
+                    value={formData.data_nascimento}
+                    onChange={handleInputChange}
+                    type="text"
+                    inputMode="numeric"
+                    maxLength={10}
+                    placeholder="Ex: 25/10/1995"
+                    className="w-full h-12 px-4 bg-surface-container-high border-none rounded-xl outline-none font-medium"
+                  />
                 </div>
                 <div className="space-y-2">
                   <label className="text-sm font-bold text-on-surface-variant">CPF (opcional)</label>

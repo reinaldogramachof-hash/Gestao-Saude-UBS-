@@ -15,6 +15,7 @@ exports.seed = async function(knex) {
   const pacienteIds = pacientesDemo.map(p => p.id);
 
   if (pacienteIds.length > 0) {
+    await knex('atendimentos').whereIn('paciente_id', pacienteIds).del();
     await knex('solicitacoes').whereIn('paciente_id', pacienteIds).del();
     await knex('comunicados').whereIn('paciente_id', pacienteIds).del();
   }
@@ -39,6 +40,7 @@ exports.seed = async function(knex) {
 
   const pacientesData = nomes.map((nome, index) => {
     const padIndex = String(index + 1).padStart(4, '0');
+    const isAnaClara = index === 0;
     return {
       ubs_id: UBS_ID,
       cra: `DEMO-${padIndex}`,
@@ -48,7 +50,16 @@ exports.seed = async function(knex) {
       telefone: `(12) 99${String(Math.floor(Math.random() * 10000000)).padStart(7, '0')}`,
       email: `${nome.split(' ')[0].toLowerCase()}@email.com`,
       ativo: index < 20, // Primeiros 20 ativos, 5 inativos (aguardando aprovação)
-      criado_em: new Date(Date.now() - Math.random() * 10000000000)
+      criado_em: new Date(Date.now() - Math.random() * 10000000000),
+      ...(isAnaClara ? {
+        tipo_sanguineo: 'O+',
+        peso_kg: 68.5,
+        altura_cm: 165,
+        alergias: 'Dipirona, Penicilina',
+        comorbidades: 'Asma, Rinite Alérgica',
+        medicamentos_uso_continuo: 'Salbutamol, Budesonida',
+        observacoes_clinicas: 'Paciente com histórico de crises asmáticas em mudanças bruscas de temperatura.'
+      } : {})
     };
   });
 
@@ -82,12 +93,13 @@ exports.seed = async function(knex) {
       const status = statusList[Math.floor(Math.random() * statusList.length)];
       const isConcluido = status === 'concluido';
       const isMarcado = status === 'data_marcada' || isConcluido;
-      const desc = descricoes[Math.floor(Math.random() * descricoes.length)];
+      const isAnaClara = paciente.id === insertedPacientes[0].id;
+      const desc = (isAnaClara && i === 0) ? descricoes[2] : descricoes[Math.floor(Math.random() * descricoes.length)];
       
       solicitacoesData.push({
         ubs_id: UBS_ID,
         paciente_id: paciente.id,
-        tipo: tipos[Math.floor(Math.random() * tipos.length)],
+        tipo: (isAnaClara && i === 0) ? 'exame' : tipos[Math.floor(Math.random() * tipos.length)],
         descricao: desc.tec,
         descricao_paciente: desc.pac,
         status: status,
@@ -101,7 +113,39 @@ exports.seed = async function(knex) {
     }
   });
 
-  await knex('solicitacoes').insert(solicitacoesData);
+  const insertedSolicitacoes = await knex('solicitacoes').insert(solicitacoesData).returning(['id', 'paciente_id', 'descricao']);
+
+  // 3.5 ATENDIMENTOS (Demo para Ana Clara)
+  const idAnaClara = insertedPacientes[0].id;
+  const solRaioX = insertedSolicitacoes.find(s => s.paciente_id === idAnaClara && s.descricao === 'Radiografia de Tórax');
+
+  await knex('atendimentos').insert([
+    {
+      paciente_id: idAnaClara,
+      data_atendimento: '2026-01-15',
+      unidade: 'UBS Centro',
+      tipo_unidade: 'ubs',
+      profissional: 'Dra. Silva',
+      especialidade: 'Clínica Médica',
+      observacoes: 'Paciente relata tosse seca e falta de ar moderada há 3 dias. Ausculta pulmonar com sibilos esparsos.',
+      cid_10_principal: 'J45',
+      conduta: 'Prescrito corticoide oral por 5 dias. Solicitado Raio-X de tórax.',
+      criado_em: knex.fn.now(),
+      atualizado_em: knex.fn.now()
+    },
+    {
+      paciente_id: idAnaClara,
+      data_atendimento: '2026-02-10',
+      unidade: 'Hospital Municipal',
+      tipo_unidade: 'hospital',
+      profissional: 'Dr. Costa',
+      especialidade: 'Radiologia',
+      observacoes: 'Raio-X de tórax PA e Perfil realizado sem intercorrências. Qualidade técnica satisfatória.',
+      conduta: 'Paciente orientada a buscar o laudo na UBS de origem em 5 dias úteis.',
+      criado_em: knex.fn.now(),
+      atualizado_em: knex.fn.now()
+    }
+  ]);
 
   // 4. MEDICAMENTOS (15 registros)
   const medicamentosData = [

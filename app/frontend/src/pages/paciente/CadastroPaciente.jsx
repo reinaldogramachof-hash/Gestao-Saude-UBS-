@@ -105,13 +105,38 @@ export default function CadastroPaciente() {
     setBuscaUbs('');
   };
 
+  // Aplica máscara de data DD/MM/AAAA ao digitar no campo do formulário, removendo caracteres não numéricos
+  const aplicarMascaraData = (value) => {
+    let v = value.replace(/\D/g, ''); // Remove caracteres que não sejam dígitos
+    if (v.length > 8) v = v.substring(0, 8); // Limita tamanho da data em DDMMAAAA
+    if (v.length > 4) {
+      v = `${v.substring(0, 2)}/${v.substring(2, 4)}/${v.substring(4)}`;
+    } else if (v.length > 2) {
+      v = `${v.substring(0, 2)}/${v.substring(2)}`;
+    }
+    return v;
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setEnviando(true);
     setErro('');
+
+    // Valida se o formato está preenchido completamente (10 caracteres)
+    if (form.data_nascimento.length !== 10) {
+      setErro('Por favor, informe a data de nascimento completa no formato DD/MM/AAAA.');
+      setEnviando(false);
+      return;
+    }
+
     try {
+      // Converte data de nascimento de DD/MM/AAAA para YYYY-MM-DD exigido pelas tabelas do PostgreSQL
+      const [dia, mes, ano] = form.data_nascimento.split('/');
+      const dataNascimentoISO = `${ano}-${mes}-${dia}`;
+
       const res = await api.post('/auth/cadastro-paciente', {
         ...form,
+        data_nascimento: dataNascimentoISO,
         ubs_id: ubsSelecionada.id,
         bairro: ubsSelecionada.bairro,
       });
@@ -377,9 +402,12 @@ export default function CadastroPaciente() {
               <label className="text-sm font-bold text-on-surface-variant">Data de nascimento*</label>
               <input
                 required
-                type="date"
+                type="text"
+                inputMode="numeric"
+                maxLength={10}
+                placeholder="Ex: 25/10/1995"
                 value={form.data_nascimento}
-                onChange={e => setForm(p => ({ ...p, data_nascimento: e.target.value }))}
+                onChange={e => setForm(p => ({ ...p, data_nascimento: aplicarMascaraData(e.target.value) }))}
                 className="w-full h-12 px-4 bg-surface-container-high border-none rounded-xl outline-none font-medium"
               />
               {/* Aviso: data de nascimento é usada no login junto com o CRA */}

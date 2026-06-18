@@ -63,6 +63,20 @@
 
 ---
 
+### Cena 3b — Painel do Médico: visão clínica (2 min)
+
+**O que mostrar:** Painel do Médico (busca e prontuário — sem troca de login)
+
+1. Ainda logado como gestor, clicar no ícone de estetoscópio no menu lateral → **Painel do Médico**.
+2. Digitar `DEMO-0001` no campo de busca e pressionar Enter.
+3. Mostrar a seção de **Dados Clínicos** que aparece: tipo sanguíneo O+, alergias (Dipirona, Penicilina), comorbidades (Asma, Rinite).
+4. Rolar para a **Linha do Tempo**: dois atendimentos — UBS Centro (Jan/26, crise asmática, CID: J45) e Hospital Municipal (Fev/26, Raio-X de tórax).
+5. Enfatizar que este painel é **somente leitura** — informação clínica acessível sem risco de edição acidental.
+
+**Frase de apoio:** *"O médico ou enfermeiro que atende essa paciente hoje consegue ver em segundos todo o histórico clínico — sem precisar ligar para outros serviços ou depender da memória do paciente."*
+
+---
+
 ### Cena 4 — Gestor: atualização de status (1 min)
 
 **O que mostrar:** Botão "Atualizar Status" na solicitação recém-criada

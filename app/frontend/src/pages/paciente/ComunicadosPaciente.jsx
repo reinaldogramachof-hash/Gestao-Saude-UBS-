@@ -16,12 +16,19 @@ export default function ComunicadosPaciente() {
   const [comunicados, setComunicados] = useState([]);
   const [loading, setLoading] = useState(true);
   const [expandidos, setExpandidos] = useState({});
+  const [erro, setErro] = useState(false);
 
-  useEffect(() => {
+  const carregar = () => {
+    setLoading(true);
+    setErro(false);
     api.get('/paciente/comunicados')
       .then(r => setComunicados(r.data))
-      .catch(() => {})
+      .catch(() => setErro(true))
       .finally(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    carregar();
   }, []);
 
   const unreadCount = comunicados.filter(c => !c.lido).length;
@@ -56,6 +63,23 @@ export default function ComunicadosPaciente() {
           Array(3).fill(0).map((_, i) => (
             <div key={i} className="h-28 bg-surface-container-low rounded-2xl animate-pulse" />
           ))
+        ) : erro ? (
+          <>
+            {/* Estado de erro com retry — exibido quando a API não responde ou retorna falha. */}
+            {/* Evita que o paciente veja uma lista vazia enganosa por falha de rede. */}
+            <div className="flex flex-col items-center justify-center h-64 gap-4 px-6">
+              <span className="material-symbols-outlined text-5xl text-red-400">wifi_off</span>
+              <p className="text-on-surface-variant text-center text-sm">
+                Não foi possível carregar os dados.<br />Verifique sua conexão e tente novamente.
+              </p>
+              <button
+                onClick={carregar}
+                className="bg-primary text-on-primary px-6 py-2 rounded-full text-sm font-semibold"
+              >
+                Tentar novamente
+              </button>
+            </div>
+          </>
         ) : comunicados.length > 0 ? (
           comunicados.map(c => (
             <div 
