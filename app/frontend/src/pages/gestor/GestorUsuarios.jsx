@@ -194,7 +194,7 @@ export default function GestorUsuarios() {
         </div>
         <button
           onClick={() => setModalCriacao(true)}
-          className="h-12 px-6 bg-primary text-white font-bold rounded-2xl shadow-lg shadow-primary/20 flex items-center gap-2 self-start sm:self-auto"
+          className="h-12 px-6 text-sm md:h-14 md:px-8 md:text-base bg-primary text-white font-bold rounded-2xl shadow-lg shadow-primary/30 hover:shadow-primary/40 hover:-translate-y-0.5 active:translate-y-0 active:scale-95 transition-all flex items-center gap-2 self-start sm:self-auto flex-shrink-0"
         >
           <span className="material-symbols-outlined">person_add</span>
           Novo Usuário

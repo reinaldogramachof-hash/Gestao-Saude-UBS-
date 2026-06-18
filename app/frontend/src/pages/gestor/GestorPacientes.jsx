@@ -17,6 +17,9 @@ import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import api from '../../services/api';
 import GestorLayout from '../../components/gestor/GestorLayout';
+// formatarDataBR: corrige bug de fuso horário em datas no formato 'YYYY-MM-DD'
+// (sem 'T'), que o JS interpreta como UTC e exibe o dia anterior em UTC-3.
+import { formatarDataBR } from '../../utils/statusHelper';
 
 export default function GestorPacientes() {
   const navigate = useNavigate();
@@ -34,6 +37,9 @@ export default function GestorPacientes() {
   const [pendentes, setPendentes] = useState([]);
   const [loadingPendentes, setLoadingPendentes] = useState(false);
   const [modalAberto, setModalAberto] = useState(false);
+  // Guarda {id, nome} do cadastro que está aguardando confirmação de rejeição.
+  // null = modal fechado; objeto = modal de confirmação aberto para aquele paciente.
+  const [confirmandoRejeicao, setConfirmandoRejeicao] = useState(null);
   const [enviando, setEnviando] = useState(false);
   const [erroCRA, setErroCRA] = useState('');
   const [formData, setFormData] = useState({
@@ -72,7 +78,17 @@ export default function GestorPacientes() {
     }
   };
 
-  const handleRejeitar = async (id, nome) => {
+  // Abre o modal de confirmação — não executa a ação ainda.
+  // A operação de rejeição é destrutiva (DELETE permanente), portanto exige confirmação explícita.
+  const handleRejeitar = (id, nome) => {
+    setConfirmandoRejeicao({ id, nome });
+  };
+
+  // Executada somente após o gestor confirmar no modal de confirmação.
+  const handleRejeitarConfirmado = async () => {
+    if (!confirmandoRejeicao) return;
+    const { id, nome } = confirmandoRejeicao;
+    setConfirmandoRejeicao(null);
     try {
       await api.delete(`/gestor/paciente/${id}/rejeitar`);
       toast.success(`Cadastro de ${nome} rejeitado e removido.`);
@@ -130,6 +146,45 @@ export default function GestorPacientes() {
 
   return (
     <GestorLayout>
+
+      {/* ── Modal de confirmação de rejeição ────────────────────────────────
+          Exibido quando o gestor clica em "Rejeitar" num cadastro pendente.
+          A rejeição é destrutiva (DELETE permanente) — exige confirmação explícita
+          para evitar exclusão acidental de cadastros. ── */}
+      {confirmandoRejeicao && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl p-6 max-w-sm w-full shadow-2xl">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0">
+                <span className="material-symbols-outlined text-red-600">delete_forever</span>
+              </div>
+              <h3 className="font-extrabold text-on-background text-lg">Rejeitar cadastro?</h3>
+            </div>
+            <p className="text-sm text-on-surface-variant mb-1">
+              Você está prestes a rejeitar o cadastro de:
+            </p>
+            <p className="font-bold text-on-background mb-4">{confirmandoRejeicao.nome}</p>
+            <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-xl px-3 py-2 mb-6">
+              Esta ação é permanente e não pode ser desfeita.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setConfirmandoRejeicao(null)}
+                className="flex-1 h-11 px-4 border border-outline-variant text-on-surface font-bold rounded-2xl hover:bg-surface-container-low transition-colors text-sm"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleRejeitarConfirmado}
+                className="flex-1 h-11 px-4 bg-red-600 text-white font-bold rounded-2xl hover:bg-red-700 transition-colors text-sm"
+              >
+                Sim, rejeitar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ── Cabeçalho responsivo ── */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 lg:mb-8">
         <div>
@@ -138,7 +193,7 @@ export default function GestorPacientes() {
         </div>
         <button
           onClick={() => setModalAberto(true)}
-          className="h-12 px-6 text-sm md:h-14 md:px-8 md:text-base bg-primary text-white font-bold rounded-2xl shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all flex items-center gap-2 self-start sm:self-auto"
+          className="h-12 px-6 text-sm md:h-14 md:px-8 md:text-base bg-primary text-white font-bold rounded-2xl shadow-lg shadow-primary/30 hover:shadow-primary/40 hover:-translate-y-0.5 active:translate-y-0 active:scale-95 transition-all flex items-center gap-2 self-start sm:self-auto flex-shrink-0"
         >
           <span className="material-symbols-outlined">person_add</span>
           Novo Paciente
@@ -179,13 +234,13 @@ export default function GestorPacientes() {
           ABA: AGUARDANDO APROVAÇÃO
           ════════════════════════════════════════════════════════════════ */}
       {aba === 'pendentes' && (
-        <div className="space-y-3">
+        <div className="grid grid-cols-1 xl:grid-cols-2 2xl:grid-cols-3 gap-4">
           {loadingPendentes ? (
             Array(3).fill(0).map((_, i) => (
               <div key={i} className="h-20 bg-surface-container-low rounded-2xl animate-pulse" />
             ))
           ) : pendentes.length === 0 ? (
-            <div className="py-20 text-center bg-surface-container-lowest rounded-2xl border border-surface-variant">
+            <div className="col-span-full py-20 text-center bg-surface-container-lowest rounded-2xl border border-surface-variant">
               <span className="material-symbols-outlined text-5xl block mb-3 opacity-30">how_to_reg</span>
               <p className="text-on-surface-variant font-semibold">Nenhum cadastro aguardando aprovação.</p>
               <p className="text-xs text-on-surface-variant mt-1">Quando um munícipe se cadastrar pelo portal, aparecerá aqui.</p>
@@ -200,13 +255,22 @@ export default function GestorPacientes() {
 
                 {/* Dados do cadastro */}
                 <div className="flex-1 min-w-0">
-                  <p className="font-extrabold text-on-background">{p.nome}</p>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <p className="font-extrabold text-on-background">{p.nome}</p>
+                    {/* Badge de UBS de origem — modo matriz: identifica de qual unidade veio o cadastro */}
+                    {p.ubs_nome && (
+                      <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
+                        <span className="material-symbols-outlined text-[11px]">local_hospital</span>
+                        {p.ubs_nome}
+                      </span>
+                    )}
+                  </div>
                   <div className="flex flex-wrap gap-3 mt-0.5">
                     <span className="text-xs text-on-surface-variant font-medium">
                       CRA: <strong>{p.cra}</strong>
                     </span>
                     <span className="text-xs text-on-surface-variant font-medium">
-                      Nasc.: {new Date(p.data_nascimento).toLocaleDateString('pt-BR')}
+                      Nasc.: {formatarDataBR(p.data_nascimento)}
                     </span>
                     {p.telefone && (
                       <span className="text-xs text-on-surface-variant font-medium">{p.telefone}</span>
@@ -266,11 +330,12 @@ export default function GestorPacientes() {
       ) : (
       <div className="bg-surface-container-lowest rounded-3xl border border-surface-variant shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[760px] text-left">
-            <thead className="bg-surface-container-low border-b border-surface-variant">
+          <table className="w-full min-w-[760px] text-left relative">
+            <thead className="sticky top-0 z-10 bg-surface-container-low border-b border-surface-variant shadow-sm backdrop-blur-md">
               <tr>
                 <th className="p-4 md:p-6 text-xs font-bold text-on-surface-variant uppercase tracking-wider">Nome</th>
                 <th className="p-4 md:p-6 text-xs font-bold text-on-surface-variant uppercase tracking-wider">CRA</th>
+                <th className="p-4 md:p-6 text-xs font-bold text-on-surface-variant uppercase tracking-wider">UBS Origem</th>
                 <th className="p-4 md:p-6 text-xs font-bold text-on-surface-variant uppercase tracking-wider">Telefone</th>
                 <th className="p-4 md:p-6 text-xs font-bold text-on-surface-variant uppercase tracking-wider">Nascimento</th>
                 <th className="p-4 md:p-6 text-xs font-bold text-on-surface-variant uppercase tracking-wider">Solicitações</th>
@@ -281,7 +346,7 @@ export default function GestorPacientes() {
               {loading ? (
                 Array(3).fill(0).map((_, i) => (
                   <tr key={i} className="animate-pulse">
-                    <td colSpan="6" className="p-4 md:p-6">
+                    <td colSpan="7" className="p-4 md:p-6">
                       <div className="h-5 bg-surface-container-high rounded w-full"></div>
                     </td>
                   </tr>
@@ -298,9 +363,20 @@ export default function GestorPacientes() {
                         {p.cra}
                       </span>
                     </td>
+                    {/* Coluna de UBS de origem — informativa, sem restrição de acesso */}
+                    <td className="p-4 md:p-6">
+                      {p.ubs_nome ? (
+                        <span className="inline-flex items-center gap-1 text-xs font-semibold text-blue-700 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded-full">
+                          <span className="material-symbols-outlined text-[11px]">local_hospital</span>
+                          {p.ubs_nome}
+                        </span>
+                      ) : (
+                        <span className="text-xs text-on-surface-variant">---</span>
+                      )}
+                    </td>
                     <td className="p-4 md:p-6 font-medium text-on-surface-variant text-sm">{p.telefone || '---'}</td>
                     <td className="p-4 md:p-6 font-medium text-on-surface-variant text-sm">
-                      {new Date(p.data_nascimento).toLocaleDateString('pt-BR')}
+                      {formatarDataBR(p.data_nascimento)}
                     </td>
                     <td className="p-4 md:p-6">
                       <span className={`inline-flex px-3 py-1 rounded-full text-xs font-bold ${
@@ -325,7 +401,7 @@ export default function GestorPacientes() {
                 ))
               ) : (
                 <tr>
-                  <td colSpan="6" className="p-16 text-center text-on-surface-variant font-medium">
+                  <td colSpan="7" className="p-16 text-center text-on-surface-variant font-medium">
                     Nenhum paciente cadastrado ainda.
                   </td>
                 </tr>
@@ -357,7 +433,7 @@ export default function GestorPacientes() {
       {modalAberto && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-on-surface/40 backdrop-blur-sm" onClick={() => setModalAberto(false)}></div>
-          <div className="relative w-full max-w-xl bg-surface-container-lowest rounded-[2rem] shadow-2xl overflow-hidden">
+          <div className="relative w-full max-w-3xl bg-surface-container-lowest rounded-[2rem] shadow-2xl overflow-hidden">
             <header className="p-6 md:p-8 border-b border-surface-variant flex justify-between items-center">
               <h3 className="text-xl font-extrabold text-on-background">Novo Paciente</h3>
               <button onClick={() => setModalAberto(false)} className="w-10 h-10 rounded-full hover:bg-surface-container-low flex items-center justify-center">

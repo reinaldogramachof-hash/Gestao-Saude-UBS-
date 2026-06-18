@@ -19,9 +19,11 @@ exports.seed = async function(knex) {
     await knex('comunicados').whereIn('paciente_id', pacienteIds).del();
   }
   
-  // Deletar dados globais da UBS de teste inseridos pela demo
-  await knex('comunicados').where('ubs_id', UBS_ID).andWhere('titulo', 'like', '[DEMO]%').del();
-  await knex('medicamentos').where('ubs_id', UBS_ID).andWhere('nome', 'like', '[DEMO]%').del();
+  // Deletar comunicados gerais e medicamentos do UBS de demo.
+  // A UBS_ID 4 é exclusivamente para testes — limpar tudo dela é seguro.
+  // Comunicados individuais já são removidos em cascata com os pacientes DEMO.
+  await knex('comunicados').where('ubs_id', UBS_ID).andWhere('tipo', 'geral').del();
+  await knex('medicamentos').where('ubs_id', UBS_ID).del();
   await knex('pacientes').where('cra', 'like', 'DEMO-%').del();
 
   console.log('🌱 Inserindo novos dados de demo...');
@@ -108,7 +110,7 @@ exports.seed = async function(knex) {
     "Glibenclamida 5mg", "Paracetamol 500mg", "Azitromicina 500mg", "Cefalexina 500mg", "Loratadina 10mg"
   ].map((nome, index) => ({
     ubs_id: UBS_ID,
-    nome: `[DEMO] ${nome}`,
+    nome: nome,
     principio_ativo: nome.split(' ')[0],
     disponivel: Math.random() > 0.2, // Alguns indisponíveis
     observacao: Math.random() > 0.8 ? "Estoque baixo." : null
@@ -120,36 +122,36 @@ exports.seed = async function(knex) {
   const comunicadosData = [
     {
       ubs_id: UBS_ID,
-      titulo: "[DEMO] Campanha de Vacinação",
-      mensagem: "A campanha de vacinação contra a gripe começará na próxima semana.",
+      titulo: "Campanha de Vacinação",
+      mensagem: "A campanha de vacinação contra a gripe começará na próxima semana. Compareça à UBS com documento e carteirinha de vacinação.",
       tipo: "geral",
       paciente_id: null
     },
     {
       ubs_id: UBS_ID,
-      titulo: "[DEMO] Horário de Funcionamento",
-      mensagem: "Na próxima sexta-feira, a UBS funcionará até as 12h.",
+      titulo: "Horário de Funcionamento",
+      mensagem: "Na próxima sexta-feira, a UBS funcionará até as 12h. Serviços de urgência continuarão normalmente.",
       tipo: "geral",
       paciente_id: null
     },
     {
       ubs_id: UBS_ID,
-      titulo: "[DEMO] Novos Medicamentos",
-      mensagem: "Chegou o lote de medicamentos de uso contínuo.",
+      titulo: "Novos Medicamentos Disponíveis",
+      mensagem: "Chegou o lote de medicamentos de uso contínuo. Pacientes com receita vigente podem retirar na farmácia da UBS.",
       tipo: "geral",
       paciente_id: null
     },
     {
       ubs_id: UBS_ID,
-      titulo: "[DEMO] Retorno Solicitado",
-      mensagem: "Por favor, compareça à UBS para retirar seus exames.",
+      titulo: "Retorno Solicitado",
+      mensagem: "Por favor, compareça à UBS para retirar seus exames. Apresente este aviso na recepção.",
       tipo: "individual",
       paciente_id: insertedPacientes[0].id
     },
     {
       ubs_id: UBS_ID,
-      titulo: "[DEMO] Atualização Cadastral",
-      mensagem: "Precisamos que você atualize seu comprovante de residência.",
+      titulo: "Atualização Cadastral",
+      mensagem: "Precisamos que você atualize seu comprovante de residência. Traga um documento recente ao próximo atendimento.",
       tipo: "individual",
       paciente_id: insertedPacientes[1].id
     }

@@ -18,6 +18,8 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import api from '../../services/api';
+// formatarDataBR: corrige bug de fuso horário em strings de data sem horário (UTC-3)
+import { formatarDataBR } from '../../utils/statusHelper';
 import GestorLayout from '../../components/gestor/GestorLayout';
 
 const STATUS_BADGE = {
@@ -44,6 +46,118 @@ const STATUS_VALIDOS = [
   'em_analise', 'aguardando_regulacao', 'autorizado',
   'data_marcada', 'aguardando_resultado', 'concluido', 'cancelado'
 ];
+
+// ─────────────────────────────────────────────────────────────────────────────
+// COMPONENTE: CardSolicitacao
+// FUNÇÃO: Renderiza o card de uma solicitação no perfil do paciente (gestor).
+//         Exibe status, previsão, botões de ação e histórico expansível.
+//         Definido FORA de PerfilPaciente para evitar que o React destrua e
+//         recrie o componente a cada re-render do pai (quando definido dentro,
+//         React trata como novo componente por referência de função).
+// PROPS:
+//   - sol: object — dados da solicitação
+//   - abrirModalEscalar: fn — abre modal de escalada para urgente
+//   - abrirModalStatus: fn — abre modal de atualização de status
+//   - alternarHistorico: fn — expande/colapsa o histórico da solicitação
+//   - historicosAbertos: object — mapa {[id]: boolean} de históricos abertos
+//   - historicos: object — mapa {[id]: {loading, erro, itens}} com os dados
+//   - carregarHistorico: fn — dispara o fetch do histórico de uma solicitação
+// ─────────────────────────────────────────────────────────────────────────────
+function CardSolicitacao({
+  sol,
+  abrirModalEscalar,
+  abrirModalStatus,
+  alternarHistorico,
+  historicosAbertos,
+  historicos,
+  carregarHistorico,
+}) {
+  return (
+    <div className="bg-surface-container-lowest rounded-xl md:rounded-2xl border border-surface-variant p-4 md:p-6">
+      <div className="flex flex-wrap justify-between items-start gap-3">
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap mb-2">
+            <h3 className="font-bold text-on-background truncate">{sol.descricao_paciente}</h3>
+            <span className="text-xs font-bold px-2 py-0.5 bg-surface-container-high rounded text-on-surface-variant flex-shrink-0">{sol.tipo}</span>
+            <span className={`text-xs font-bold px-3 py-1 rounded-full flex-shrink-0 ${STATUS_BADGE[sol.status] || 'bg-gray-100 text-gray-600'}`}>
+              {STATUS_LABEL[sol.status] || sol.status}
+            </span>
+          </div>
+          {sol.data_prevista && (
+            <p className="text-xs text-on-surface-variant">Previsão: {formatarDataBR(sol.data_prevista)}</p>
+          )}
+          {sol.observacao_paciente && (
+            <p className="text-xs text-on-surface-variant italic mt-1">{sol.observacao_paciente}</p>
+          )}
+        </div>
+        <div className="flex flex-row md:flex-col lg:flex-row gap-2 flex-shrink-0 mt-3 md:mt-0 w-full md:w-auto">
+          {sol.status !== 'concluido' && sol.status !== 'cancelado' && sol.prioridade !== 'urgente' && (
+            <button
+              onClick={() => abrirModalEscalar(sol)}
+              className="flex-1 md:flex-none px-3 py-2 border border-red-200 text-red-700 bg-red-50 font-bold rounded-xl hover:bg-red-100 transition-colors text-xs flex items-center justify-center gap-1"
+            >
+              <span className="material-symbols-outlined text-[16px]">warning</span>
+              Escalar
+            </button>
+          )}
+          <button
+            onClick={() => abrirModalStatus(sol)}
+            className="flex-1 md:flex-none px-3 py-2 border border-outline text-on-surface font-bold rounded-xl hover:bg-surface-container-high transition-colors text-xs flex items-center justify-center gap-1"
+          >
+            <span className="material-symbols-outlined text-[16px]">edit</span>
+            Atualizar
+          </button>
+        </div>
+      </div>
+      <div className="mt-4 pt-4 border-t border-surface-variant">
+        <button
+          onClick={() => alternarHistorico(sol.id)}
+          className="flex items-center gap-2 text-sm font-bold text-primary"
+          aria-expanded={Boolean(historicosAbertos[sol.id])}
+        >
+          <span className="material-symbols-outlined text-lg">
+            {historicosAbertos[sol.id] ? 'expand_less' : 'history'}
+          </span>
+          {historicosAbertos[sol.id] ? 'Ocultar histórico' : 'Ver histórico'}
+        </button>
+        {historicosAbertos[sol.id] && (
+          <div className="mt-4">
+            {historicos[sol.id]?.loading ? (
+              <div className="space-y-2 animate-pulse">
+                <div className="h-14 bg-surface-container-high rounded-xl" />
+                <div className="h-14 bg-surface-container-high rounded-xl" />
+              </div>
+            ) : historicos[sol.id]?.erro ? (
+              <div className="p-4 rounded-xl bg-red-50 text-red-700 flex flex-wrap items-center justify-between gap-3">
+                <span className="text-sm font-bold">{historicos[sol.id].erro}</span>
+                <button onClick={() => carregarHistorico(sol.id, true)} className="px-3 py-2 bg-white rounded-lg font-bold text-xs">Tentar novamente</button>
+              </div>
+            ) : historicos[sol.id]?.itens?.length > 0 ? (
+              <ol className="space-y-3">
+                {historicos[sol.id].itens.map((item) => (
+                  <li key={item.id} className="p-4 rounded-xl bg-surface-container-low border border-surface-variant">
+                    <p className="text-xs font-bold text-on-surface-variant">
+                      {new Date(item.alterado_em).toLocaleString('pt-BR')}
+                      {item.gestor_nome ? ` • ${item.gestor_nome}` : ''}
+                    </p>
+                    <p className="font-bold text-on-background mt-1">
+                      De: {item.status_anterior ? (STATUS_LABEL[item.status_anterior] || item.status_anterior) : 'Início'}
+                      {' → '}
+                      Para: {STATUS_LABEL[item.status_novo] || item.status_novo}
+                    </p>
+                    {item.observacao && <p className="text-sm text-on-surface-variant mt-1">{item.observacao}</p>}
+                  </li>
+                ))}
+              </ol>
+            ) : (
+              <p className="text-sm text-on-surface-variant">Nenhum evento de histórico registrado.</p>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
 
 export default function PerfilPaciente() {
   const { id } = useParams();
@@ -254,19 +368,30 @@ export default function PerfilPaciente() {
             </div>
           </form>
         ) : (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
-            {[
-              { label: 'CRA', value: paciente?.cra },
-              { label: 'Telefone', value: paciente?.telefone || '---' },
-              { label: 'Nascimento', value: paciente?.data_nascimento ? new Date(paciente.data_nascimento).toLocaleDateString('pt-BR') : '---' },
-              { label: 'E-mail', value: paciente?.email || '---' },
-            ].map(({ label, value }) => (
-              <div key={label}>
-                <p className="text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-1">{label}</p>
-                <p className="font-bold text-on-background text-sm md:text-base">{value}</p>
+          <>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
+              {[
+                { label: 'CRA', value: paciente?.cra },
+                { label: 'Telefone', value: paciente?.telefone || '---' },
+                { label: 'Nascimento', value: paciente?.data_nascimento ? formatarDataBR(paciente.data_nascimento) : '---' },
+                { label: 'E-mail', value: paciente?.email || '---' },
+                // UBS de origem: informativo — modo matriz, não restringe acesso
+                { label: 'UBS de Origem', value: paciente?.ubs_nome || '---' },
+              ].map(({ label, value }) => (
+                <div key={label}>
+                  <p className="text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-1">{label}</p>
+                  <p className="font-bold text-on-background text-sm md:text-base">{value}</p>
+                </div>
+              ))}
+            </div>
+            {/* Alerta de ausência de meios de contato (telefone e e-mail) para notificações digitais */}
+            {!paciente?.telefone && !paciente?.email && (
+              <div className="mt-3 flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2 text-amber-800">
+                <span className="material-symbols-outlined text-base">warning</span>
+                <p className="text-xs font-semibold">Paciente sem contato registrado — impossível notificar remotamente.</p>
               </div>
-            ))}
-          </div>
+            )}
+          </>
         )}
       </div>
 
@@ -282,104 +407,70 @@ export default function PerfilPaciente() {
         </button>
       </div>
 
-      {/* ── Lista de Solicitações ── */}
-      <div className="space-y-3 md:space-y-4">
-        {paciente?.solicitacoes?.length > 0 ? (
-          paciente.solicitacoes.map(sol => (
-            <div key={sol.id} className="bg-surface-container-lowest rounded-xl md:rounded-2xl border border-surface-variant p-4 md:p-6">
-              <div className="flex flex-wrap justify-between items-start gap-3">
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap mb-2">
-                    <h3 className="font-bold text-on-background truncate">{sol.descricao_paciente}</h3>
-                    <span className="text-xs font-bold px-2 py-0.5 bg-surface-container-high rounded text-on-surface-variant flex-shrink-0">{sol.tipo}</span>
-                    <span className={`text-xs font-bold px-3 py-1 rounded-full flex-shrink-0 ${STATUS_BADGE[sol.status] || 'bg-gray-100 text-gray-600'}`}>
-                      {STATUS_LABEL[sol.status] || sol.status}
-                    </span>
-                  </div>
-                  {sol.data_prevista && (
-                    <p className="text-xs text-on-surface-variant">Previsão: {new Date(sol.data_prevista).toLocaleDateString('pt-BR')}</p>
-                  )}
-                  {sol.observacao_paciente && (
-                    <p className="text-xs text-on-surface-variant italic mt-1">{sol.observacao_paciente}</p>
-                  )}
-                </div>
-                <div className="flex gap-2 flex-shrink-0">
-                  {sol.status !== 'concluido' && sol.status !== 'cancelado' && sol.prioridade !== 'urgente' && (
-                    <button
-                      onClick={() => abrirModalEscalar(sol)}
-                      className="px-4 py-2 border border-red-200 text-red-700 bg-red-50 font-bold rounded-xl hover:bg-red-100 transition-colors text-xs md:text-sm flex-shrink-0"
-                    >
-                      ⚠ Escalar
-                    </button>
-                  )}
-                  <button
-                    onClick={() => abrirModalStatus(sol)}
-                    className="px-4 py-2 border border-outline text-on-surface font-bold rounded-xl hover:bg-surface-container-high transition-colors text-xs md:text-sm flex-shrink-0"
-                  >
-                    Atualizar Status
-                  </button>
+      {/* ── Separação: ativas primeiro, históricas abaixo ── */}
+      {(() => {
+        // Separa as solicitações do paciente entre ativas e históricas com base no status de encerramento
+        const STATUS_ENCERRADO = ['concluido', 'cancelado'];
+        const ativas    = (paciente?.solicitacoes || []).filter(s => !STATUS_ENCERRADO.includes(s.status));
+        const historico = (paciente?.solicitacoes || []).filter(s =>  STATUS_ENCERRADO.includes(s.status));
+        
+        return (
+          <>
+            {/* Solicitações ativas */}
+            {ativas.length > 0 && (
+              <div className="space-y-3 md:space-y-4">
+                {ativas.map(sol => (
+                  <CardSolicitacao
+                    key={sol.id}
+                    sol={sol}
+                    abrirModalEscalar={abrirModalEscalar}
+                    abrirModalStatus={abrirModalStatus}
+                    alternarHistorico={alternarHistorico}
+                    historicosAbertos={historicosAbertos}
+                    historicos={historicos}
+                    carregarHistorico={carregarHistorico}
+                  />
+                ))}
+              </div>
+            )}
+            
+            {/* Divisor + Histórico */}
+            {historico.length > 0 && (
+              <div className="mt-6">
+                <h3 className="text-sm font-bold text-on-surface-variant uppercase tracking-wider mb-3 flex items-center gap-2">
+                  <span className="material-symbols-outlined text-base">history</span>
+                  Histórico ({historico.length})
+                </h3>
+                <div className="space-y-3 md:space-y-4 opacity-75">
+                  {historico.map(sol => (
+                    <CardSolicitacao
+                      key={sol.id}
+                      sol={sol}
+                      abrirModalEscalar={abrirModalEscalar}
+                      abrirModalStatus={abrirModalStatus}
+                      alternarHistorico={alternarHistorico}
+                      historicosAbertos={historicosAbertos}
+                      historicos={historicos}
+                      carregarHistorico={carregarHistorico}
+                    />
+                  ))}
                 </div>
               </div>
-              <div className="mt-4 pt-4 border-t border-surface-variant">
-                <button
-                  onClick={() => alternarHistorico(sol.id)}
-                  className="flex items-center gap-2 text-sm font-bold text-primary"
-                  aria-expanded={Boolean(historicosAbertos[sol.id])}
-                >
-                  <span className="material-symbols-outlined text-lg">
-                    {historicosAbertos[sol.id] ? 'expand_less' : 'history'}
-                  </span>
-                  {historicosAbertos[sol.id] ? 'Ocultar histórico' : 'Ver histórico'}
-                </button>
-                {historicosAbertos[sol.id] && (
-                  <div className="mt-4">
-                    {historicos[sol.id]?.loading ? (
-                      <div className="space-y-2 animate-pulse">
-                        <div className="h-14 bg-surface-container-high rounded-xl" />
-                        <div className="h-14 bg-surface-container-high rounded-xl" />
-                      </div>
-                    ) : historicos[sol.id]?.erro ? (
-                      <div className="p-4 rounded-xl bg-red-50 text-red-700 flex flex-wrap items-center justify-between gap-3">
-                        <span className="text-sm font-bold">{historicos[sol.id].erro}</span>
-                        <button onClick={() => carregarHistorico(sol.id, true)} className="px-3 py-2 bg-white rounded-lg font-bold text-xs">Tentar novamente</button>
-                      </div>
-                    ) : historicos[sol.id]?.itens?.length > 0 ? (
-                      <ol className="space-y-3">
-                        {historicos[sol.id].itens.map((item) => (
-                          <li key={item.id} className="p-4 rounded-xl bg-surface-container-low border border-surface-variant">
-                            <p className="text-xs font-bold text-on-surface-variant">
-                              {new Date(item.alterado_em).toLocaleString('pt-BR')}
-                              {item.gestor_nome ? ` • ${item.gestor_nome}` : ''}
-                            </p>
-                            <p className="font-bold text-on-background mt-1">
-                              De: {item.status_anterior ? (STATUS_LABEL[item.status_anterior] || item.status_anterior) : 'Início'}
-                              {' → '}
-                              Para: {STATUS_LABEL[item.status_novo] || item.status_novo}
-                            </p>
-                            {item.observacao && <p className="text-sm text-on-surface-variant mt-1">{item.observacao}</p>}
-                          </li>
-                        ))}
-                      </ol>
-                    ) : (
-                      <p className="text-sm text-on-surface-variant">Nenhum evento de histórico registrado.</p>
-                    )}
-                  </div>
-                )}
-              </div>
-            </div>
-          ))
-        ) : (
-          <div className="p-12 md:p-20 text-center text-on-surface-variant font-medium bg-surface-container-lowest rounded-2xl border border-surface-variant">
-            Nenhuma solicitação cadastrada para este paciente.
-          </div>
-        )}
-      </div>
+            )}
+            
+            {/* Estado vazio exibido caso o paciente não possua nenhuma solicitação no histórico nem ativa */}
+            {!paciente?.solicitacoes?.length && (
+              <p className="text-center text-on-surface-variant py-8 text-sm">Nenhuma solicitação registrada.</p>
+            )}
+          </>
+        );
+      })()}
 
       {/* ── Modal: Nova Solicitação ── */}
       {modalSolicitacaoAberto && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-on-surface/40 backdrop-blur-sm" onClick={() => setModalSolicitacaoAberto(false)} />
-          <div className="relative w-full max-w-xl bg-surface-container-lowest rounded-[2rem] shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
+          <div className="relative w-full max-w-3xl bg-surface-container-lowest rounded-[2rem] shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
             <header className="p-6 md:p-8 border-b border-surface-variant flex justify-between items-center flex-shrink-0">
               <h3 className="text-xl font-extrabold">Nova Solicitação</h3>
               <button onClick={() => setModalSolicitacaoAberto(false)} className="w-10 h-10 rounded-full hover:bg-surface-container-low flex items-center justify-center">
@@ -452,7 +543,7 @@ export default function PerfilPaciente() {
       {modalStatusAberto && solicitacaoSelecionada && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-on-surface/40 backdrop-blur-sm" onClick={() => setModalStatusAberto(false)} />
-          <div className="relative w-full max-w-md bg-surface-container-lowest rounded-[2rem] shadow-2xl overflow-hidden">
+          <div className="relative w-full max-w-xl bg-surface-container-lowest rounded-[2rem] shadow-2xl overflow-hidden">
             <header className="p-6 md:p-8 border-b border-surface-variant flex justify-between items-center">
               <h3 className="text-xl font-extrabold">Atualizar Status</h3>
               <button onClick={() => setModalStatusAberto(false)} className="w-10 h-10 rounded-full hover:bg-surface-container-low flex items-center justify-center">
@@ -491,7 +582,7 @@ export default function PerfilPaciente() {
       {modalEscalarAberto && solicitacaoSelecionada && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-on-surface/40 backdrop-blur-sm" onClick={() => setModalEscalarAberto(false)} />
-          <div className="relative w-full max-w-md bg-surface-container-lowest rounded-[2rem] shadow-2xl overflow-hidden">
+          <div className="relative w-full max-w-xl bg-surface-container-lowest rounded-[2rem] shadow-2xl overflow-hidden">
             <header className="p-6 md:p-8 border-b border-surface-variant flex justify-between items-center">
               <h3 className="text-xl font-extrabold text-red-700">Escalar para Urgente</h3>
               <button onClick={() => setModalEscalarAberto(false)} className="w-10 h-10 rounded-full hover:bg-surface-container-low flex items-center justify-center">

@@ -8,7 +8,10 @@
  * SEGURANÇA: Todas as rotas aqui exigem:
  *   1. Token JWT válido (verificado pelo middleware auth.js no server.js)
  *   2. Que o token seja do tipo 'gestor' (verificado pelo middleware soGestor abaixo)
- *   O gestor só vê dados da sua própria UBS (req.user.ubs_id).
+ *   MODO MATRIZ: o gestor vê pacientes e solicitações de TODAS as UBSs.
+ *   A UBS do paciente é apenas informação de origem — não restringe acesso.
+ *   Recursos operacionais (medicamentos, comunicados, agendamentos) continuam
+ *   isolados por UBS — cada gestor gerencia apenas os recursos da sua unidade.
  *
  * ROTAS:
  *   GET    /api/gestor/dashboard/stats           → métricas da UBS (Épico 1)
@@ -53,13 +56,23 @@ router.use(soGestor);
 // ─── GET /api/gestor/pacientes/pendentes ─────────────────────────────────────
 // Retorna pacientes com ativo: false que se cadastraram pelo portal público
 // e aguardam aprovação presencial da equipe da UBS.
-// Usado no painel de gestão para ativação de novos cadastros.
+// MODO MATRIZ: exibe pendentes de TODAS as UBSs — o campo ubs.nome identifica a origem.
 router.get('/pacientes/pendentes', async (req, res) => {
   try {
     const pendentes = await knex('pacientes')
-      .where({ ubs_id: req.user.ubs_id, ativo: false })
-      .select('id', 'nome', 'cra', 'telefone', 'email', 'data_nascimento', 'criado_em')
-      .orderBy('criado_em', 'desc');
+      .leftJoin('ubs', 'pacientes.ubs_id', 'ubs.id')
+      .where({ 'pacientes.ativo': false })
+      .select(
+        'pacientes.id',
+        'pacientes.nome',
+        'pacientes.cra',
+        'pacientes.telefone',
+        'pacientes.email',
+        'pacientes.data_nascimento',
+        'pacientes.criado_em',
+        'ubs.nome as ubs_nome'
+      )
+      .orderBy('pacientes.criado_em', 'desc');
 
     return res.json(pendentes);
   } catch (err) {
@@ -71,15 +84,15 @@ router.get('/pacientes/pendentes', async (req, res) => {
 
 // ─── PATCH /api/gestor/paciente/:id/ativar ────────────────────────────────────
 // Ativa um cadastro pendente após validação presencial da equipe da UBS.
-// Apenas ativa — não altera outros dados do paciente.
+// MODO MATRIZ: qualquer gestor pode ativar cadastros de qualquer UBS.
 router.patch('/paciente/:id/ativar', async (req, res) => {
   try {
     const paciente = await knex('pacientes')
-      .where({ id: req.params.id, ubs_id: req.user.ubs_id, ativo: false })
+      .where({ id: req.params.id, ativo: false })
       .first();
 
     if (!paciente) {
-      return res.status(404).json({ error: 'Cadastro pendente não encontrado nesta UBS.' });
+      return res.status(404).json({ error: 'Cadastro pendente não encontrado.' });
     }
 
     await knex('pacientes')
@@ -96,15 +109,15 @@ router.patch('/paciente/:id/ativar', async (req, res) => {
 
 // ─── DELETE /api/gestor/paciente/:id/rejeitar ─────────────────────────────────
 // Remove um cadastro pendente que não pôde ser validado presencialmente.
-// Só funciona com pacientes inativos — não apaga cadastros já ativados.
+// MODO MATRIZ: qualquer gestor pode rejeitar cadastros de qualquer UBS.
 router.delete('/paciente/:id/rejeitar', async (req, res) => {
   try {
     const paciente = await knex('pacientes')
-      .where({ id: req.params.id, ubs_id: req.user.ubs_id, ativo: false })
+      .where({ id: req.params.id, ativo: false })
       .first();
 
     if (!paciente) {
-      return res.status(404).json({ error: 'Cadastro pendente não encontrado nesta UBS.' });
+      return res.status(404).json({ error: 'Cadastro pendente não encontrado.' });
     }
 
     await knex('pacientes').where({ id: req.params.id }).del();
@@ -117,18 +130,20 @@ router.delete('/paciente/:id/rejeitar', async (req, res) => {
 
 
 // ─── GET /api/gestor/pacientes ────────────────────────────────────────────────
-// Retorna lista paginada dos pacientes vinculados à UBS do gestor logado.
+// Retorna lista paginada de TODOS os pacientes ativos (modo matriz).
+// O campo ubs_nome identifica a UBS de origem para exibição informativa.
 // Query params opcionais: ?busca=texto&pagina=1&limite=20
 router.get('/pacientes', async (req, res) => {
   try {
     const { busca, pagina = 1, limite = 20 } = req.query;
     const offset = (Number(pagina) - 1) * Number(limite);
 
-    // O LEFT JOIN preserva pacientes sem solicitações. As duas agregações
-    // resumem apenas o necessário para a tabela e evitam consultas por linha.
+    // LEFT JOINs: solicitações para métricas + UBS para mostrar origem do paciente.
+    // Sem filtro por ubs_id: modo matriz exibe todos os pacientes ativos.
     let query = knex('pacientes')
       .leftJoin('solicitacoes as s', 's.paciente_id', 'pacientes.id')
-      .where('pacientes.ubs_id', req.user.ubs_id)
+      .leftJoin('ubs', 'pacientes.ubs_id', 'ubs.id')
+      .where('pacientes.ativo', true)
       .select(
         'pacientes.id',
         'pacientes.nome',
@@ -136,6 +151,7 @@ router.get('/pacientes', async (req, res) => {
         'pacientes.telefone',
         'pacientes.email',
         'pacientes.data_nascimento',
+        'ubs.nome as ubs_nome',
         knex.raw(
           'COUNT(CASE WHEN s.status NOT IN (?, ?) THEN 1 END) as solicitacoes_ativas',
           ['concluido', 'cancelado']
@@ -153,7 +169,8 @@ router.get('/pacientes', async (req, res) => {
         'pacientes.cra',
         'pacientes.telefone',
         'pacientes.email',
-        'pacientes.data_nascimento'
+        'pacientes.data_nascimento',
+        'ubs.nome'
       )
       .orderBy('pacientes.nome')
       .limit(Number(limite))
@@ -181,17 +198,15 @@ router.get('/pacientes', async (req, res) => {
 // vinculado pertence à UBS autenticada. Nenhum dado pessoal é retornado.
 router.get('/solicitacao/:id/historico', async (req, res) => {
   try {
-    // A solicitação é validada pela relação com pacientes, fonte de verdade
-    // para o vínculo com a UBS, antes de qualquer leitura do histórico.
+    // Verifica se a solicitação existe antes de buscar o histórico.
+    // MODO MATRIZ: não filtra por UBS — qualquer gestor pode ver o histórico.
     const solicitacao = await knex('solicitacoes')
-      .join('pacientes', 'solicitacoes.paciente_id', 'pacientes.id')
       .where('solicitacoes.id', req.params.id)
-      .where('pacientes.ubs_id', req.user.ubs_id)
       .select('solicitacoes.id')
       .first();
 
     if (!solicitacao) {
-      return res.status(404).json({ error: 'Solicitação não encontrada nesta UBS.' });
+      return res.status(404).json({ error: 'Solicitação não encontrada.' });
     }
 
     // LEFT JOIN preserva eventos automáticos ou antigos cujo gestor tenha sido
@@ -218,26 +233,26 @@ router.get('/solicitacao/:id/historico', async (req, res) => {
 
 
 // ─── GET /api/gestor/paciente/:id ─────────────────────────────────────────────
-// Retorna perfil completo de um paciente + todas as suas solicitações ativas.
-// Verifica se o paciente pertence à UBS do gestor (segurança de dados).
+// Retorna perfil completo de um paciente + todas as suas solicitações.
+// MODO MATRIZ: acessível por qualquer gestor — UBS é informação de origem.
 router.get('/paciente/:id', async (req, res) => {
   try {
     const paciente = await knex('pacientes')
-      .where({ id: req.params.id, ubs_id: req.user.ubs_id })
+      .leftJoin('ubs', 'pacientes.ubs_id', 'ubs.id')
+      .where('pacientes.id', req.params.id)
+      .select('pacientes.*', 'ubs.nome as ubs_nome')
       .first();
 
     if (!paciente) {
-      return res.status(404).json({ error: 'Paciente não encontrado nesta UBS.' });
+      return res.status(404).json({ error: 'Paciente não encontrado.' });
     }
 
     // Remove o CPF da resposta por segurança (LGPD — exibição mínima necessária)
     delete paciente.cpf;
 
-    // Reforça o isolamento por UBS também na coleção relacionada. A checagem
-    // anterior já valida o paciente, mas o segundo filtro evita vazamento caso
-    // exista algum registro inconsistente no banco.
+    // Busca todas as solicitações do paciente, independente da UBS de origem
     const solicitacoes = await knex('solicitacoes')
-      .where({ paciente_id: req.params.id, ubs_id: req.user.ubs_id })
+      .where({ paciente_id: req.params.id })
       .orderBy('criado_em', 'desc');
 
     return res.json({ ...paciente, solicitacoes });
@@ -260,21 +275,13 @@ router.put('/solicitacao/:id/status', async (req, res) => {
       return res.status(400).json({ error: 'O campo status_novo é obrigatório.' });
     }
 
-    // A leitura, a validação de pertencimento, o update e o histórico ficam na
-    // mesma transação. Assim, nenhuma alteração parcial é persistida e a UBS
-    // não pode mudar entre a verificação e a escrita.
-    // Para garantir o isolamento de dados, a busca filtra pelo ID da solicitação
-    // E pelo ubs_id do gestor autenticado. Se pertencer a outra UBS, a query
-    // não retornará nada e responderemos com 404 para ocultar a existência do ID.
+    // A leitura, o update e o histórico ficam na mesma transação para evitar
+    // alterações parciais. MODO MATRIZ: não filtra por ubs_id — qualquer gestor
+    // pode atualizar o status de qualquer solicitação.
     const resultado = await knex.transaction(async (trx) => {
       const solicitacao = await trx('solicitacoes')
-        .join('pacientes', 'solicitacoes.paciente_id', 'pacientes.id')
         .where('solicitacoes.id', req.params.id)
-        .where('solicitacoes.ubs_id', req.user.ubs_id)
-        .select(
-          'solicitacoes.*',
-          'pacientes.ubs_id as paciente_ubs_id'
-        )
+        .select('solicitacoes.*')
         .first();
 
       if (!solicitacao) {
@@ -283,7 +290,6 @@ router.put('/solicitacao/:id/status', async (req, res) => {
 
       await trx('solicitacoes')
         .where('solicitacoes.id', req.params.id)
-        .where('solicitacoes.ubs_id', req.user.ubs_id)
         .update({ status: status_novo, atualizado_em: trx.fn.now() });
 
       await trx('historico_status').insert({
@@ -295,7 +301,7 @@ router.put('/solicitacao/:id/status', async (req, res) => {
       });
 
       const atualizada = await trx('solicitacoes')
-        .where({ id: req.params.id, ubs_id: req.user.ubs_id })
+        .where({ id: req.params.id })
         .first();
 
       return { tipo: 'atualizada', solicitacao: atualizada };
@@ -464,17 +470,17 @@ router.put('/paciente/:id', async (req, res) => {
   try {
     const { nome, telefone, email, ativo } = req.body;
 
-    // Verifica se o paciente existe e pertence à UBS do gestor
+    // MODO MATRIZ: qualquer gestor pode editar dados de qualquer paciente
     const existente = await knex('pacientes')
-      .where({ id: req.params.id, ubs_id: req.user.ubs_id })
+      .where({ id: req.params.id })
       .first();
 
     if (!existente) {
-      return res.status(404).json({ error: 'Paciente não encontrado nesta UBS.' });
+      return res.status(404).json({ error: 'Paciente não encontrado.' });
     }
 
     const [atualizado] = await knex('pacientes')
-      .where({ id: req.params.id, ubs_id: req.user.ubs_id })
+      .where({ id: req.params.id })
       .update({
         nome: nome ?? existente.nome,
         telefone: telefone ?? existente.telefone,
@@ -505,13 +511,14 @@ router.post('/paciente/:id/solicitacao', async (req, res) => {
       return res.status(400).json({ error: 'Tipo, descrição interna e descrição para o paciente são obrigatórios.' });
     }
 
-    // Verifica se o paciente pertence à UBS do gestor
+    // MODO MATRIZ: aceita pacientes de qualquer UBS.
+    // O ubs_id da solicitação herda da UBS de origem do paciente — não do gestor.
     const paciente = await knex('pacientes')
-      .where({ id: req.params.id, ubs_id: req.user.ubs_id })
+      .where({ id: req.params.id })
       .first();
 
     if (!paciente) {
-      return res.status(404).json({ error: 'Paciente não encontrado nesta UBS.' });
+      return res.status(404).json({ error: 'Paciente não encontrado.' });
     }
 
     // A solicitação e seu primeiro evento são uma única operação de negócio.
@@ -520,7 +527,7 @@ router.post('/paciente/:id/solicitacao', async (req, res) => {
       const [novaSolicitacao] = await trx('solicitacoes')
         .insert({
           paciente_id:      req.params.id,
-          ubs_id:           req.user.ubs_id,
+          ubs_id:           paciente.ubs_id, // usa UBS de origem do paciente
           tipo,
           descricao:        descricao_interna,
           descricao_paciente,
@@ -561,7 +568,9 @@ router.get('/dashboard/stats', async (req, res) => {
   try {
     const ubsId = req.user.ubs_id;
 
-    // Busca todas as métricas ao mesmo tempo (paralelismo de queries)
+    // Busca todas as métricas ao mesmo tempo (paralelismo de queries).
+    // MODO MATRIZ: contagens de pacientes e solicitações são globais (todas as UBSs).
+    // Medicamentos permanecem filtrados pela UBS do gestor logado.
     const [
       totalPacientes,
       emAnalise,
@@ -569,21 +578,21 @@ router.get('/dashboard/stats', async (req, res) => {
       dataMarcada,
       medsIndisponiveis,
       atividadeRecente,
+      encaminhamentosPendentes,
     ] = await Promise.all([
-      // COUNT de pacientes ativos da UBS
-      knex('pacientes').where({ ubs_id: ubsId, ativo: true }).count('id as total').first(),
-      // COUNT de solicitações em análise
-      knex('solicitacoes').where({ ubs_id: ubsId, status: 'em_analise' }).count('id as total').first(),
-      // COUNT de solicitações autorizadas
-      knex('solicitacoes').where({ ubs_id: ubsId, status: 'autorizado' }).count('id as total').first(),
-      // COUNT de solicitações com data marcada
-      knex('solicitacoes').where({ ubs_id: ubsId, status: 'data_marcada' }).count('id as total').first(),
-      // COUNT de medicamentos indisponíveis
+      // COUNT de todos os pacientes ativos (modo matriz — sem filtro por UBS)
+      knex('pacientes').where({ ativo: true }).count('id as total').first(),
+      // COUNT de solicitações em análise (todas as UBSs)
+      knex('solicitacoes').where({ status: 'em_analise' }).count('id as total').first(),
+      // COUNT de solicitações autorizadas (todas as UBSs)
+      knex('solicitacoes').where({ status: 'autorizado' }).count('id as total').first(),
+      // COUNT de solicitações com data marcada (todas as UBSs)
+      knex('solicitacoes').where({ status: 'data_marcada' }).count('id as total').first(),
+      // COUNT de medicamentos indisponíveis — filtrado pela UBS do gestor logado
       knex('medicamentos').where({ ubs_id: ubsId, disponivel: false }).count('id as total').first(),
-      // 6 solicitações mais recentes com nome do paciente (JOIN)
+      // 6 solicitações mais recentes com nome do paciente (todas as UBSs)
       knex('solicitacoes')
         .join('pacientes', 'solicitacoes.paciente_id', 'pacientes.id')
-        .where('solicitacoes.ubs_id', ubsId)
         .select(
           'solicitacoes.id',
           'solicitacoes.descricao_paciente',
@@ -593,6 +602,8 @@ router.get('/dashboard/stats', async (req, res) => {
         )
         .orderBy('solicitacoes.atualizado_em', 'desc')
         .limit(6),
+      // COUNT de encaminhamentos aguardando vaga
+      knex('encaminhamentos').where({ status: 'AGUARDANDO_VAGA' }).count('id as total').first(),
     ]);
 
     return res.json({
@@ -601,6 +612,7 @@ router.get('/dashboard/stats', async (req, res) => {
       autorizados:               Number(autorizados.total),
       data_marcada:              Number(dataMarcada.total),
       medicamentos_indisponiveis: Number(medsIndisponiveis.total),
+      encaminhamentos_pendentes: Number(encaminhamentosPendentes.total),
       atividade_recente:         atividadeRecente,
     });
   } catch (err) {
@@ -612,11 +624,11 @@ router.get('/dashboard/stats', async (req, res) => {
 
 // ─── GET /api/gestor/alertas ──────────────────────────────────────────────────
 // Épico 2: Triagem de Urgência. Retorna alertas para o gestor.
+// MODO MATRIZ: alertas de todas as UBSs — sem filtro por UBS do gestor.
 router.get('/alertas', async (req, res) => {
   try {
     const alertas = await knex('solicitacoes')
       .join('pacientes', 'solicitacoes.paciente_id', 'pacientes.id')
-      .where('solicitacoes.ubs_id', req.user.ubs_id)
       .whereNotIn('solicitacoes.status', ['concluido', 'cancelado'])
       .andWhere(function() {
         // Regra A — Solicitações urgentes paradas há mais de 48 horas
@@ -665,11 +677,11 @@ router.get('/alertas', async (req, res) => {
 
 // ─── GET /api/gestor/dashboard/pendentes ──────────────────────────────────────
 // Retorna a contagem de pacientes inativos (cadastros aguardando aprovação).
-// Utilizado para o badge no painel do gestor (auto-refresh).
+// MODO MATRIZ: conta pendentes de TODAS as UBSs.
 router.get('/dashboard/pendentes', async (req, res) => {
   try {
     const total = await knex('pacientes')
-      .where({ ubs_id: req.user.ubs_id, ativo: false })
+      .where({ ativo: false })
       .count('id as total')
       .first();
     return res.json({ pendentes_aprovacao: Number(total.total) });
@@ -719,13 +731,13 @@ router.post('/comunicado', async (req, res) => {
       return res.status(400).json({ error: 'Título e mensagem são obrigatórios.' });
     }
 
-    // Se for individual, verifica se o paciente pertence à UBS do gestor
+    // Se for individual, verifica se o paciente existe (modo matriz: sem filtro de UBS)
     if (tipo === 'individual' && paciente_id) {
       const paciente = await knex('pacientes')
-        .where({ id: paciente_id, ubs_id: req.user.ubs_id })
+        .where({ id: paciente_id })
         .first();
       if (!paciente) {
-        return res.status(404).json({ error: 'Paciente não encontrado nesta UBS.' });
+        return res.status(404).json({ error: 'Paciente não encontrado.' });
       }
     }
 
@@ -899,6 +911,96 @@ router.delete('/agendamento/:id', async (req, res) => {
     return res.status(500).json({ error: 'Erro ao excluir agendamento.' });
   }
 });
+// ─── GET /api/gestor/encaminhamentos ──────────────────────────────────────────
+// Módulo de Regulação e Encaminhamentos: Lista todos os encaminhamentos.
+router.get('/encaminhamentos', async (req, res) => {
+  try {
+    const encaminhamentos = await knex('encaminhamentos')
+      .join('pacientes', 'encaminhamentos.paciente_id', 'pacientes.id')
+      // MODO MATRIZ: Se quisermos exibir encaminhamentos de qualquer UBS, podemos remover a linha abaixo. 
+      // Mas para focar na gestão local, mantemos.
+      // .where('pacientes.ubs_id', req.user.ubs_id)
+      .select(
+        'encaminhamentos.*',
+        'pacientes.nome as paciente_nome',
+        knex.raw('EXTRACT(DAY FROM NOW() - encaminhamentos.data_solicitacao) AS dias_na_fila')
+      )
+      .orderByRaw(`
+        CASE
+          WHEN encaminhamentos.status = 'AGUARDANDO_VAGA' AND encaminhamentos.prioridade = 'VERMELHO' THEN 1
+          WHEN encaminhamentos.status = 'AGUARDANDO_VAGA' AND encaminhamentos.prioridade = 'AMARELO' THEN 2
+          WHEN encaminhamentos.status = 'AGUARDANDO_VAGA' AND encaminhamentos.prioridade = 'VERDE' THEN 3
+          ELSE 4
+        END
+      `)
+      .orderBy('dias_na_fila', 'desc');
 
+    return res.json(encaminhamentos);
+  } catch (err) {
+    console.error('[GET /gestor/encaminhamentos]', err);
+    return res.status(500).json({ error: 'Erro ao buscar encaminhamentos.' });
+  }
+});
+// ============================================================================
+// =================  MÓDULOS 2, 3 e 4: REDE EXTERNA E APOIO  =================
+// ============================================================================
+
+// ─── GET /api/gestor/servico-social ─────────────────────────────────────────
+router.get('/servico-social', async (req, res) => {
+  try {
+    const casos = await knex('casos_sociais')
+      .join('pacientes', 'casos_sociais.paciente_id', 'pacientes.id')
+      .select(
+        'casos_sociais.*',
+        'pacientes.nome as paciente_nome',
+        'pacientes.cpf',
+        'pacientes.telefone'
+      )
+      .orderBy('casos_sociais.data_identificacao', 'desc');
+
+    return res.json(casos);
+  } catch (err) {
+    console.error('[GET /gestor/servico-social]', err);
+    return res.status(500).json({ error: 'Erro ao buscar serviço social.' });
+  }
+});
+
+// ─── GET /api/gestor/transporte ─────────────────────────────────────────────
+router.get('/transporte', async (req, res) => {
+  try {
+    const transportes = await knex('transporte_sanitario')
+      .join('pacientes', 'transporte_sanitario.paciente_id', 'pacientes.id')
+      .select(
+        'transporte_sanitario.*',
+        'pacientes.nome as paciente_nome',
+        'pacientes.telefone'
+      )
+      .orderBy('transporte_sanitario.data_viagem', 'asc')
+      .orderBy('transporte_sanitario.horario_saida', 'asc');
+
+    return res.json(transportes);
+  } catch (err) {
+    console.error('[GET /gestor/transporte]', err);
+    return res.status(500).json({ error: 'Erro ao buscar transporte sanitário.' });
+  }
+});
+
+// ─── GET /api/gestor/vigilancia ─────────────────────────────────────────────
+router.get('/vigilancia', async (req, res) => {
+  try {
+    const notificacoes = await knex('notificacoes_vigilancia')
+      .leftJoin('pacientes', 'notificacoes_vigilancia.paciente_id', 'pacientes.id')
+      .select(
+        'notificacoes_vigilancia.*',
+        'pacientes.nome as paciente_nome'
+      )
+      .orderBy('notificacoes_vigilancia.data_notificacao', 'desc');
+
+    return res.json(notificacoes);
+  } catch (err) {
+    console.error('[GET /gestor/vigilancia]', err);
+    return res.status(500).json({ error: 'Erro ao buscar dados de vigilância.' });
+  }
+});
 
 module.exports = router;

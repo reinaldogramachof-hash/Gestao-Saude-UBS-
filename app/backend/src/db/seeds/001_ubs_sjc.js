@@ -100,21 +100,35 @@ exports.seed = async function(knex) {
 
   const senhaHash = await bcrypt.hash('senha123', 10);
 
-  // Busca os IDs das 3 primeiras UBSs reais para vincular os gestores de teste
+  // Busca os IDs das UBSs para vincular os gestores de teste
   const ubsCentro      = await knex('ubs').where('nome', 'UBS Centro').first();
   const ubsIndustrial  = await knex('ubs').where('nome', 'UBS Vila Industrial').first();
   const ubsSatelite    = await knex('ubs').where('nome', 'UBS Jardim Satélite').first();
+  // UBS Interlagos incluída para cobrir o fluxo de auto-cadastro na demo da banca
+  const ubsInterlagos  = await knex('ubs').where('nome', 'UBS Interlagos').first();
 
   if (!ubsCentro || !ubsIndustrial || !ubsSatelite) return;
 
   // Remove gestores de teste anteriores e recria (idempotente)
   await knex('usuarios_gestores')
-    .whereIn('email', ['centro@gestaoubs.dev', 'industrial@gestaoubs.dev', 'satelite@gestaoubs.dev'])
+    .whereIn('email', [
+      'centro@gestaoubs.dev',
+      'industrial@gestaoubs.dev',
+      'satelite@gestaoubs.dev',
+      'interlagos@gestaoubs.dev',
+    ])
     .del();
 
-  await knex('usuarios_gestores').insert([
+  const gestores = [
     { ubs_id: ubsCentro.id,     nome: 'Gestor Centro',     email: 'centro@gestaoubs.dev',     senha_hash: senhaHash, perfil: 'admin' },
     { ubs_id: ubsIndustrial.id, nome: 'Gestor Industrial', email: 'industrial@gestaoubs.dev', senha_hash: senhaHash, perfil: 'admin' },
     { ubs_id: ubsSatelite.id,   nome: 'Gestor Satélite',   email: 'satelite@gestaoubs.dev',   senha_hash: senhaHash, perfil: 'admin' },
-  ]);
+  ];
+
+  // Insere gestor de Interlagos apenas se a UBS existir no banco
+  if (ubsInterlagos) {
+    gestores.push({ ubs_id: ubsInterlagos.id, nome: 'Gestor Interlagos', email: 'interlagos@gestaoubs.dev', senha_hash: senhaHash, perfil: 'admin' });
+  }
+
+  await knex('usuarios_gestores').insert(gestores);
 };

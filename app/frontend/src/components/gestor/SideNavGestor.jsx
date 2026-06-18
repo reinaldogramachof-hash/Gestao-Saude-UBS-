@@ -1,23 +1,8 @@
-/**
- * COMPONENTE: SideNavGestor.jsx
- * -----------------------------------------------------------------------------
- * FUNÇÃO: Sidebar em seções do portal gestor, com drawer completo no mobile e
- *         modo icon-only retraível no desktop.
- *
- * COMPORTAMENTO:
- *   - Mobile: mantém largura w-72, textos, botão fechar e navegação por drawer.
- *   - Desktop expandido: exibe rótulos, nomes, perfil e ações completas.
- *   - Desktop retraído: exibe apenas ícones centralizados com title nativo.
- *   - Administração: visível somente para usuários com perfil admin.
- *
- * PROPS:
- *   - onFechar: fecha o drawer após uma navegação no mobile.
- *   - retraida: preferência persistida que controla apenas o desktop.
- *   - onToggle: alterna a largura desktop entre w-72 e w-16.
- */
+import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { usePWAInstall } from '../../hooks/usePWAInstall';
+import api from '../../services/api';
 
 const PERFIL_BADGE = {
   recepcionista: 'bg-blue-100 text-blue-700',
@@ -37,13 +22,34 @@ export default function SideNavGestor({ onFechar, retraida, onToggle }) {
   const navigate = useNavigate();
   const { podeInstalar, instalar, jaInstalado } = usePWAInstall();
 
-  // O destaque usa o trecho exclusivo de cada rota para acompanhar a navegação.
+  // Estado para contagem de cadastros pendentes
+  const [pendentes, setPendentes] = useState(0);
+
+  // Polling global para cadastros pendentes na Sidebar
+  useEffect(() => {
+    let montado = true;
+    const fetchPendentes = async () => {
+      try {
+        const res = await api.get('/gestor/dashboard/pendentes');
+        if (montado) setPendentes(res.data.pendentes_aprovacao);
+      } catch (err) {
+        // Ignora erros silenciosamente para não poluir console
+      }
+    };
+
+    fetchPendentes();
+    const intervalo = setInterval(fetchPendentes, 60000); // Consulta a cada 1 min
+    return () => {
+      montado = false;
+      clearInterval(intervalo);
+    };
+  }, []);
+
   const isActive = (path) =>
     pathname.includes(path)
       ? 'bg-primary/10 text-primary'
       : 'text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface';
 
-  // Fecha apenas o drawer mobile. No desktop, o callback não altera a retração.
   const handleNavegar = () => {
     if (onFechar) onFechar();
   };
@@ -53,7 +59,6 @@ export default function SideNavGestor({ onFechar, retraida, onToggle }) {
     navigate('/login-gestor');
   };
 
-  // As iniciais usam no máximo os dois primeiros nomes e toleram sessão sem nome.
   const iniciais = (user?.nome || 'Usuário')
     .split(' ')
     .filter(Boolean)
@@ -63,9 +68,9 @@ export default function SideNavGestor({ onFechar, retraida, onToggle }) {
     .toUpperCase();
 
   return (
-    <aside className={`w-72 ${retraida ? 'lg:w-16' : 'lg:w-72'} bg-surface-container-lowest border-r border-surface-variant flex flex-col h-full overflow-hidden transition-all duration-300`}>
-      {/* Cabeçalho mantém a versão completa no mobile mesmo com preferência retraída. */}
-      <header className={`relative p-6 ${retraida ? 'lg:p-3 lg:justify-center' : ''} border-b border-surface-variant flex items-center justify-between min-h-[88px] lg:min-h-[72px]`}>
+    <aside className={`w-72 ${retraida ? 'lg:w-16' : 'lg:w-72'} bg-surface-container-lowest border-r border-surface-variant flex flex-col h-full transition-all duration-300 relative z-20`}>
+      {/* Cabeçalho */}
+      <header className={`p-6 ${retraida ? 'lg:p-3 lg:justify-center' : ''} border-b border-surface-variant flex items-center justify-between min-h-[88px] lg:min-h-[72px] shrink-0`}>
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center shadow-lg shadow-primary/20 flex-shrink-0">
             <span className="material-symbols-outlined text-on-primary text-xl">health_and_safety</span>
@@ -83,23 +88,12 @@ export default function SideNavGestor({ onFechar, retraida, onToggle }) {
         >
           <span className="material-symbols-outlined text-lg">close</span>
         </button>
-
-        {/* Toggle fica ancorado no canto inferior direito e não aparece no mobile. */}
-        <button
-          type="button"
-          onClick={onToggle}
-          title={retraida ? 'Expandir menu' : 'Retrair menu'}
-          aria-label={retraida ? 'Expandir menu lateral' : 'Retrair menu lateral'}
-          className="hidden lg:flex absolute -bottom-3 right-2 z-10 w-7 h-7 rounded-lg bg-surface-container-high items-center justify-center hover:bg-primary/10 hover:text-primary transition-colors cursor-pointer text-on-surface-variant"
-        >
-          <span className="material-symbols-outlined text-base">
-            {retraida ? 'chevron_right' : 'chevron_left'}
-          </span>
-        </button>
       </header>
 
-      {/* A área central rola sem deslocar o perfil e as ações do rodapé. */}
-      <nav className="p-3 pt-4 flex-1 overflow-y-auto overflow-x-hidden">
+      {/* Navegação */}
+      {/* Removemos overflow-hidden no aside e mantemos overflow-y-auto no nav. 
+          O tooltip pode gerar um pequeno scroll horizontal no nav, mas a estética premium compensa. */}
+      <nav className="p-3 pt-4 flex-1 overflow-y-auto overflow-x-visible no-scrollbar">
         <NavItem
           to="/gestor/dashboard"
           icon="dashboard"
@@ -117,6 +111,7 @@ export default function SideNavGestor({ onFechar, retraida, onToggle }) {
           retraida={retraida}
           activeClass={isActive('pacientes')}
           onClick={handleNavegar}
+          badgeCount={pendentes}
         />
         <NavItem
           to="/gestor/agendamentos"
@@ -124,6 +119,39 @@ export default function SideNavGestor({ onFechar, retraida, onToggle }) {
           label="Agendamentos"
           retraida={retraida}
           activeClass={isActive('agendamentos')}
+          onClick={handleNavegar}
+        />
+        <SectionLabel label="REDE EXTERNA E APOIO" retraida={retraida} />
+        <NavItem
+          to="/gestor/regulacao"
+          icon="account_tree"
+          label="Regulação"
+          retraida={retraida}
+          activeClass={isActive('regulacao')}
+          onClick={handleNavegar}
+        />
+        <NavItem
+          to="/gestor/transporte"
+          icon="directions_bus"
+          label="Transporte Sanitário"
+          retraida={retraida}
+          activeClass={isActive('transporte')}
+          onClick={handleNavegar}
+        />
+        <NavItem
+          to="/gestor/servico-social"
+          icon="diversity_1"
+          label="Serviço Social"
+          retraida={retraida}
+          activeClass={isActive('servico-social')}
+          onClick={handleNavegar}
+        />
+        <NavItem
+          to="/gestor/vigilancia"
+          icon="coronavirus"
+          label="Vigilância e Surtos"
+          retraida={retraida}
+          activeClass={isActive('vigilancia')}
           onClick={handleNavegar}
         />
 
@@ -158,24 +186,38 @@ export default function SideNavGestor({ onFechar, retraida, onToggle }) {
               activeClass={isActive('usuarios')}
               onClick={handleNavegar}
             />
-            {/* Relatórios é informativo: não possui Link, href ou ação de clique. */}
-            <button
-              type="button"
-              disabled
-              title="Relatórios"
-              className={`w-full flex items-center gap-3 px-4 py-3 ${retraida ? 'lg:px-0 lg:justify-center' : ''} rounded-xl font-semibold text-sm text-on-surface-variant opacity-40 cursor-not-allowed`}
-            >
-              <span className="material-symbols-outlined text-xl flex-shrink-0">bar_chart_4_bars</span>
-              <span className={retraida ? 'lg:hidden' : ''}>Relatórios</span>
-              <span className={`${retraida ? 'lg:hidden' : ''} ml-auto text-[9px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full font-bold`}>
-                Em breve
+            {/* Relatórios é informativo e visualmente distinto (inativo) */}
+            <div className={`group relative w-full flex items-center gap-3 px-4 py-3 ${retraida ? 'lg:px-0 lg:justify-center opacity-50' : 'opacity-60'} rounded-xl font-semibold text-sm text-on-surface-variant cursor-not-allowed`}>
+              <div className="relative flex-shrink-0 flex items-center justify-center">
+                <span className="material-symbols-outlined text-xl">bar_chart_4_bars</span>
+                {retraida && (
+                  <span className="absolute -bottom-1 -right-1 w-4 h-4 bg-amber-100 text-amber-700 rounded-full border-2 border-surface-container-lowest hidden lg:flex items-center justify-center">
+                    <span className="material-symbols-outlined text-[10px]">lock</span>
+                  </span>
+                )}
+              </div>
+              <span className={`flex-1 flex items-center justify-between ${retraida ? 'lg:hidden' : ''}`}>
+                <span>Relatórios</span>
+                <span className="text-[9px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full font-bold">
+                  Em breve
+                </span>
               </span>
-            </button>
+
+              {/* Custom Tooltip para Relatórios */}
+              {retraida && (
+                <div className="hidden lg:group-hover:flex absolute left-full ml-3 px-3 py-2 bg-gray-900 text-white text-xs font-bold rounded-lg whitespace-nowrap z-[100] pointer-events-none shadow-xl items-center gap-2 border border-gray-700">
+                  Relatórios
+                  <span className="bg-amber-500 text-white text-[10px] font-extrabold px-1.5 py-0.5 rounded-full">
+                    Em breve
+                  </span>
+                </div>
+              )}
+            </div>
           </>
         )}
       </nav>
 
-      {/* Identificação contextual permanece visível, mas compacta no desktop retraído. */}
+      {/* Identificação Contextual */}
       <div className={`mx-3 mb-2 p-3 ${retraida ? 'lg:mx-2 lg:p-2 lg:justify-center' : ''} rounded-xl bg-surface-container-low flex items-center gap-3`}>
         <div className="w-9 h-9 rounded-full bg-primary/20 text-primary font-extrabold flex items-center justify-center flex-shrink-0 text-sm">
           {iniciais}
@@ -188,32 +230,58 @@ export default function SideNavGestor({ onFechar, retraida, onToggle }) {
         </div>
       </div>
 
-      <footer className="p-3 border-t border-surface-variant space-y-1">
+      {/* Footer com Toggle integrado */}
+      <footer className="p-3 border-t border-surface-variant space-y-1 relative">
         {podeInstalar && !jaInstalado && (
           <button
             onClick={instalar}
-            title="Instalar aplicativo"
-            className={`w-full flex items-center gap-3 px-4 py-2.5 ${retraida ? 'lg:px-0 lg:justify-center' : ''} rounded-xl text-sm font-medium text-on-surface-variant hover:bg-primary/5 hover:text-primary transition-all`}
+            className={`group relative w-full flex items-center gap-3 px-4 py-2.5 ${retraida ? 'lg:px-0 lg:justify-center' : ''} rounded-xl text-sm font-medium text-on-surface-variant hover:bg-primary/5 hover:text-primary transition-all`}
           >
             <span className="material-symbols-outlined text-xl flex-shrink-0">download</span>
             <span className={retraida ? 'lg:hidden' : ''}>Instalar aplicativo</span>
+            {retraida && (
+              <div className="hidden lg:group-hover:flex absolute left-full ml-3 px-3 py-2 bg-gray-900 text-white text-xs font-bold rounded-lg whitespace-nowrap z-[100] pointer-events-none shadow-xl">
+                Instalar aplicativo
+              </div>
+            )}
           </button>
         )}
 
         <button
           onClick={handleSair}
-          title="Sair do Sistema"
-          className={`w-full flex items-center gap-3 px-4 py-3 ${retraida ? 'lg:px-0 lg:justify-center' : ''} rounded-xl font-semibold text-sm text-on-surface-variant hover:bg-red-50 hover:text-red-600 transition-all`}
+          className={`group relative w-full flex items-center gap-3 px-4 py-3 ${retraida ? 'lg:px-0 lg:justify-center' : ''} rounded-xl font-semibold text-sm text-on-surface-variant hover:bg-red-50 hover:text-red-600 transition-all`}
         >
           <span className="material-symbols-outlined text-xl flex-shrink-0">logout</span>
           <span className={retraida ? 'lg:hidden' : ''}>Sair do Sistema</span>
+          {retraida && (
+            <div className="hidden lg:group-hover:flex absolute left-full ml-3 px-3 py-2 bg-gray-900 text-red-100 text-xs font-bold rounded-lg whitespace-nowrap z-[100] pointer-events-none shadow-xl">
+              Sair do Sistema
+            </div>
+          )}
+        </button>
+
+        {/* Botão de Expandir/Retrair agora ancorado logicamente no footer */}
+        <button
+          type="button"
+          onClick={onToggle}
+          aria-label={retraida ? 'Expandir menu lateral' : 'Retrair menu lateral'}
+          className={`hidden lg:flex group relative mt-2 w-full items-center ${retraida ? 'justify-center' : 'justify-start px-4'} py-3 rounded-xl font-semibold text-sm text-on-surface-variant hover:bg-surface-container-high transition-colors`}
+        >
+          <span className="material-symbols-outlined text-xl flex-shrink-0">
+            {retraida ? 'keyboard_double_arrow_right' : 'keyboard_double_arrow_left'}
+          </span>
+          <span className={retraida ? 'hidden' : 'ml-3'}>Recolher menu</span>
+          {retraida && (
+            <div className="hidden lg:group-hover:flex absolute left-full ml-3 px-3 py-2 bg-gray-900 text-white text-xs font-bold rounded-lg whitespace-nowrap z-[100] pointer-events-none shadow-xl">
+              Expandir menu
+            </div>
+          )}
         </button>
       </footer>
     </aside>
   );
 }
 
-// Rótulo troca por separador apenas no desktop retraído; no mobile permanece legível.
 function SectionLabel({ label, retraida }) {
   return (
     <>
@@ -225,17 +293,42 @@ function SectionLabel({ label, retraida }) {
   );
 }
 
-// Item reutilizável garante o mesmo tooltip, alinhamento e resposta mobile.
-function NavItem({ to, icon, label, retraida, activeClass, onClick }) {
+function NavItem({ to, icon, label, retraida, activeClass, onClick, badgeCount }) {
   return (
     <Link
       to={to}
       onClick={onClick}
-      title={label}
-      className={`w-full flex items-center gap-3 px-4 py-3 ${retraida ? 'lg:px-0 lg:justify-center' : ''} rounded-xl font-semibold transition-all text-sm ${activeClass}`}
+      className={`group relative w-full flex items-center gap-3 px-4 py-3 ${retraida ? 'lg:px-0 lg:justify-center' : ''} rounded-xl font-semibold transition-all text-sm ${activeClass}`}
     >
-      <span className="material-symbols-outlined text-xl flex-shrink-0">{icon}</span>
-      <span className={retraida ? 'lg:hidden' : ''}>{label}</span>
+      <div className="relative flex-shrink-0 flex items-center justify-center">
+        <span className="material-symbols-outlined text-xl">{icon}</span>
+        {/* Bolinha de notificação sobre o ícone (quando retraído) */}
+        {retraida && badgeCount > 0 && (
+          <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-red-500 rounded-full border-2 border-surface-container-lowest hidden lg:block shadow-sm" />
+        )}
+      </div>
+
+      <span className={`flex-1 flex items-center justify-between ${retraida ? 'lg:hidden' : ''}`}>
+        <span>{label}</span>
+        {/* Pílula com o número de pendências (quando expandido) */}
+        {badgeCount > 0 && (
+          <span className="bg-red-500 text-white text-[10px] font-extrabold px-1.5 py-0.5 rounded-full shadow-sm">
+            {badgeCount > 99 ? '99+' : badgeCount}
+          </span>
+        )}
+      </span>
+
+      {/* Tooltip Customizado Flutuante (substitui o 'title' nativo) */}
+      {retraida && (
+        <div className="hidden lg:group-hover:flex absolute left-full ml-3 px-3 py-2 bg-gray-900 text-white text-xs font-bold rounded-lg whitespace-nowrap z-[100] pointer-events-none shadow-xl items-center gap-2 border border-gray-700">
+          {label}
+          {badgeCount > 0 && (
+            <span className="bg-red-500 text-white text-[10px] font-extrabold px-1.5 py-0.5 rounded-full">
+              {badgeCount > 99 ? '99+' : badgeCount}
+            </span>
+          )}
+        </div>
+      )}
     </Link>
   );
 }

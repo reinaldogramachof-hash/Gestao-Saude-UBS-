@@ -39,6 +39,9 @@ export default function DashboardGestor() {
   const [alertas, setAlertas] = useState(null);
   const [pendentes, setPendentes] = useState(0); // Estado para o badge de pendentes
   const [loading, setLoading] = useState(true);
+  // Registra o momento exato da última sincronização bem-sucedida.
+  // Exibido no cabeçalho para dar ao gestor confiança de que os dados estão frescos.
+  const [ultimaAtualizacao, setUltimaAtualizacao] = useState(null);
 
   // Extrai a lógica para uma função para permitir reuso no setInterval
   async function fetchDados() {
@@ -51,6 +54,8 @@ export default function DashboardGestor() {
       setStats(rStats.data);
       setAlertas(rAlertas.data);
       setPendentes(rPendentes.data.pendentes_aprovacao);
+      // Registra o horário da sincronização bem-sucedida para exibir no cabeçalho
+      setUltimaAtualizacao(new Date());
     } catch (err) {
       console.error('Erro no polling do dashboard:', err);
     }
@@ -88,7 +93,17 @@ export default function DashboardGestor() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 lg:mb-10">
         <div>
           <h1 className="text-2xl md:text-4xl font-extrabold tracking-tight text-on-background">Painel Principal</h1>
-          <p className="text-on-surface-variant font-medium mt-1 text-sm">Visão geral da sua unidade</p>
+          {/* Linha de subtítulo + timestamp de última sincronização.
+              Dá ao gestor confiança de que os números são frescos (polling 30s). */}
+          <div className="flex items-center gap-3 mt-1 flex-wrap">
+            <p className="text-on-surface-variant font-medium text-sm">Visão geral da sua unidade</p>
+            {ultimaAtualizacao && (
+              <span className="inline-flex items-center gap-1 text-xs text-on-surface-variant bg-surface-container-low border border-outline-variant px-2 py-0.5 rounded-full">
+                <span className="material-symbols-outlined text-[14px]">sync</span>
+                Atualizado às {ultimaAtualizacao.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+              </span>
+            )}
+          </div>
           
           {/* Badge de novos cadastros */}
           {pendentes > 0 && (
@@ -106,7 +121,7 @@ export default function DashboardGestor() {
         </div>
         <button
           onClick={() => navigate('/gestor/pacientes')}
-          className="h-12 px-6 text-sm md:h-14 md:px-8 md:text-base bg-primary text-white font-bold rounded-2xl shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all flex items-center gap-2 self-start sm:self-auto"
+          className="h-12 px-6 text-sm md:h-14 md:px-8 md:text-base bg-primary text-white font-bold rounded-2xl shadow-lg shadow-primary/30 hover:shadow-primary/40 hover:-translate-y-0.5 active:translate-y-0 active:scale-95 transition-all flex items-center gap-2 self-start sm:self-auto flex-shrink-0"
         >
           <span className="material-symbols-outlined">person_add</span>
           Cadastrar Paciente
@@ -194,42 +209,32 @@ export default function DashboardGestor() {
       </div>
 
       {/* ── Seção Encaminhamentos ── */}
-      {/* Card de roadmap — dados estáticos. Sem backend. */}
-      {/* Integração real com encaminhamentos entra na Fase 2 do projeto. */}
-      <div className="mb-8 lg:mb-10">
-        <h2 className="text-lg md:text-xl font-extrabold text-on-background mb-4">
-          Encaminhamentos
-        </h2>
-        <div className="rounded-3xl border border-blue-200 bg-blue-50 p-5 md:p-6
-                        flex flex-col sm:flex-row sm:items-center gap-4 shadow-sm">
-          <div className="w-12 h-12 md:w-14 md:h-14 rounded-2xl bg-blue-100 flex items-center
-                          justify-center flex-shrink-0">
-            <span className="material-symbols-outlined text-blue-600 text-2xl md:text-3xl">
-              local_hospital
-            </span>
+      <div className="bg-surface-container-lowest rounded-3xl p-6 shadow-sm border border-surface-variant flex flex-col justify-between relative overflow-hidden mb-8 lg:mb-10 group">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-4">
+            <div className={`w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0 transition-colors ${stats?.encaminhamentos_pendentes > 0 ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'}`}>
+              <span className="material-symbols-outlined">{stats?.encaminhamentos_pendentes > 0 ? 'warning' : 'check_circle'}</span>
+            </div>
+            <div>
+              <h2 className="text-xl font-bold text-on-background">Rede Externa</h2>
+              <p className="text-sm text-on-surface-variant font-medium">Hospitais, CAPS e AMEs</p>
+            </div>
           </div>
-          <div className="flex-1">
-            <p className="font-extrabold text-blue-900 text-base md:text-lg">
-              Integração com Rede Municipal de Saúde
-            </p>
-            <p className="text-blue-700 text-sm md:text-base mt-1 font-medium">
-              Encaminhamentos para Hospital Municipal de SJC e outras
-              especialidades serão gerenciados aqui na Fase 2 do sistema.
-            </p>
-          </div>
-          <div className="flex flex-col items-start sm:items-end gap-1
-                          text-sm font-bold text-blue-800 flex-shrink-0 bg-white/50 p-3 rounded-xl border border-blue-100/50">
-            <span className="flex items-center gap-1">
-              <span className="material-symbols-outlined text-base">
-                arrow_forward
-              </span>
-              Em desenvolvimento
+          <div className="text-right">
+            <span className={`text-3xl font-extrabold ${stats?.encaminhamentos_pendentes > 0 ? 'text-amber-600' : 'text-emerald-600'}`}>
+              {stats?.encaminhamentos_pendentes || 0}
             </span>
-            <span className="text-xs font-semibold text-blue-600">
-              Previsão: Fase 2 — 2026
-            </span>
+            <div className="text-xs font-bold text-on-surface-variant uppercase tracking-wider">Na fila</div>
           </div>
         </div>
+
+        <button 
+          onClick={() => navigate('/gestor/regulacao')}
+          className="w-full bg-surface-container-high hover:bg-surface-container text-on-surface font-bold py-3 px-4 rounded-xl transition-colors flex items-center justify-center gap-2"
+        >
+          Acessar Regulação
+          <span className="material-symbols-outlined text-sm">arrow_forward</span>
+        </button>
       </div>
 
       {/* ── Atividade Recente ── */}
@@ -247,8 +252,8 @@ export default function DashboardGestor() {
         ) : (
           /* Wrapper de scroll horizontal para tabelas em mobile */
           <div className="overflow-x-auto -mx-0">
-            <table className="w-full min-w-[640px] text-left">
-              <thead className="bg-surface-container-low">
+            <table className="w-full min-w-[640px] text-left relative">
+              <thead className="sticky top-0 z-10 bg-surface-container-low shadow-sm backdrop-blur-md">
                 <tr>
                   <th className="p-4 text-xs font-bold text-on-surface-variant uppercase tracking-wider">Paciente</th>
                   <th className="p-4 text-xs font-bold text-on-surface-variant uppercase tracking-wider">Pedido</th>

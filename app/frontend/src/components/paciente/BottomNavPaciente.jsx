@@ -60,56 +60,60 @@ export default function BottomNavPaciente() {
       No mobile (tela cheia): comportamento idêntico ao fixed.
       No desktop (card centralizado): nav fica na base do card, não da tela inteira.
     */
-    <nav className="flex-shrink-0 bg-surface-container-lowest border-t border-surface-variant px-4 py-2 flex justify-between items-center z-20">
+    <nav className="flex-shrink-0 bg-surface-container-lowest border-t border-surface-variant px-4 py-2 flex justify-between items-center z-20 md:order-first md:border-t-0 md:border-b md:px-8 md:py-3 md:justify-start md:gap-8">
+      
+      {/* Logo no Desktop (Opcional, melhora o visual de Top Bar) */}
+      <div className="hidden md:flex items-center gap-2 mr-4 text-primary">
+         <span className="material-symbols-outlined text-3xl">health_and_safety</span>
+         <span className="font-extrabold text-lg tracking-tight">UBS+</span>
+      </div>
 
-      <Link to="/paciente/dashboard" className={`flex flex-col items-center gap-1 ${isActive('dashboard')}`}>
-        <span className="material-symbols-outlined text-2xl">home</span>
-        <span className="text-[10px] font-semibold">Início</span>
+      <Link to="/paciente/dashboard" className={`flex flex-col items-center gap-1 ${isActive('dashboard')} md:flex-row md:gap-2`}>
+        <span className="material-symbols-outlined text-2xl md:text-[20px]">home</span>
+        <span className="text-[10px] font-semibold md:text-[14px]">Início</span>
       </Link>
 
-      <Link to="/paciente/medicamentos" className={`flex flex-col items-center gap-1 ${isActive('medicamentos')}`}>
-        <span className="material-symbols-outlined text-2xl">medication</span>
-        <span className="text-[10px] font-semibold">Medicamentos</span>
+      <Link to="/paciente/medicamentos" className={`flex flex-col items-center gap-1 ${isActive('medicamentos')} md:flex-row md:gap-2`}>
+        <span className="material-symbols-outlined text-2xl md:text-[20px]">medication</span>
+        <span className="text-[10px] font-semibold md:text-[14px]">Medicamentos</span>
       </Link>
 
-      {/* ── Botão de instalação PWA — centro do nav, destaque verde ── */}
-      {/* Visível apenas quando o browser liberou o prompt e o app ainda não foi instalado */}
       {podeInstalar && !jaInstalado && (
         <button
           onClick={instalar}
-          className="flex flex-col items-center gap-1 bg-primary text-white px-3 py-1.5 rounded-2xl shadow-lg shadow-primary/30 -mt-4"
+          className="flex flex-col items-center gap-1 bg-primary text-white px-3 py-1.5 rounded-2xl shadow-lg shadow-primary/30 -mt-4 md:mt-0 md:flex-row md:gap-2 md:rounded-full md:px-4 md:shadow-none"
           title="Adicionar UBS+ à tela inicial"
         >
-          <span className="material-symbols-outlined text-xl">download</span>
-          <span className="text-[9px] font-bold tracking-wide">INSTALAR</span>
+          <span className="material-symbols-outlined text-xl md:text-[20px]">download</span>
+          <span className="text-[9px] font-bold tracking-wide md:text-[14px]">INSTALAR</span>
         </button>
       )}
 
-      <Link to="/paciente/comunicados" className={`flex flex-col items-center gap-1 ${isActive('comunicados')}`}>
+      <Link to="/paciente/comunicados" className={`flex flex-col items-center gap-1 ${isActive('comunicados')} md:flex-row md:gap-2`}>
         <div className="relative">
-          <span className="material-symbols-outlined text-2xl">notifications</span>
+          <span className="material-symbols-outlined text-2xl md:text-[20px]">notifications</span>
           {unreadCount > 0 && (
-            <span className="absolute -top-1 -right-2 bg-red-500 text-white text-[10px] font-bold w-4 h-4 flex items-center justify-center rounded-full">
+            <span className="absolute -top-1 -right-2 bg-red-500 text-white text-[10px] font-bold w-4 h-4 flex items-center justify-center rounded-full md:w-5 md:h-5 md:-top-2 md:-right-3 md:text-xs">
               {unreadCount}
             </span>
           )}
         </div>
-        <span className="text-[10px] font-semibold">Avisos</span>
+        <span className="text-[10px] font-semibold md:text-[14px]">Avisos</span>
       </Link>
 
-      <Link to="/paciente/agendamentos" className={`flex flex-col items-center gap-1 ${isActive('agendamentos')}`}>
-        <span className="material-symbols-outlined text-2xl">calendar_month</span>
-        <span className="text-[10px] font-semibold">Agenda</span>
+      <Link to="/paciente/agendamentos" className={`flex flex-col items-center gap-1 ${isActive('agendamentos')} md:flex-row md:gap-2`}>
+        <span className="material-symbols-outlined text-2xl md:text-[20px]">calendar_month</span>
+        <span className="text-[10px] font-semibold md:text-[14px]">Agenda</span>
       </Link>
 
-      {/* Botão de logout — posicionado à direita pelo flex justify-between */}
+      {/* Botão de logout empurrado para a direita no desktop */}
       <button
         onClick={handleLogout}
-        className="flex flex-col items-center gap-1 text-on-surface-variant hover:text-red-500 transition-colors"
+        className="flex flex-col items-center gap-1 text-on-surface-variant hover:text-red-500 transition-colors md:ml-auto md:flex-row md:gap-2"
         aria-label="Sair da conta"
       >
-        <span className="material-symbols-outlined text-2xl">logout</span>
-        <span className="text-[10px] font-semibold">Sair</span>
+        <span className="material-symbols-outlined text-2xl md:text-[20px]">logout</span>
+        <span className="text-[10px] font-semibold md:text-[14px]">Sair</span>
       </button>
     </nav>
   );
