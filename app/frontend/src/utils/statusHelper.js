@@ -25,3 +25,27 @@ export const STATUS_CORES = {
   concluido:             'bg-green-100 text-green-800',
   cancelado:             'bg-gray-100 text-gray-500',
 };
+
+// ─────────────────────────────────────────────────────────────────────────────
+// FUNÇÃO: formatarDataBR
+// PROBLEMA RESOLVIDO: new Date('YYYY-MM-DD') interpreta a string como UTC
+//   meia-noite. Em SJC (UTC-3), isso converte para 21h do dia anterior,
+//   fazendo o toLocaleDateString mostrar a data errada.
+// SOLUÇÃO: Se a string não contém 'T' (é só data, sem horário), adiciona
+//   'T12:00:00' para ancorá-la ao meio-dia local, eliminando o offset.
+//
+// PARÂMETROS:
+//   - iso: string — data em formato ISO ('2026-06-17' ou '2026-06-17T15:30:00Z')
+//   - opcoes: object — opções opcionais para toLocaleDateString (default: pt-BR curto)
+//
+// RETORNO: string formatada em português (ex: '17/06/2026')
+// ─────────────────────────────────────────────────────────────────────────────
+export function formatarDataBR(iso, opcoes) {
+  if (!iso) return '—';
+  const dataCorrigida = iso.includes('T') ? new Date(iso) : new Date(iso + 'T12:00:00');
+  return dataCorrigida.toLocaleDateString('pt-BR', opcoes || {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  });
+}

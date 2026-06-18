@@ -12,7 +12,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '../../services/api';
 import PacienteLayout from '../../components/paciente/PacienteLayout';
-import { STATUS_LABELS, STATUS_CORES } from '../../utils/statusHelper';
+import { STATUS_LABELS, STATUS_CORES, formatarDataBR } from '../../utils/statusHelper';
 
 export default function DetalheSolicitacao() {
   const { id } = useParams();
@@ -114,7 +114,7 @@ export default function DetalheSolicitacao() {
                 {/* Marcador da timeline */}
                 <div className="absolute -left-[9px] top-1 w-4 h-4 rounded-full border-4 border-surface-container-lowest bg-primary"></div>
                 <p className="text-xs font-bold text-primary mb-1">
-                  {new Date(h.alterado_em).toLocaleDateString('pt-BR')}
+                  {formatarDataBR(h.alterado_em)}
                 </p>
                 <div className={`p-4 rounded-xl rounded-tl-none ${STATUS_CORES[h.status_novo] || 'bg-surface-container-low text-on-surface'}`}>
                   <h4 className="font-bold text-sm mb-1">

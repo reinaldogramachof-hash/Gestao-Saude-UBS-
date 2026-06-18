@@ -20,13 +20,22 @@
  * ─────────────────────────────────────────────────────────────────────────────
  */
 import React, { useState, useEffect } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import api from '../../services/api';
 import { usePWAInstall } from '../../hooks/usePWAInstall';
+import { useAuth } from '../../contexts/AuthContext';
 
 export default function BottomNavPaciente() {
   const { pathname } = useLocation();
   const [unreadCount, setUnreadCount] = useState(0);
+  const navigate = useNavigate();
+  const { logout } = useAuth();
+
+  // Encerra a sessão do paciente e redireciona para a tela inicial
+  const handleLogout = () => {
+    logout();
+    navigate('/');
+  };
 
   // Hook que detecta se o app pode ser instalado como PWA
   const { podeInstalar, instalar, jaInstalado } = usePWAInstall();
@@ -51,7 +60,7 @@ export default function BottomNavPaciente() {
       No mobile (tela cheia): comportamento idêntico ao fixed.
       No desktop (card centralizado): nav fica na base do card, não da tela inteira.
     */
-    <nav className="absolute bottom-0 left-0 right-0 bg-surface-container-lowest border-t border-surface-variant px-4 py-2 flex justify-between items-center z-20">
+    <nav className="flex-shrink-0 bg-surface-container-lowest border-t border-surface-variant px-4 py-2 flex justify-between items-center z-20">
 
       <Link to="/paciente/dashboard" className={`flex flex-col items-center gap-1 ${isActive('dashboard')}`}>
         <span className="material-symbols-outlined text-2xl">home</span>
@@ -92,6 +101,16 @@ export default function BottomNavPaciente() {
         <span className="material-symbols-outlined text-2xl">calendar_month</span>
         <span className="text-[10px] font-semibold">Agenda</span>
       </Link>
+
+      {/* Botão de logout — posicionado à direita pelo flex justify-between */}
+      <button
+        onClick={handleLogout}
+        className="flex flex-col items-center gap-1 text-on-surface-variant hover:text-red-500 transition-colors"
+        aria-label="Sair da conta"
+      >
+        <span className="material-symbols-outlined text-2xl">logout</span>
+        <span className="text-[10px] font-semibold">Sair</span>
+      </button>
     </nav>
   );
 }

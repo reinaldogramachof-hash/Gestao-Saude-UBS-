@@ -37,19 +37,32 @@ export default function DashboardGestor() {
   const navigate = useNavigate();
   const [stats, setStats] = useState(null);
   const [alertas, setAlertas] = useState(null);
+  const [pendentes, setPendentes] = useState(0); // Estado para o badge de pendentes
   const [loading, setLoading] = useState(true);
 
+  // Extrai a lógica para uma função para permitir reuso no setInterval
+  async function fetchDados() {
+    try {
+      const [rStats, rAlertas, rPendentes] = await Promise.all([
+        api.get('/gestor/dashboard/stats'),
+        api.get('/gestor/alertas'),
+        api.get('/gestor/dashboard/pendentes'),
+      ]);
+      setStats(rStats.data);
+      setAlertas(rAlertas.data);
+      setPendentes(rPendentes.data.pendentes_aprovacao);
+    } catch (err) {
+      console.error('Erro no polling do dashboard:', err);
+    }
+  }
+
   useEffect(() => {
-    Promise.all([
-      api.get('/gestor/dashboard/stats'),
-      api.get('/gestor/alertas')
-    ])
-      .then(([rStats, rAlertas]) => {
-        setStats(rStats.data);
-        setAlertas(rAlertas.data);
-      })
-      .catch(() => {})
-      .finally(() => setLoading(false));
+    setLoading(true);
+    fetchDados().finally(() => setLoading(false));
+
+    // Polling a cada 30 segundos para refletir atualizações em tempo real
+    const intervalo = setInterval(fetchDados, 30000);
+    return () => clearInterval(intervalo); // Limpa ao desmontar o componente
   }, []);
 
   // Card de métrica reutilizável
@@ -76,6 +89,20 @@ export default function DashboardGestor() {
         <div>
           <h1 className="text-2xl md:text-4xl font-extrabold tracking-tight text-on-background">Painel Principal</h1>
           <p className="text-on-surface-variant font-medium mt-1 text-sm">Visão geral da sua unidade</p>
+          
+          {/* Badge de novos cadastros */}
+          {pendentes > 0 && (
+            <button
+              onClick={() => navigate('/gestor/pacientes')}
+              className="mt-3 inline-flex items-center gap-2 px-4 py-2 rounded-full
+                         bg-amber-100 text-amber-800 text-sm font-semibold
+                         border border-amber-300 hover:bg-amber-200 transition-colors"
+            >
+              <span className="material-symbols-outlined text-base">person_add</span>
+              {pendentes} novo{pendentes > 1 ? 's' : ''} cadastro{pendentes > 1 ? 's' : ''} aguardando aprovação
+              <span className="material-symbols-outlined text-base">arrow_forward</span>
+            </button>
+          )}
         </div>
         <button
           onClick={() => navigate('/gestor/pacientes')}
@@ -164,6 +191,45 @@ export default function DashboardGestor() {
               : 'bg-surface-container-low border-outline-variant text-on-surface'
           }
         />
+      </div>
+
+      {/* ── Seção Encaminhamentos ── */}
+      {/* Card de roadmap — dados estáticos. Sem backend. */}
+      {/* Integração real com encaminhamentos entra na Fase 2 do projeto. */}
+      <div className="mb-8 lg:mb-10">
+        <h2 className="text-lg md:text-xl font-extrabold text-on-background mb-4">
+          Encaminhamentos
+        </h2>
+        <div className="rounded-3xl border border-blue-200 bg-blue-50 p-5 md:p-6
+                        flex flex-col sm:flex-row sm:items-center gap-4 shadow-sm">
+          <div className="w-12 h-12 md:w-14 md:h-14 rounded-2xl bg-blue-100 flex items-center
+                          justify-center flex-shrink-0">
+            <span className="material-symbols-outlined text-blue-600 text-2xl md:text-3xl">
+              local_hospital
+            </span>
+          </div>
+          <div className="flex-1">
+            <p className="font-extrabold text-blue-900 text-base md:text-lg">
+              Integração com Rede Municipal de Saúde
+            </p>
+            <p className="text-blue-700 text-sm md:text-base mt-1 font-medium">
+              Encaminhamentos para Hospital Municipal de SJC e outras
+              especialidades serão gerenciados aqui na Fase 2 do sistema.
+            </p>
+          </div>
+          <div className="flex flex-col items-start sm:items-end gap-1
+                          text-sm font-bold text-blue-800 flex-shrink-0 bg-white/50 p-3 rounded-xl border border-blue-100/50">
+            <span className="flex items-center gap-1">
+              <span className="material-symbols-outlined text-base">
+                arrow_forward
+              </span>
+              Em desenvolvimento
+            </span>
+            <span className="text-xs font-semibold text-blue-600">
+              Previsão: Fase 2 — 2026
+            </span>
+          </div>
+        </div>
       </div>
 
       {/* ── Atividade Recente ── */}

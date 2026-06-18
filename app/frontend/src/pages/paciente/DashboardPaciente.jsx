@@ -13,17 +13,79 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../../services/api';
 import PacienteLayout from '../../components/paciente/PacienteLayout';
-import { STATUS_LABELS, STATUS_CORES } from '../../utils/statusHelper';
+import { STATUS_LABELS, STATUS_CORES, formatarDataBR } from '../../utils/statusHelper';
 
 export default function DashboardPaciente() {
   const [sols, setSols] = useState([]);
   const [paciente, setPaciente] = useState({});
+  const [loading, setLoading] = useState(true);
+  const [erro, setErro] = useState(false);
   const navigate = useNavigate();
 
-  useEffect(() => {
-    api.get('/paciente/meus-dados').then(r => setPaciente(r.data));
-    api.get('/paciente/minhas-solicitacoes').then(r => setSols(r.data));
-  }, []);
+  // Função separada para permitir retry em caso de erro
+  const fetchDados = () => {
+    setLoading(true);
+    setErro(false);
+    Promise.all([
+      api.get('/paciente/meus-dados'),
+      api.get('/paciente/minhas-solicitacoes'),
+    ])
+      .then(([rDados, rSols]) => {
+        setPaciente(rDados.data);
+        setSols(rSols.data);
+      })
+      .catch(() => setErro(true))
+      .finally(() => setLoading(false));
+  };
+
+  useEffect(() => { fetchDados(); }, []);
+
+  // Exibe esqueleto animado enquanto os dados carregam
+  if (loading) {
+    return (
+      <PacienteLayout>
+        <div className="animate-pulse">
+          <div className="bg-primary pt-12 pb-24 px-6 rounded-b-[2.5rem]">
+            <div className="h-4 w-24 bg-white/30 rounded mb-3"></div>
+            <div className="h-8 w-48 bg-white/40 rounded"></div>
+          </div>
+          <div className="px-6 -mt-16 relative z-20 space-y-4">
+            {[1, 2, 3].map(i => (
+              <div key={i} className="bg-white rounded-2xl p-5 shadow-sm border border-surface-variant">
+                <div className="h-5 w-3/4 bg-surface-container-high rounded mb-3"></div>
+                <div className="h-12 bg-surface-container-high rounded-xl"></div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </PacienteLayout>
+    );
+  }
+
+  // Exibe mensagem amigável se as APIs falharem — com botão de nova tentativa
+  if (erro) {
+    return (
+      <PacienteLayout>
+        <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4 px-6 text-center">
+          <span className="material-symbols-outlined text-5xl text-on-surface-variant">
+            wifi_off
+          </span>
+          <p className="font-bold text-on-surface text-lg">
+            Não conseguimos carregar seus dados
+          </p>
+          <p className="text-sm text-on-surface-variant">
+            Verifique sua conexão e tente novamente.
+          </p>
+          <button
+            onClick={fetchDados}
+            className="mt-2 px-6 py-3 bg-primary text-white font-bold rounded-2xl text-sm"
+          >
+            Tentar novamente
+          </button>
+        </div>
+      </PacienteLayout>
+    );
+  }
 
   return (
     <PacienteLayout>
@@ -40,8 +102,18 @@ export default function DashboardPaciente() {
       </header>
 
       {/* ── Conteúdo principal ── */}
-      <main className="px-6 -mt-16 relative z-20 space-y-6">
-        <h2 className="text-xl font-extrabold text-on-surface">Minhas Solicitações Ativas</h2>
+      <main className="px-6 -mt-16 relative z-20 space-y-6 pb-28">
+        {/* Linha de título com atalho para histórico completo */}
+        <div className="flex justify-between items-center mb-2">
+          <h2 className="text-xl font-extrabold text-on-surface">Minhas Solicitações Ativas</h2>
+          <button
+            onClick={() => navigate('/paciente/solicitacoes')}
+            className="text-primary text-sm font-semibold flex items-center gap-0.5 hover:underline"
+          >
+            Ver todas
+            <span className="material-symbols-outlined text-base">chevron_right</span>
+          </button>
+        </div>
         <div className="space-y-4">
           {sols.map(sol => (
             <div key={sol.id} className={`bg-white p-5 rounded-2xl shadow-sm border ${sol.prioridade === 'urgente' ? 'border-red-300' : 'border-surface-variant'}`}>
@@ -61,7 +133,7 @@ export default function DashboardPaciente() {
                   {STATUS_LABELS[sol.status] || 'Status em atualização'}
                 </p>
                 {sol.data_prevista && (
-                  <p className="text-xs opacity-80 mt-1">Previsão: {sol.data_prevista}</p>
+                  <p className="text-xs opacity-80 mt-1">Previsão: {formatarDataBR(sol.data_prevista)}</p>
                 )}
               </div>
               <button

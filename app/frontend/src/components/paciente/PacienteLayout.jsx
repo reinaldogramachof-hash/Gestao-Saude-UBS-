@@ -2,40 +2,48 @@
  * COMPONENTE: PacienteLayout.jsx
  * ─────────────────────────────────────────────────────────────────────────────
  * FUNÇÃO: Wrapper de layout para todas as páginas do portal do paciente.
- *         No mobile: ocupa tela cheia naturalmente.
- *         No desktop: centraliza o conteúdo em max-w-md, simulando
- *         a experiência de app mobile (card centralizado com sombra).
- *         Inclui o BottomNavPaciente automaticamente em todas as páginas.
+ *
+ * ARQUITETURA DE SCROLL (atualizada):
+ *   O container usa h-screen + flex-col para ocupar exatamente a tela.
+ *   O conteúdo interno (children) fica em uma div com overflow-y-auto,
+ *   que é a única área que rola. O BottomNavPaciente fica FORA dessa div,
+ *   como último item do flex — sempre visível, nunca rola.
+ *
+ *   Desktop: centralizado em max-w-md com sombra, simulando app mobile.
+ *   Mobile: tela cheia, comportamento idêntico a um app nativo.
  *
  * PROPS:
  *   - children: conteúdo da página
- *   - semNav: boolean — se true, não renderiza o BottomNavPaciente
- *             (usar em páginas como login onde o nav não faz sentido)
+ *   - semNav: boolean — se true, oculta o BottomNavPaciente
+ *             (usar em LoginPaciente, CadastroPaciente, DetalheSolicitacao)
  * ─────────────────────────────────────────────────────────────────────────────
  */
 import BottomNavPaciente from './BottomNavPaciente';
 
 export default function PacienteLayout({ children, semNav = false }) {
   return (
-    // Fundo externo levemente acinzentado no desktop para destacar o card
-    <div className="min-h-screen bg-surface-container-low flex justify-center">
+    // Fundo externo acinzentado no desktop para destacar o card central
+    <div className="h-screen bg-surface-container-low flex justify-center overflow-hidden">
 
       {/*
-        Container principal da página:
-        - Mobile: largura total, sem sombra
-        - Desktop: centralizado em max-w-md com sombra discreta
-        - position: relative — necessário para o BottomNavPaciente (absolute)
-          se posicionar corretamente dentro do card no desktop
+        Container principal — flex column com altura fixa da tela.
+        O conteúdo scrollável fica em um filho interno (overflow-y-auto).
+        O nav fica como último filho do flex, sempre fixo na base.
       */}
-      <div className={`
-        w-full max-w-md bg-surface min-h-screen relative
-        ${semNav ? '' : 'pb-24'}
-        shadow-none md:shadow-2xl
-      `}>
-        {children}
+      <div className="w-full max-w-md bg-surface flex flex-col shadow-none md:shadow-2xl">
 
-        {/* Nav inferior — omitida em páginas de login */}
+        {/*
+          Área de conteúdo: ocupa todo o espaço disponível (flex-1)
+          e rola independentemente. O padding-bottom reserva espaço
+          para o nav quando ele está visível.
+        */}
+        <div className={`flex-1 overflow-y-auto ${semNav ? '' : 'pb-20'}`}>
+          {children}
+        </div>
+
+        {/* Nav inferior — renderizada fora da área de scroll, sempre visível */}
         {!semNav && <BottomNavPaciente />}
+
       </div>
     </div>
   );

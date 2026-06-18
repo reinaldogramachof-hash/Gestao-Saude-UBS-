@@ -663,6 +663,23 @@ router.get('/alertas', async (req, res) => {
 });
 
 
+// ─── GET /api/gestor/dashboard/pendentes ──────────────────────────────────────
+// Retorna a contagem de pacientes inativos (cadastros aguardando aprovação).
+// Utilizado para o badge no painel do gestor (auto-refresh).
+router.get('/dashboard/pendentes', async (req, res) => {
+  try {
+    const total = await knex('pacientes')
+      .where({ ubs_id: req.user.ubs_id, ativo: false })
+      .count('id as total')
+      .first();
+    return res.json({ pendentes_aprovacao: Number(total.total) });
+  } catch (err) {
+    console.error('[GET /gestor/dashboard/pendentes]', err);
+    return res.status(500).json({ error: 'Erro ao buscar cadastros pendentes.' });
+  }
+});
+
+
 // ─── GET /api/gestor/comunicados ──────────────────────────────────────────────
 // Épico 3: Lista todos os comunicados da UBS, do mais recente ao mais antigo.
 // Faz LEFT JOIN com pacientes para trazer o nome quando for comunicado individual.

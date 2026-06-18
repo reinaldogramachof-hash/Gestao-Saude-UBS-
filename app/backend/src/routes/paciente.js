@@ -125,6 +125,38 @@ router.get('/minhas-solicitacoes', async (req, res) => {
 });
 
 
+// ─── GET /api/paciente/todas-solicitacoes ────────────────────────────────────
+// Retorna TODAS as solicitações do paciente, incluindo concluídas e canceladas.
+// Usado na página de histórico para que o paciente veja o registro completo.
+// Ativas (urgentes/prioritárias) aparecem primeiro; dentro do mesmo status,
+// as mais recentes vêm antes.
+router.get('/todas-solicitacoes', async (req, res) => {
+  try {
+    const solicitacoes = await knex('solicitacoes')
+      .where({ paciente_id: req.user.id })
+      .select(CAMPOS_SOLICITACAO_PACIENTE)
+      .orderByRaw(`
+        CASE status
+          WHEN 'concluido'  THEN 2
+          WHEN 'cancelado'  THEN 3
+          ELSE 1
+        END ASC,
+        CASE prioridade
+          WHEN 'urgente'     THEN 1
+          WHEN 'prioritario' THEN 2
+          ELSE 3
+        END ASC
+      `)
+      .orderBy('data_solicitacao', 'desc');
+
+    return res.json(solicitacoes);
+  } catch (err) {
+    console.error('[GET /paciente/todas-solicitacoes]', err);
+    return res.status(500).json({ error: 'Erro ao buscar histórico de solicitações.' });
+  }
+});
+
+
 // ─── GET /api/paciente/solicitacao/:id ────────────────────────────────────────
 // Retorna o detalhe completo de UMA solicitação + o histórico de mudanças de
 // status (a "linha do tempo" exibida na tela de detalhe do paciente).

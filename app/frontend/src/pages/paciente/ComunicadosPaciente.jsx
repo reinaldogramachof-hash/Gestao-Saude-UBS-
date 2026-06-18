@@ -10,6 +10,7 @@
 import React, { useState, useEffect } from 'react';
 import api from '../../services/api';
 import PacienteLayout from '../../components/paciente/PacienteLayout';
+import { formatarDataBR } from '../../utils/statusHelper';
 
 export default function ComunicadosPaciente() {
   const [comunicados, setComunicados] = useState([]);
@@ -50,7 +51,7 @@ export default function ComunicadosPaciente() {
         <p className="text-white/70 text-sm mt-1">Avisos da sua unidade de saúde</p>
       </header>
 
-      <main className="px-6 py-6 space-y-4">
+      <main className="px-6 py-6 space-y-4 pb-28">
         {loading ? (
           Array(3).fill(0).map((_, i) => (
             <div key={i} className="h-28 bg-surface-container-low rounded-2xl animate-pulse" />
@@ -89,7 +90,7 @@ export default function ComunicadosPaciente() {
                   
                   <div className="flex items-center justify-between mt-3">
                     <p className={`text-xs font-medium ${c.lido ? 'text-on-surface-variant' : 'text-blue-600'}`}>
-                      {new Date(c.criado_em).toLocaleDateString('pt-BR')}
+                      {formatarDataBR(c.criado_em)}
                     </p>
                     <span className={`material-symbols-outlined text-sm ${c.lido ? 'text-on-surface-variant' : 'text-blue-600'}`}>
                       {expandidos[c.id] ? 'expand_less' : 'expand_more'}

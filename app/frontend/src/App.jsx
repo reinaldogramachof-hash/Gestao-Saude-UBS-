@@ -21,6 +21,7 @@ import Medicamentos from './pages/paciente/Medicamentos';
 import DetalheSolicitacao from './pages/paciente/DetalheSolicitacao';
 import ComunicadosPaciente from './pages/paciente/ComunicadosPaciente';   // Épico 3
 import AgendamentosPaciente from './pages/paciente/AgendamentosPaciente'; // Épico 4
+import SolicitacoesPaciente from './pages/paciente/SolicitacoesPaciente'; // Histórico completo
 
 // ── Portal do Gestor ───────────────────────────────────────────────────────
 import LoginGestor from './pages/gestor/LoginGestor';
@@ -71,6 +72,7 @@ export default function App() {
           <Route path="/paciente/solicitacao/:id" element={<ProtectedRoute tipo="paciente"><DetalheSolicitacao /></ProtectedRoute>} />
           <Route path="/paciente/comunicados"     element={<ProtectedRoute tipo="paciente"><ComunicadosPaciente /></ProtectedRoute>} />
           <Route path="/paciente/agendamentos"    element={<ProtectedRoute tipo="paciente"><AgendamentosPaciente /></ProtectedRoute>} />
+          <Route path="/paciente/solicitacoes"    element={<ProtectedRoute tipo="paciente"><SolicitacoesPaciente /></ProtectedRoute>} />
 
           {/* ── Portal do Gestor (autenticado) ── */}
           <Route path="/gestor/dashboard"     element={<ProtectedRoute tipo="gestor"><DashboardGestor /></ProtectedRoute>} />
