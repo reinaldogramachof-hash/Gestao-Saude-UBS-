@@ -75,6 +75,7 @@ export default function LoginGestor() {
             <input
               required
               type="password"
+                          autocomplete="current-password"
               placeholder="••••••••"
               value={senha}
               onChange={e => setSenha(e.target.value)}
