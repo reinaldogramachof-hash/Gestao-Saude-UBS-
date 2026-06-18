@@ -23,7 +23,8 @@ const bcrypt = require('bcrypt');
 const knex = require('../db/knex');
 
 const router = express.Router();
-const PERFIS_VALIDOS = ['recepcionista', 'gestor', 'admin'];
+// 'medico' adicionado para suportar o Painel Médico (acesso read-only ao prontuário)
+const PERFIS_VALIDOS = ['recepcionista', 'gestor', 'admin', 'medico'];
 const CAMPOS_PUBLICOS = ['id', 'nome', 'email', 'perfil', 'ativo', 'criado_em'];
 
 // Bloqueia recepcionistas e gestores mesmo quando possuem um JWT válido.

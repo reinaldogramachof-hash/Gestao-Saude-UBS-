@@ -43,6 +43,21 @@ const loginRateLimiter = rateLimit({
   legacyHeaders: false, // Desativa os cabeçalhos antigos X-RateLimit-*
 });
 
+// ─────────────────────────────────────────────────────────────────────────────
+// MIDDLEWARE: cadastroRateLimiter
+// FUNÇÃO: Limita criação de cadastros a 20 por IP por hora.
+//         Protege contra flood de cadastros durante apresentações e em produção.
+// ─────────────────────────────────────────────────────────────────────────────
+const cadastroRateLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hora
+  max: 20,
+  message: {
+    error: 'Muitos cadastros efetuados deste dispositivo. Tente novamente mais tarde.'
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
 // ─── POST /api/auth/login-gestor ─────────────────────────────────────────────
 // Autentica um membro da equipe gestora (recepcionista, gestor, admin) via
 // e-mail institucional + senha. Retorna JWT com 8h de validade.
@@ -160,7 +175,7 @@ router.get('/ubs', async (req, res) => {
 //   Exibido na confirmação para o paciente anotar e levar à UBS.
 //
 // Body: { nome*, data_nascimento*, ubs_id*, bairro*, telefone, email, cpf }
-router.post('/cadastro-paciente', async (req, res) => {
+router.post('/cadastro-paciente', cadastroRateLimiter, async (req, res) => {
   try {
     const { nome, data_nascimento, ubs_id, bairro, telefone, email, cpf } = req.body;
 
@@ -178,8 +193,22 @@ router.post('/cadastro-paciente', async (req, res) => {
     }
 
     // Verifica CPF duplicado se fornecido (campo único na tabela)
+    let cpfLimpo = null;
     if (cpf) {
-      const cpfExiste = await knex('pacientes').where({ cpf }).first();
+      cpfLimpo = cpf.replace(/[^\d]/g, ''); // Remove pontos, traços e espaços
+    
+      if (cpfLimpo.length !== 11) {
+        return res.status(400).json({
+          error: 'CPF inválido. Informe os 11 dígitos numéricos.'
+        });
+      }
+    
+      // Rejeita sequências inválidas como 00000000000, 11111111111, etc.
+      if (/^(\d)\1{10}$/.test(cpfLimpo)) {
+        return res.status(400).json({ error: 'CPF inválido.' });
+      }
+    
+      const cpfExiste = await knex('pacientes').where({ cpf: cpfLimpo }).first();
       if (cpfExiste) {
         return res.status(409).json({ error: 'CPF já cadastrado no sistema.' });
       }
@@ -208,7 +237,7 @@ router.post('/cadastro-paciente', async (req, res) => {
         ubs_id,
         cra:            craNovo,
         nome:           nome.trim(),
-        cpf:            cpf || null,
+        cpf:            cpfLimpo,
         data_nascimento,
         telefone:       telefone || null,
         email:          email || null,
@@ -223,7 +252,7 @@ router.post('/cadastro-paciente', async (req, res) => {
       ubs:      ubs.nome,
     });
   } catch (err) {
-    console.error('[POST /auth/cadastro-paciente]', err);
+    console.error('[POST /auth/cadastro-paciente]', err.message);
     // Constraint única violada (CRA ou CPF duplicado por race condition)
     if (err.code === '23505') {
       return res.status(409).json({ error: 'Dados já cadastrados. Tente novamente.' });

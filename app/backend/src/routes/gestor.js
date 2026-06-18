@@ -345,6 +345,250 @@ router.put('/solicitacao/:id/status', async (req, res) => {
 });
 
 
+// ─── PATCH /api/gestor/solicitacao/:id/escalar ───────────────────────────────
+// Épico 2: Triagem de Urgência.
+// Eleva a prioridade de uma solicitação para 'urgente' e registra o evento em
+// historico_status com status_novo = 'urgente_escalado'.
+// O status do fluxo (em_analise, autorizado, etc.) NÃO é alterado — apenas a
+// prioridade muda, fazendo a solicitação aparecer no card "Atenção Imediata".
+router.patch('/solicitacao/:id/escalar', async (req, res) => {
+  try {
+    const { justificativa } = req.body;
+
+    // Rejeita justificativas ausentes ou muito curtas (mesma regra do frontend)
+    if (!justificativa || justificativa.trim().length < 10) {
+      return res.status(400).json({ error: 'A justificativa é obrigatória e deve ter pelo menos 10 caracteres.' });
+    }
+
+    const resultado = await knex.transaction(async (trx) => {
+      const solicitacao = await trx('solicitacoes')
+        .where({ id: req.params.id })
+        .first();
+
+      if (!solicitacao) return { tipo: 'nao_encontrada' };
+
+      // Impede escalada dupla: solicitação já urgente não precisa de ação
+      if (solicitacao.prioridade === 'urgente') {
+        return { tipo: 'ja_urgente' };
+      }
+
+      // Atualiza prioridade e renova atualizado_em para acionar as regras do /alertas
+      await trx('solicitacoes')
+        .where({ id: req.params.id })
+        .update({ prioridade: 'urgente', atualizado_em: trx.fn.now() });
+
+      // Registra a escalada no histórico para auditoria e exibição na timeline do paciente.
+      // status_anterior preserva o status de fluxo atual (em_analise, autorizado, etc.)
+      await trx('historico_status').insert({
+        solicitacao_id:  req.params.id,
+        gestor_id:       req.user.id,
+        status_anterior: solicitacao.status,
+        status_novo:     'urgente_escalado',
+        observacao:      justificativa.trim(),
+      });
+
+      const atualizada = await trx('solicitacoes').where({ id: req.params.id }).first();
+      return { tipo: 'escalada', solicitacao: atualizada };
+    });
+
+    if (resultado.tipo === 'nao_encontrada') {
+      return res.status(404).json({ error: 'Solicitação não encontrada.' });
+    }
+    if (resultado.tipo === 'ja_urgente') {
+      return res.status(409).json({ error: 'Esta solicitação já possui prioridade urgente.' });
+    }
+
+    // Notifica o paciente da escalada. Feito fora da transação: falha no push
+    // não deve reverter a atualização de prioridade já confirmada.
+    pushService.enviar(
+      resultado.solicitacao.paciente_id,
+      'paciente',
+      {
+        titulo: 'Prioridade atualizada no seu pedido',
+        corpo:  'Seu pedido foi escalado para urgente pela equipe da UBS.',
+        url:    `/paciente/solicitacao/${resultado.solicitacao.id}`,
+      }
+    ).catch(() => {}); // Erro de push não afeta a resposta da API
+
+    return res.json(resultado.solicitacao);
+  } catch (err) {
+    console.error('[PATCH /gestor/solicitacao/:id/escalar]', err);
+    return res.status(500).json({ error: 'Erro ao escalar solicitação.' });
+  }
+});
+
+
+// ─── PATCH /api/gestor/solicitacao/:id/resultado ─────────────────────────────
+// Registra ou atualiza o resultado clínico e o CID-10 de uma solicitação.
+// Pode ser chamado mesmo com status != 'concluido' (ex: resultado parcial).
+// Body: { resultado: string, cid_10: string }
+router.patch('/solicitacao/:id/resultado', async (req, res) => {
+  try {
+    const { resultado, cid_10 } = req.body;
+
+    // Ao menos um dos dois campos deve ser enviado
+    if (resultado === undefined && cid_10 === undefined) {
+      return res.status(400).json({ error: 'Informe ao menos resultado ou cid_10.' });
+    }
+
+    const solicitacao = await knex('solicitacoes')
+      .where({ id: req.params.id })
+      .first();
+
+    if (!solicitacao) {
+      return res.status(404).json({ error: 'Solicitação não encontrada.' });
+    }
+
+    const atualizada = await knex('solicitacoes')
+      .where({ id: req.params.id })
+      .update({
+        // undefined não sobrescreve — null limpa o campo explicitamente
+        resultado:    resultado !== undefined ? resultado : solicitacao.resultado,
+        cid_10:       cid_10    !== undefined ? cid_10    : solicitacao.cid_10,
+        atualizado_em: knex.fn.now(),
+      })
+      .returning('*')
+      .then(rows => rows[0]);
+
+    return res.json(atualizada);
+  } catch (err) {
+    console.error('[PATCH /gestor/solicitacao/:id/resultado]', err);
+    return res.status(500).json({ error: 'Erro ao registrar resultado.' });
+  }
+});
+
+
+// ─── GET /api/gestor/paciente/:id/atendimentos ────────────────────────────────
+// Retorna todos os atendimentos clínicos do paciente, do mais recente ao mais antigo.
+// Inclui nome de quem registrou para auditoria.
+router.get('/paciente/:id/atendimentos', async (req, res) => {
+  try {
+    const paciente = await knex('pacientes').where({ id: req.params.id }).first();
+    if (!paciente) {
+      return res.status(404).json({ error: 'Paciente não encontrado.' });
+    }
+
+    const atendimentos = await knex('atendimentos')
+      .leftJoin('usuarios_gestores', 'atendimentos.registrado_por', 'usuarios_gestores.id')
+      .where('atendimentos.paciente_id', req.params.id)
+      .select(
+        'atendimentos.*',
+        'usuarios_gestores.nome as registrado_por_nome',
+      )
+      .orderBy('atendimentos.data_atendimento', 'desc');
+
+    return res.json(atendimentos);
+  } catch (err) {
+    console.error('[GET /gestor/paciente/:id/atendimentos]', err);
+    return res.status(500).json({ error: 'Erro ao buscar atendimentos.' });
+  }
+});
+
+
+// ─── POST /api/gestor/paciente/:id/atendimento ───────────────────────────────
+// Registra um novo atendimento clínico para o paciente.
+// Body: { data_atendimento, unidade, tipo_unidade, especialidade,
+//         profissional, cid_10_principal, cid_10_secundario, conduta, observacoes }
+router.post('/paciente/:id/atendimento', async (req, res) => {
+  try {
+    const {
+      data_atendimento, unidade, tipo_unidade, especialidade,
+      profissional, cid_10_principal, cid_10_secundario, conduta, observacoes,
+    } = req.body;
+
+    if (!data_atendimento || !unidade) {
+      return res.status(400).json({ error: 'Data do atendimento e unidade são obrigatórios.' });
+    }
+
+    const paciente = await knex('pacientes').where({ id: req.params.id }).first();
+    if (!paciente) {
+      return res.status(404).json({ error: 'Paciente não encontrado.' });
+    }
+
+    const [atendimento] = await knex('atendimentos')
+      .insert({
+        paciente_id:       req.params.id,
+        registrado_por:    req.user.id,
+        data_atendimento,
+        unidade,
+        tipo_unidade:      tipo_unidade || null,
+        especialidade:     especialidade || null,
+        profissional:      profissional || null,
+        cid_10_principal:  cid_10_principal || null,
+        cid_10_secundario: cid_10_secundario || null,
+        conduta:           conduta || null,
+        observacoes:       observacoes || null,
+      })
+      .returning('*');
+
+    return res.status(201).json(atendimento);
+  } catch (err) {
+    console.error('[POST /gestor/paciente/:id/atendimento]', err);
+    return res.status(500).json({ error: 'Erro ao registrar atendimento.' });
+  }
+});
+
+
+// ─── PUT /api/gestor/atendimento/:id ─────────────────────────────────────────
+// Atualiza um atendimento clínico existente.
+// Permite corrigir data, unidade, resultado, CID etc. após o registro inicial.
+// Body: qualquer combinação dos campos de atendimento (todos opcionais)
+router.put('/atendimento/:id', async (req, res) => {
+  try {
+    const existente = await knex('atendimentos').where({ id: req.params.id }).first();
+    if (!existente) {
+      return res.status(404).json({ error: 'Atendimento não encontrado.' });
+    }
+
+    const {
+      data_atendimento, unidade, tipo_unidade, especialidade,
+      profissional, cid_10_principal, cid_10_secundario, conduta, observacoes,
+    } = req.body;
+
+    const [atualizado] = await knex('atendimentos')
+      .where({ id: req.params.id })
+      .update({
+        data_atendimento:  data_atendimento  ?? existente.data_atendimento,
+        unidade:           unidade           ?? existente.unidade,
+        tipo_unidade:      tipo_unidade      !== undefined ? tipo_unidade      : existente.tipo_unidade,
+        especialidade:     especialidade     !== undefined ? especialidade     : existente.especialidade,
+        profissional:      profissional      !== undefined ? profissional      : existente.profissional,
+        cid_10_principal:  cid_10_principal  !== undefined ? cid_10_principal  : existente.cid_10_principal,
+        cid_10_secundario: cid_10_secundario !== undefined ? cid_10_secundario : existente.cid_10_secundario,
+        conduta:           conduta           !== undefined ? conduta           : existente.conduta,
+        observacoes:       observacoes       !== undefined ? observacoes       : existente.observacoes,
+        atualizado_em:     knex.fn.now(),
+      })
+      .returning('*');
+
+    return res.json(atualizado);
+  } catch (err) {
+    console.error('[PUT /gestor/atendimento/:id]', err);
+    return res.status(500).json({ error: 'Erro ao atualizar atendimento.' });
+  }
+});
+
+
+// ─── DELETE /api/gestor/atendimento/:id ──────────────────────────────────────
+// Remove permanentemente um atendimento clínico.
+// Usado para corrigir registros inseridos por engano.
+// Não há soft delete — atendimentos errôneos simplesmente não existiram.
+router.delete('/atendimento/:id', async (req, res) => {
+  try {
+    const existente = await knex('atendimentos').where({ id: req.params.id }).first();
+    if (!existente) {
+      return res.status(404).json({ error: 'Atendimento não encontrado.' });
+    }
+
+    await knex('atendimentos').where({ id: req.params.id }).delete();
+    return res.json({ mensagem: 'Atendimento removido com sucesso.' });
+  } catch (err) {
+    console.error('[DELETE /gestor/atendimento/:id]', err);
+    return res.status(500).json({ error: 'Erro ao remover atendimento.' });
+  }
+});
+
+
 // ─── GET /api/gestor/medicamentos ─────────────────────────────────────────────
 // Lista todos os medicamentos da UBS do gestor, ordenados alfabeticamente.
 router.get('/medicamentos', async (req, res) => {
@@ -465,10 +709,15 @@ router.post('/paciente', async (req, res) => {
 
 // ─── PUT /api/gestor/paciente/:id ─────────────────────────────────────────────
 // Edita dados básicos de um paciente. Só permite se o paciente for da UBS do gestor.
-// Body (opcionais): { nome, telefone, email, ativo }
+// Body (opcionais): { nome, telefone, email, ativo, tipo_sanguineo, peso_kg, altura_cm, alergias, comorbidades, medicamentos_uso_continuo, observacoes_clinicas }
 router.put('/paciente/:id', async (req, res) => {
   try {
-    const { nome, telefone, email, ativo } = req.body;
+    const {
+      nome, telefone, email, ativo,
+      // Campos clínicos — opcionais, null preserva valor existente
+      tipo_sanguineo, peso_kg, altura_cm,
+      alergias, comorbidades, medicamentos_uso_continuo, observacoes_clinicas,
+    } = req.body;
 
     // MODO MATRIZ: qualquer gestor pode editar dados de qualquer paciente
     const existente = await knex('pacientes')
@@ -482,11 +731,19 @@ router.put('/paciente/:id', async (req, res) => {
     const [atualizado] = await knex('pacientes')
       .where({ id: req.params.id })
       .update({
-        nome: nome ?? existente.nome,
-        telefone: telefone ?? existente.telefone,
-        email: email ?? existente.email,
-        ativo: ativo ?? existente.ativo,
-        atualizado_em: knex.fn.now()
+        nome:                       nome ?? existente.nome,
+        telefone:                   telefone ?? existente.telefone,
+        email:                      email ?? existente.email,
+        ativo:                      ativo ?? existente.ativo,
+        // Usa null explícito para apagar um campo clínico; undefined preserva o valor
+        tipo_sanguineo:             tipo_sanguineo !== undefined ? tipo_sanguineo : existente.tipo_sanguineo,
+        peso_kg:                    peso_kg !== undefined ? peso_kg : existente.peso_kg,
+        altura_cm:                  altura_cm !== undefined ? altura_cm : existente.altura_cm,
+        alergias:                   alergias !== undefined ? alergias : existente.alergias,
+        comorbidades:               comorbidades !== undefined ? comorbidades : existente.comorbidades,
+        medicamentos_uso_continuo:  medicamentos_uso_continuo !== undefined ? medicamentos_uso_continuo : existente.medicamentos_uso_continuo,
+        observacoes_clinicas:       observacoes_clinicas !== undefined ? observacoes_clinicas : existente.observacoes_clinicas,
+        atualizado_em:              knex.fn.now(),
       })
       .returning('*');
 

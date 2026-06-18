@@ -40,12 +40,35 @@ const STATUS_LABEL = {
   aguardando_resultado: 'Ag. Resultado',
   concluido:            'Concluído',
   cancelado:            'Cancelado',
+  // Evento de escalada de prioridade — aparece no histórico da solicitação
+  urgente_escalado:     'Escalado para Urgente',
 };
 
 const STATUS_VALIDOS = [
   'em_analise', 'aguardando_regulacao', 'autorizado',
   'data_marcada', 'aguardando_resultado', 'concluido', 'cancelado'
 ];
+
+const TIPO_UNIDADE_LABEL = {
+  ubs:                  'UBS',
+  ame:                  'AME',
+  caps:                 'CAPS',
+  centro_especialidades:'Centro de Especialidades',
+  hospital:             'Hospital',
+  pronto_socorro:       'Pronto-Socorro',
+  outro:                'Outro',
+};
+
+const TIPO_UNIDADE_ICON = {
+  ubs:                  'home_health',
+  ame:                  'medical_services',
+  caps:                 'psychology',
+  centro_especialidades:'domain',
+  hospital:             'local_hospital',
+  pronto_socorro:       'emergency',
+  outro:                'description',
+};
+
 
 // ─────────────────────────────────────────────────────────────────────────────
 // COMPONENTE: CardSolicitacao
@@ -88,6 +111,20 @@ function CardSolicitacao({
           )}
           {sol.observacao_paciente && (
             <p className="text-xs text-on-surface-variant italic mt-1">{sol.observacao_paciente}</p>
+          )}
+          {/* Resultado clínico — exibido quando a solicitação já tem resultado registrado */}
+          {(sol.resultado || sol.cid_10) && (
+            <div className="mt-2 p-3 bg-emerald-50 border border-emerald-200 rounded-xl space-y-1">
+              {sol.cid_10 && (
+                <p className="text-xs font-bold text-emerald-700">
+                  <span className="material-symbols-outlined text-[14px] align-middle mr-1">vaccines</span>
+                  CID-10: {sol.cid_10}
+                </p>
+              )}
+              {sol.resultado && (
+                <p className="text-xs text-emerald-800 font-medium">{sol.resultado}</p>
+              )}
+            </div>
           )}
         </div>
         <div className="flex flex-row md:flex-col lg:flex-row gap-2 flex-shrink-0 mt-3 md:mt-0 w-full md:w-auto">
@@ -172,16 +209,47 @@ export default function PerfilPaciente() {
   const [modalStatusAberto, setModalStatusAberto] = useState(false);
   const [solicitacaoSelecionada, setSolicitacaoSelecionada] = useState(null);
   const [enviandoStatus, setEnviandoStatus] = useState(false);
-  const [formStatus, setFormStatus] = useState({ status_novo: 'em_analise', observacao: '' });
+  const [formStatus, setFormStatus] = useState({
+    status_novo: 'em_analise',
+    observacao: '',
+    resultado: '',   // resultado clínico do exame/consulta (opcional)
+    cid_10: '',      // CID-10 registrado no momento da conclusão (opcional)
+  });
   const [editandoDados, setEditandoDados] = useState(false);
   const [salvandoDados, setSalvandoDados] = useState(false);
-  const [formDados, setFormDados] = useState({ nome: '', telefone: '', email: '' });
+  const [formDados, setFormDados] = useState({
+    // Dados pessoais
+    nome: '', telefone: '', email: '',
+    // Dados clínicos
+    tipo_sanguineo: '', peso_kg: '', altura_cm: '',
+    alergias: '', comorbidades: '',
+    medicamentos_uso_continuo: '', observacoes_clinicas: '',
+  });
   const [historicos, setHistoricos] = useState({});
   const [historicosAbertos, setHistoricosAbertos] = useState({});
 
   const [modalEscalarAberto, setModalEscalarAberto] = useState(false);
   const [enviandoEscalar, setEnviandoEscalar] = useState(false);
   const [justificativa, setJustificativa] = useState('');
+
+  // ── Estados da Linha do Tempo (atendimentos clínicos) ──
+  const [atendimentos, setAtendimentos] = useState([]);
+  const [loadingAtendimentos, setLoadingAtendimentos] = useState(false);
+  const [modalAtendimentoAberto, setModalAtendimentoAberto] = useState(false);
+  const [enviandoAtendimento, setEnviandoAtendimento] = useState(false);
+  // null = criar novo; objeto = editar existente
+  const [atendimentoEditando, setAtendimentoEditando] = useState(null);
+  const [deletandoAtendimento, setDeletandoAtendimento] = useState(null);
+  const [formAtendimento, setFormAtendimento] = useState({
+    data_atendimento: '', unidade: '', tipo_unidade: '',
+    especialidade: '', profissional: '',
+    cid_10_principal: '', cid_10_secundario: '',
+    conduta: '', observacoes: '',
+  });
+
+  // ── Estado da aba ativa (navegação por tabs) ──
+  // Valores: 'dados' | 'solicitacoes' | 'linha_do_tempo'
+  const [abaAtiva, setAbaAtiva] = useState('dados');
 
   const carregarPaciente = () => {
     setLoading(true);
@@ -194,10 +262,18 @@ export default function PerfilPaciente() {
   useEffect(() => { carregarPaciente(); }, [id]);
 
   const iniciarEdicaoDados = () => {
+    // Pré-preenche dados pessoais E dados clínicos do estado atual do paciente
     setFormDados({
-      nome: paciente?.nome || '',
-      telefone: paciente?.telefone || '',
-      email: paciente?.email || '',
+      nome:                      paciente?.nome || '',
+      telefone:                  paciente?.telefone || '',
+      email:                     paciente?.email || '',
+      tipo_sanguineo:            paciente?.tipo_sanguineo || '',
+      peso_kg:                   paciente?.peso_kg || '',
+      altura_cm:                 paciente?.altura_cm || '',
+      alergias:                  paciente?.alergias || '',
+      comorbidades:              paciente?.comorbidades || '',
+      medicamentos_uso_continuo: paciente?.medicamentos_uso_continuo || '',
+      observacoes_clinicas:      paciente?.observacoes_clinicas || '',
     });
     setEditandoDados(true);
   };
@@ -270,7 +346,13 @@ export default function PerfilPaciente() {
 
   const abrirModalStatus = (sol) => {
     setSolicitacaoSelecionada(sol);
-    setFormStatus({ status_novo: sol.status, observacao: '' });
+    // Pré-carrega resultado e cid_10 existentes para edição
+    setFormStatus({
+      status_novo: sol.status,
+      observacao: '',
+      resultado: sol.resultado || '',
+      cid_10: sol.cid_10 || '',
+    });
     setModalStatusAberto(true);
   };
 
@@ -278,7 +360,19 @@ export default function PerfilPaciente() {
     e.preventDefault();
     setEnviandoStatus(true);
     try {
-      await api.put(`/gestor/solicitacao/${solicitacaoSelecionada.id}/status`, formStatus);
+      await api.put(`/gestor/solicitacao/${solicitacaoSelecionada.id}/status`, {
+        status_novo: formStatus.status_novo,
+        observacao: formStatus.observacao,
+      });
+
+      // Se o gestor preencheu resultado ou cid_10, salva em chamada separada
+      if (formStatus.resultado || formStatus.cid_10) {
+        await api.patch(`/gestor/solicitacao/${solicitacaoSelecionada.id}/resultado`, {
+          resultado: formStatus.resultado || undefined,
+          cid_10: formStatus.cid_10 || undefined,
+        });
+      }
+
       toast.success('Status atualizado com sucesso!');
       setModalStatusAberto(false);
       carregarPaciente();
@@ -310,6 +404,92 @@ export default function PerfilPaciente() {
     }
   };
 
+  // Carrega a linha do tempo de atendimentos junto com os dados do paciente
+  useEffect(() => { carregarAtendimentos(); }, [id]);
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // FUNÇÕES: Linha do Tempo (Atendimentos Clínicos)
+  // Gerenciam o CRUD de atendimentos do paciente. Os dados são carregados
+  // uma vez no mount e recarregados após cada operação de escrita.
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  // TIPO_UNIDADE_LABEL foi movido para o topo do arquivo
+
+  const carregarAtendimentos = () => {
+    setLoadingAtendimentos(true);
+    api.get(`/gestor/paciente/${id}/atendimentos`)
+      .then(r => setAtendimentos(r.data))
+      .catch(() => toast.error('Erro ao carregar linha do tempo.'))
+      .finally(() => setLoadingAtendimentos(false));
+  };
+
+  const resetFormAtendimento = () => {
+    setFormAtendimento({
+      data_atendimento: '', unidade: '', tipo_unidade: '',
+      especialidade: '', profissional: '',
+      cid_10_principal: '', cid_10_secundario: '',
+      conduta: '', observacoes: '',
+    });
+  };
+
+  const abrirModalNovoAtendimento = () => {
+    setAtendimentoEditando(null);
+    resetFormAtendimento();
+    setModalAtendimentoAberto(true);
+  };
+
+  const abrirModalEditarAtendimento = (atendimento) => {
+    setAtendimentoEditando(atendimento);
+    setFormAtendimento({
+      data_atendimento: atendimento.data_atendimento?.split('T')[0] || '',
+      unidade:           atendimento.unidade || '',
+      tipo_unidade:      atendimento.tipo_unidade || '',
+      especialidade:     atendimento.especialidade || '',
+      profissional:      atendimento.profissional || '',
+      cid_10_principal:  atendimento.cid_10_principal || '',
+      cid_10_secundario: atendimento.cid_10_secundario || '',
+      conduta:           atendimento.conduta || '',
+      observacoes:       atendimento.observacoes || '',
+    });
+    setModalAtendimentoAberto(true);
+  };
+
+  const handleSalvarAtendimento = async (e) => {
+    e.preventDefault();
+    setEnviandoAtendimento(true);
+    try {
+      if (atendimentoEditando) {
+        await api.put(`/gestor/atendimento/${atendimentoEditando.id}`, formAtendimento);
+        toast.success('Atendimento atualizado!');
+      } else {
+        await api.post(`/gestor/paciente/${id}/atendimento`, formAtendimento);
+        toast.success('Atendimento registrado!');
+      }
+      setModalAtendimentoAberto(false);
+      setAtendimentoEditando(null);
+      resetFormAtendimento();
+      carregarAtendimentos();
+    } catch {
+      toast.error('Erro ao salvar atendimento.');
+    } finally {
+      setEnviandoAtendimento(false);
+    }
+  };
+
+  const handleDeletarAtendimento = async (atendimentoId) => {
+    if (!window.confirm('Tem certeza que deseja remover este atendimento?')) return;
+    setDeletandoAtendimento(atendimentoId);
+    try {
+      await api.delete(`/gestor/atendimento/${atendimentoId}`);
+      toast.success('Atendimento removido.');
+      carregarAtendimentos();
+    } catch {
+      toast.error('Erro ao remover atendimento.');
+    } finally {
+      setDeletandoAtendimento(null);
+    }
+  };
+
   if (loading) {
     return (
       <GestorLayout>
@@ -336,135 +516,440 @@ export default function PerfilPaciente() {
         </div>
       </div>
 
-      {/* ── Card de dados: leitura e edição inline ── */}
-      <div className="bg-surface-container-lowest rounded-2xl md:rounded-3xl border border-surface-variant p-5 md:p-8 mb-6">
-        <div className="flex items-center justify-between gap-4 mb-5">
-          <h2 className="text-lg font-extrabold text-on-background">Dados pessoais</h2>
+      {/* ── Navegação por Abas ── */}
+      <div className="flex border-b border-surface-variant mb-6 overflow-x-auto no-scrollbar">
+        {[
+          { id: 'dados',          label: 'Dados',          icon: 'person' },
+          { id: 'solicitacoes',   label: 'Solicitações',    icon: 'receipt_long' },
+          { id: 'linha_do_tempo', label: 'Linha do Tempo',  icon: 'timeline' },
+        ].map(tab => (
+          <button
+            key={tab.id}
+            onClick={() => setAbaAtiva(tab.id)}
+            className={`flex items-center gap-2 px-4 py-3 text-sm font-bold border-b-2 transition-colors whitespace-nowrap
+              ${abaAtiva === tab.id
+                ? 'border-primary text-primary'
+                : 'border-transparent text-on-surface-variant hover:text-on-surface'
+              }`}
+          >
+            <span className="material-symbols-outlined text-base">{tab.icon}</span>
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {abaAtiva === 'dados' && (
+        <>
+          {/* ── Card de dados: leitura e edição inline ── */}
+          <div className="bg-surface-container-lowest rounded-2xl md:rounded-3xl border border-surface-variant p-5 md:p-8 mb-6">
+            <div className="flex items-center justify-between gap-4 mb-5">
+              <h2 className="text-lg font-extrabold text-on-background">Dados pessoais</h2>
+              {!editandoDados && (
+                <button onClick={iniciarEdicaoDados} className="px-4 py-2 border border-outline rounded-xl font-bold text-sm hover:bg-surface-container-high">
+                  Editar Dados
+                </button>
+              )}
+            </div>
+            {editandoDados ? (
+              <form onSubmit={handleSalvarDados} className="space-y-5">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <label className="space-y-2">
+                    <span className="text-sm font-bold text-on-surface-variant">Nome*</span>
+                    <input required value={formDados.nome} onChange={(e) => setFormDados((prev) => ({ ...prev, nome: e.target.value }))} className="w-full h-12 px-4 bg-surface-container-high border-none rounded-xl outline-none font-medium" />
+                  </label>
+                  <label className="space-y-2">
+                    <span className="text-sm font-bold text-on-surface-variant">Telefone</span>
+                    <input value={formDados.telefone} onChange={(e) => setFormDados((prev) => ({ ...prev, telefone: e.target.value }))} className="w-full h-12 px-4 bg-surface-container-high border-none rounded-xl outline-none font-medium" />
+                  </label>
+                  <label className="space-y-2">
+                    <span className="text-sm font-bold text-on-surface-variant">E-mail</span>
+                    <input type="email" value={formDados.email} onChange={(e) => setFormDados((prev) => ({ ...prev, email: e.target.value }))} className="w-full h-12 px-4 bg-surface-container-high border-none rounded-xl outline-none font-medium" />
+                  </label>
+                </div>
+
+                {/* Separador visual entre dados pessoais e clínicos */}
+                <div className="border-t border-surface-variant pt-5">
+                  <h3 className="text-sm font-extrabold text-on-surface-variant uppercase tracking-wider mb-4">
+                    Dados Clínicos
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                    <label className="space-y-2">
+                      <span className="text-sm font-bold text-on-surface-variant">Tipo Sanguíneo</span>
+                      <select value={formDados.tipo_sanguineo}
+                        onChange={e => setFormDados(p => ({ ...p, tipo_sanguineo: e.target.value }))}
+                        className="w-full h-12 px-4 bg-surface-container-high border-none rounded-xl outline-none font-medium">
+                        <option value="">Não informado</option>
+                        {['A+','A-','B+','B-','AB+','AB-','O+','O-'].map(t => (
+                          <option key={t} value={t}>{t}</option>
+                        ))}
+                      </select>
+                    </label>
+                    <label className="space-y-2">
+                      <span className="text-sm font-bold text-on-surface-variant">Peso (kg)</span>
+                      <input type="number" step="0.1" min="1" max="300"
+                        placeholder="Ex: 72.5"
+                        value={formDados.peso_kg}
+                        onChange={e => setFormDados(p => ({ ...p, peso_kg: e.target.value }))}
+                        className="w-full h-12 px-4 bg-surface-container-high border-none rounded-xl outline-none font-medium" />
+                    </label>
+                    <label className="space-y-2">
+                      <span className="text-sm font-bold text-on-surface-variant">Altura (cm)</span>
+                      <input type="number" min="50" max="250"
+                        placeholder="Ex: 175"
+                        value={formDados.altura_cm}
+                        onChange={e => setFormDados(p => ({ ...p, altura_cm: e.target.value }))}
+                        className="w-full h-12 px-4 bg-surface-container-high border-none rounded-xl outline-none font-medium" />
+                    </label>
+                  </div>
+                  <div className="space-y-4">
+                    <label className="block space-y-2">
+                      <span className="text-sm font-bold text-on-surface-variant">Alergias</span>
+                      <textarea rows={2}
+                        placeholder="Ex: Penicilina, Dipirona, látex"
+                        value={formDados.alergias}
+                        onChange={e => setFormDados(p => ({ ...p, alergias: e.target.value }))}
+                        className="w-full px-4 py-3 bg-surface-container-high border-none rounded-xl outline-none font-medium resize-none" />
+                    </label>
+                    <label className="block space-y-2">
+                      <span className="text-sm font-bold text-on-surface-variant">Comorbidades</span>
+                      <textarea rows={2}
+                        placeholder="Ex: Diabetes tipo 2, Hipertensão arterial"
+                        value={formDados.comorbidades}
+                        onChange={e => setFormDados(p => ({ ...p, comorbidades: e.target.value }))}
+                        className="w-full px-4 py-3 bg-surface-container-high border-none rounded-xl outline-none font-medium resize-none" />
+                    </label>
+                    <label className="block space-y-2">
+                      <span className="text-sm font-bold text-on-surface-variant">Medicamentos de uso contínuo</span>
+                      <textarea rows={2}
+                        placeholder="Ex: Metformina 500mg 2x/dia, Losartana 50mg"
+                        value={formDados.medicamentos_uso_continuo}
+                        onChange={e => setFormDados(p => ({ ...p, medicamentos_uso_continuo: e.target.value }))}
+                        className="w-full px-4 py-3 bg-surface-container-high border-none rounded-xl outline-none font-medium resize-none" />
+                    </label>
+                    <label className="block space-y-2">
+                      <span className="text-sm font-bold text-on-surface-variant">Observações Clínicas</span>
+                      <textarea rows={3}
+                        placeholder="Anotações da equipe sobre saúde geral do paciente"
+                        value={formDados.observacoes_clinicas}
+                        onChange={e => setFormDados(p => ({ ...p, observacoes_clinicas: e.target.value }))}
+                        className="w-full px-4 py-3 bg-surface-container-high border-none rounded-xl outline-none font-medium resize-none" />
+                    </label>
+                  </div>
+                </div>
+
+                <div className="flex justify-end gap-3">
+                  <button type="button" onClick={() => setEditandoDados(false)} className="h-12 px-5 rounded-2xl border border-outline font-bold">Cancelar</button>
+                  <button type="submit" disabled={salvandoDados} className="h-12 px-6 rounded-2xl bg-primary text-white font-bold disabled:opacity-50">{salvandoDados ? 'Salvando...' : 'Salvar'}</button>
+                </div>
+              </form>
+            ) : (
+              <>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
+                  {[
+                    { label: 'CRA', value: paciente?.cra },
+                    { label: 'Telefone', value: paciente?.telefone || '---' },
+                    { label: 'Nascimento', value: paciente?.data_nascimento ? formatarDataBR(paciente.data_nascimento) : '---' },
+                    { label: 'E-mail', value: paciente?.email || '---' },
+                    // UBS de origem: informativo — modo matriz, não restringe acesso
+                    { label: 'UBS de Origem', value: paciente?.ubs_nome || '---' },
+                  ].map(({ label, value }) => (
+                    <div key={label}>
+                      <p className="text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-1">{label}</p>
+                      <p className="font-bold text-on-background text-sm md:text-base">{value}</p>
+                    </div>
+                  ))}
+                </div>
+                {/* Alerta de ausência de meios de contato (telefone e e-mail) para notificações digitais */}
+                {!paciente?.telefone && !paciente?.email && (
+                  <div className="mt-3 flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2 text-amber-800">
+                    <span className="material-symbols-outlined text-base">warning</span>
+                    <p className="text-xs font-semibold">Paciente sem contato registrado — impossível notificar remotamente.</p>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+
+          {/* ── Card: Dados Clínicos ── */}
           {!editandoDados && (
-            <button onClick={iniciarEdicaoDados} className="px-4 py-2 border border-outline rounded-xl font-bold text-sm hover:bg-surface-container-high">
-              Editar Dados
-            </button>
+            <div className="bg-surface-container-lowest rounded-2xl md:rounded-3xl border border-surface-variant p-5 md:p-8 mt-4">
+              <h2 className="text-lg font-extrabold text-on-background mb-5">Dados Clínicos</h2>
+
+              {/* Vitais básicos */}
+              <div className="grid grid-cols-3 gap-4 mb-5">
+                <div>
+                  <p className="text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-1">Tipo Sanguíneo</p>
+                  <p className="font-bold text-on-background">{paciente?.tipo_sanguineo || '---'}</p>
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-1">Peso</p>
+                  <p className="font-bold text-on-background">{paciente?.peso_kg ? `${paciente.peso_kg} kg` : '---'}</p>
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-1">Altura</p>
+                  <p className="font-bold text-on-background">{paciente?.altura_cm ? `${paciente.altura_cm} cm` : '---'}</p>
+                </div>
+              </div>
+
+              {/* Campos clínicos críticos — em destaque visual (Tailwind-safe) */}
+              <div className="space-y-4">
+                {[
+                  {
+                    label: 'Alergias',
+                    key: 'alergias',
+                    icon: 'warning',
+                    wrapClass: 'bg-amber-50 border-amber-200',
+                    labelClass: 'text-amber-700',
+                    textClass: 'text-amber-900',
+                  },
+                  {
+                    label: 'Comorbidades',
+                    key: 'comorbidades',
+                    icon: 'monitor_heart',
+                    wrapClass: 'bg-red-50 border-red-200',
+                    labelClass: 'text-red-700',
+                    textClass: 'text-red-900',
+                  },
+                  {
+                    label: 'Medicamentos em uso contínuo',
+                    key: 'medicamentos_uso_continuo',
+                    icon: 'medication',
+                    wrapClass: 'bg-blue-50 border-blue-200',
+                    labelClass: 'text-blue-700',
+                    textClass: 'text-blue-900',
+                  },
+                  {
+                    label: 'Observações Clínicas',
+                    key: 'observacoes_clinicas',
+                    icon: 'note',
+                    wrapClass: 'bg-surface-container-high border-surface-variant',
+                    labelClass: 'text-on-surface-variant',
+                    textClass: 'text-on-background',
+                  },
+                ].map(({ label, key, icon, wrapClass, labelClass, textClass }) => (
+                  <div key={key} className={`p-4 rounded-xl border ${wrapClass}`}>
+                    <p className={`text-xs font-bold uppercase tracking-wider mb-1 flex items-center gap-1 ${labelClass}`}>
+                      <span className="material-symbols-outlined text-[14px]">{icon}</span>
+                      {label}
+                    </p>
+                    <p className={`text-sm font-medium ${textClass}`}>
+                      {paciente?.[key] || <span className="text-on-surface-variant italic font-normal">Não informado</span>}
+                    </p>
+                  </div>
+                ))}
+              </div>
+
+              {/* Nota indicando edição conjunta */}
+              <p className="text-xs text-on-surface-variant mt-4 italic">
+                Para editar dados clínicos, use o botão "Editar Dados" acima.
+              </p>
+            </div>
           )}
-        </div>
-        {editandoDados ? (
-          <form onSubmit={handleSalvarDados} className="space-y-5">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <label className="space-y-2">
-                <span className="text-sm font-bold text-on-surface-variant">Nome*</span>
-                <input required value={formDados.nome} onChange={(e) => setFormDados((prev) => ({ ...prev, nome: e.target.value }))} className="w-full h-12 px-4 bg-surface-container-high border-none rounded-xl outline-none font-medium" />
-              </label>
-              <label className="space-y-2">
-                <span className="text-sm font-bold text-on-surface-variant">Telefone</span>
-                <input value={formDados.telefone} onChange={(e) => setFormDados((prev) => ({ ...prev, telefone: e.target.value }))} className="w-full h-12 px-4 bg-surface-container-high border-none rounded-xl outline-none font-medium" />
-              </label>
-              <label className="space-y-2">
-                <span className="text-sm font-bold text-on-surface-variant">E-mail</span>
-                <input type="email" value={formDados.email} onChange={(e) => setFormDados((prev) => ({ ...prev, email: e.target.value }))} className="w-full h-12 px-4 bg-surface-container-high border-none rounded-xl outline-none font-medium" />
-              </label>
+        </>
+      )}
+
+      {abaAtiva === 'solicitacoes' && (
+        <>
+          {/* ── Cabeçalho de Solicitações ── */}
+          <div className="flex items-center justify-between mb-4 md:mb-6">
+            <h2 className="text-lg md:text-2xl font-extrabold text-on-background">Solicitações</h2>
+            <button
+              onClick={() => setModalSolicitacaoAberto(true)}
+              className="h-10 px-4 md:h-12 md:px-6 bg-primary text-white font-bold rounded-xl md:rounded-2xl shadow-md shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all flex items-center gap-2 text-sm"
+            >
+              <span className="material-symbols-outlined text-lg">add</span>
+              Nova Solicitação
+            </button>
+          </div>
+
+          {/* ── Separação: ativas primeiro, históricas abaixo ── */}
+          {(() => {
+            // Separa as solicitações do paciente entre ativas e históricas com base no status de encerramento
+            const STATUS_ENCERRADO = ['concluido', 'cancelado'];
+            const ativas    = (paciente?.solicitacoes || []).filter(s => !STATUS_ENCERRADO.includes(s.status));
+            const historico = (paciente?.solicitacoes || []).filter(s =>  STATUS_ENCERRADO.includes(s.status));
+            
+            return (
+              <>
+                {/* Solicitações ativas */}
+                {ativas.length > 0 && (
+                  <div className="space-y-3 md:space-y-4">
+                    {ativas.map(sol => (
+                      <CardSolicitacao
+                        key={sol.id}
+                        sol={sol}
+                        abrirModalEscalar={abrirModalEscalar}
+                        abrirModalStatus={abrirModalStatus}
+                        alternarHistorico={alternarHistorico}
+                        historicosAbertos={historicosAbertos}
+                        historicos={historicos}
+                        carregarHistorico={carregarHistorico}
+                      />
+                    ))}
+                  </div>
+                )}
+                
+                {/* Divisor + Histórico */}
+                {historico.length > 0 && (
+                  <div className="mt-6">
+                    <h3 className="text-sm font-bold text-on-surface-variant uppercase tracking-wider mb-3 flex items-center gap-2">
+                      <span className="material-symbols-outlined text-base">history</span>
+                      Histórico ({historico.length})
+                    </h3>
+                    <div className="space-y-3 md:space-y-4 opacity-75">
+                      {historico.map(sol => (
+                        <CardSolicitacao
+                          key={sol.id}
+                          sol={sol}
+                          abrirModalEscalar={abrirModalEscalar}
+                          abrirModalStatus={abrirModalStatus}
+                          alternarHistorico={alternarHistorico}
+                          historicosAbertos={historicosAbertos}
+                          historicos={historicos}
+                          carregarHistorico={carregarHistorico}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                )}
+                
+                {/* Estado vazio exibido caso o paciente não possua nenhuma solicitação no histórico nem ativa */}
+                {!paciente?.solicitacoes?.length && (
+                  <p className="text-center text-on-surface-variant py-8 text-sm">Nenhuma solicitação registrada.</p>
+                )}
+              </>
+            );
+          })()}
+        </>
+      )}
+
+      {abaAtiva === 'linha_do_tempo' && (
+        <div>
+          {/* Cabeçalho da seção */}
+          <div className="flex items-center justify-between mb-4 md:mb-6">
+            <div>
+              <h2 className="text-lg md:text-2xl font-extrabold text-on-background">Linha do Tempo</h2>
+              <p className="text-xs text-on-surface-variant mt-0.5">
+                Atendimentos em qualquer unidade — UBS, AME, CAPS, hospital, especialidades
+              </p>
             </div>
-            <div className="flex justify-end gap-3">
-              <button type="button" onClick={() => setEditandoDados(false)} className="h-12 px-5 rounded-2xl border border-outline font-bold">Cancelar</button>
-              <button type="submit" disabled={salvandoDados} className="h-12 px-6 rounded-2xl bg-primary text-white font-bold disabled:opacity-50">{salvandoDados ? 'Salvando...' : 'Salvar'}</button>
+            <button
+              onClick={abrirModalNovoAtendimento}
+              className="h-10 px-4 md:h-12 md:px-6 bg-primary text-white font-bold rounded-xl md:rounded-2xl shadow-md shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all flex items-center gap-2 text-sm"
+            >
+              <span className="material-symbols-outlined text-lg">add</span>
+              Registrar Atendimento
+            </button>
+          </div>
+
+          {/* Estado de carregamento */}
+          {loadingAtendimentos && (
+            <div className="space-y-3 animate-pulse">
+              {[1,2,3].map(n => (
+                <div key={n} className="h-32 bg-surface-container-low rounded-2xl" />
+              ))}
             </div>
-          </form>
-        ) : (
-          <>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
-              {[
-                { label: 'CRA', value: paciente?.cra },
-                { label: 'Telefone', value: paciente?.telefone || '---' },
-                { label: 'Nascimento', value: paciente?.data_nascimento ? formatarDataBR(paciente.data_nascimento) : '---' },
-                { label: 'E-mail', value: paciente?.email || '---' },
-                // UBS de origem: informativo — modo matriz, não restringe acesso
-                { label: 'UBS de Origem', value: paciente?.ubs_nome || '---' },
-              ].map(({ label, value }) => (
-                <div key={label}>
-                  <p className="text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-1">{label}</p>
-                  <p className="font-bold text-on-background text-sm md:text-base">{value}</p>
+          )}
+
+          {/* Lista de atendimentos */}
+          {!loadingAtendimentos && atendimentos.length > 0 && (
+            <div className="space-y-3 md:space-y-4">
+              {atendimentos.map(at => (
+                <div key={at.id} className="bg-surface-container-lowest rounded-xl md:rounded-2xl border border-surface-variant p-4 md:p-6">
+                  {/* Cabeçalho do card: data + unidade + ações */}
+                  <div className="flex items-start justify-between gap-4 mb-3">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap mb-1">
+                        <span className="text-sm font-bold text-on-surface-variant">
+                          {formatarDataBR(at.data_atendimento)}
+                        </span>
+                        {at.tipo_unidade && (
+                          <span className="text-xs px-2 py-0.5 bg-surface-container-high rounded font-bold text-on-surface-variant">
+                            {TIPO_UNIDADE_LABEL[at.tipo_unidade] || at.tipo_unidade}
+                          </span>
+                        )}
+                      </div>
+                      <h3 className="font-bold text-on-background truncate">{at.unidade}</h3>
+                      {at.especialidade && (
+                        <p className="text-sm text-on-surface-variant">
+                          {at.especialidade}
+                          {at.profissional ? ` • Dr(a). ${at.profissional}` : ''}
+                        </p>
+                      )}
+                    </div>
+                    <div className="flex gap-1 flex-shrink-0">
+                      <button
+                        onClick={() => abrirModalEditarAtendimento(at)}
+                        className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-surface-container-high transition-colors"
+                        title="Editar atendimento"
+                      >
+                        <span className="material-symbols-outlined text-base">edit</span>
+                      </button>
+                      <button
+                        onClick={() => handleDeletarAtendimento(at.id)}
+                        disabled={deletandoAtendimento === at.id}
+                        className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-red-50 text-red-600 disabled:opacity-50 transition-colors"
+                        title="Remover atendimento"
+                      >
+                        <span className="material-symbols-outlined text-base">
+                          {deletandoAtendimento === at.id ? 'hourglass_empty' : 'delete'}
+                        </span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* CID-10 */}
+                  {(at.cid_10_principal || at.cid_10_secundario) && (
+                    <div className="flex gap-2 flex-wrap mb-3">
+                      {at.cid_10_principal && (
+                        <span className="text-xs px-2 py-1 bg-blue-50 text-blue-700 rounded-lg font-bold">
+                          CID: {at.cid_10_principal}
+                        </span>
+                      )}
+                      {at.cid_10_secundario && (
+                        <span className="text-xs px-2 py-1 bg-blue-50 text-blue-700 rounded-lg font-bold">
+                          CID 2°: {at.cid_10_secundario}
+                        </span>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Conduta */}
+                  {at.conduta && (
+                    <div className="mb-2">
+                      <p className="text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-1">Conduta</p>
+                      <p className="text-sm text-on-background">{at.conduta}</p>
+                    </div>
+                  )}
+
+                  {at.observacoes && (
+                    <p className="text-xs text-on-surface-variant italic mt-2">{at.observacoes}</p>
+                  )}
+
+                  {/* Rodapé de auditoria */}
+                  {at.registrado_por_nome && (
+                    <p className="text-xs text-on-surface-variant mt-3 pt-3 border-t border-surface-variant">
+                      Registrado por: {at.registrado_por_nome}
+                    </p>
+                  )}
                 </div>
               ))}
             </div>
-            {/* Alerta de ausência de meios de contato (telefone e e-mail) para notificações digitais */}
-            {!paciente?.telefone && !paciente?.email && (
-              <div className="mt-3 flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2 text-amber-800">
-                <span className="material-symbols-outlined text-base">warning</span>
-                <p className="text-xs font-semibold">Paciente sem contato registrado — impossível notificar remotamente.</p>
-              </div>
-            )}
-          </>
-        )}
-      </div>
+          )}
 
-      {/* ── Cabeçalho de Solicitações ── */}
-      <div className="flex items-center justify-between mb-4 md:mb-6">
-        <h2 className="text-lg md:text-2xl font-extrabold text-on-background">Solicitações</h2>
-        <button
-          onClick={() => setModalSolicitacaoAberto(true)}
-          className="h-10 px-4 md:h-12 md:px-6 bg-primary text-white font-bold rounded-xl md:rounded-2xl shadow-md shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all flex items-center gap-2 text-sm"
-        >
-          <span className="material-symbols-outlined text-lg">add</span>
-          Nova Solicitação
-        </button>
-      </div>
+          {/* Estado vazio */}
+          {!loadingAtendimentos && atendimentos.length === 0 && (
+            <div className="text-center py-12">
+              <span className="material-symbols-outlined text-4xl text-on-surface-variant mb-3">timeline</span>
+              <p className="text-on-surface-variant font-medium">Nenhum atendimento registrado ainda.</p>
+              <p className="text-xs text-on-surface-variant mt-1">
+                Clique em "Registrar Atendimento" para adicionar o primeiro registro clínico.
+              </p>
+            </div>
+          )}
+        </div>
+      )}
 
-      {/* ── Separação: ativas primeiro, históricas abaixo ── */}
-      {(() => {
-        // Separa as solicitações do paciente entre ativas e históricas com base no status de encerramento
-        const STATUS_ENCERRADO = ['concluido', 'cancelado'];
-        const ativas    = (paciente?.solicitacoes || []).filter(s => !STATUS_ENCERRADO.includes(s.status));
-        const historico = (paciente?.solicitacoes || []).filter(s =>  STATUS_ENCERRADO.includes(s.status));
-        
-        return (
-          <>
-            {/* Solicitações ativas */}
-            {ativas.length > 0 && (
-              <div className="space-y-3 md:space-y-4">
-                {ativas.map(sol => (
-                  <CardSolicitacao
-                    key={sol.id}
-                    sol={sol}
-                    abrirModalEscalar={abrirModalEscalar}
-                    abrirModalStatus={abrirModalStatus}
-                    alternarHistorico={alternarHistorico}
-                    historicosAbertos={historicosAbertos}
-                    historicos={historicos}
-                    carregarHistorico={carregarHistorico}
-                  />
-                ))}
-              </div>
-            )}
-            
-            {/* Divisor + Histórico */}
-            {historico.length > 0 && (
-              <div className="mt-6">
-                <h3 className="text-sm font-bold text-on-surface-variant uppercase tracking-wider mb-3 flex items-center gap-2">
-                  <span className="material-symbols-outlined text-base">history</span>
-                  Histórico ({historico.length})
-                </h3>
-                <div className="space-y-3 md:space-y-4 opacity-75">
-                  {historico.map(sol => (
-                    <CardSolicitacao
-                      key={sol.id}
-                      sol={sol}
-                      abrirModalEscalar={abrirModalEscalar}
-                      abrirModalStatus={abrirModalStatus}
-                      alternarHistorico={alternarHistorico}
-                      historicosAbertos={historicosAbertos}
-                      historicos={historicos}
-                      carregarHistorico={carregarHistorico}
-                    />
-                  ))}
-                </div>
-              </div>
-            )}
-            
-            {/* Estado vazio exibido caso o paciente não possua nenhuma solicitação no histórico nem ativa */}
-            {!paciente?.solicitacoes?.length && (
-              <p className="text-center text-on-surface-variant py-8 text-sm">Nenhuma solicitação registrada.</p>
-            )}
-          </>
-        );
-      })()}
 
       {/* ── Modal: Nova Solicitação ── */}
       {modalSolicitacaoAberto && (
@@ -567,6 +1052,18 @@ export default function PerfilPaciente() {
                   onChange={e => setFormStatus(p => ({ ...p, observacao: e.target.value }))}
                   className="w-full px-4 py-3 bg-surface-container-high border-none rounded-xl outline-none font-medium resize-none" />
               </div>
+              <div className="space-y-2">
+                <label className="text-sm font-bold text-on-surface-variant">Resultado Clínico / Laudo (opcional)</label>
+                <textarea rows={2} placeholder="Ex: Hemograma normal, sem alterações..." value={formStatus.resultado}
+                  onChange={e => setFormStatus(p => ({ ...p, resultado: e.target.value }))}
+                  className="w-full px-4 py-3 bg-surface-container-high border-none rounded-xl outline-none font-medium resize-none" />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-bold text-on-surface-variant">CID-10 Principal (opcional)</label>
+                <input type="text" maxLength={10} placeholder="Ex: E11.9, I10" value={formStatus.cid_10}
+                  onChange={e => setFormStatus(p => ({ ...p, cid_10: e.target.value }))}
+                  className="w-full h-12 px-4 bg-surface-container-high border-none rounded-xl outline-none font-medium" />
+              </div>
               <div className="flex gap-3 pt-2">
                 <button type="button" onClick={() => setModalStatusAberto(false)} className="flex-1 h-12 rounded-2xl border border-outline font-bold">Cancelar</button>
                 <button type="submit" disabled={enviandoStatus} className="flex-1 h-12 rounded-2xl bg-primary text-white font-bold disabled:opacity-50">
@@ -603,6 +1100,137 @@ export default function PerfilPaciente() {
                 <button type="button" onClick={() => setModalEscalarAberto(false)} className="flex-1 h-12 rounded-2xl border border-outline font-bold">Cancelar</button>
                 <button type="submit" disabled={enviandoEscalar || justificativa.length < 10} className="flex-1 h-12 rounded-2xl bg-red-600 text-white font-bold disabled:opacity-50">
                   {enviandoEscalar ? 'Confirmando...' : 'Confirmar Escalada'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ── Modal: Registrar / Editar Atendimento ── */}
+      {modalAtendimentoAberto && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-on-surface/40 backdrop-blur-sm" onClick={() => setModalAtendimentoAberto(false)} />
+          <div className="relative w-full max-w-2xl bg-surface-container-lowest rounded-[2rem] shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
+            <header className="p-6 md:p-8 border-b border-surface-variant flex justify-between items-center flex-shrink-0">
+              <h3 className="text-xl font-extrabold">
+                {atendimentoEditando ? 'Editar Atendimento' : 'Registrar Atendimento'}
+              </h3>
+              <button onClick={() => setModalAtendimentoAberto(false)}
+                className="w-10 h-10 rounded-full hover:bg-surface-container-low flex items-center justify-center">
+                <span className="material-symbols-outlined">close</span>
+              </button>
+            </header>
+
+            <form onSubmit={handleSalvarAtendimento} className="p-6 md:p-8 space-y-4 overflow-y-auto">
+              {/* Linha 1: Data + Tipo de Unidade */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-bold text-on-surface-variant">Data do atendimento*</label>
+                  <input required type="date"
+                    value={formAtendimento.data_atendimento}
+                    onChange={e => setFormAtendimento(p => ({ ...p, data_atendimento: e.target.value }))}
+                    className="w-full h-12 px-4 bg-surface-container-high border-none rounded-xl outline-none font-medium" />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-bold text-on-surface-variant">Tipo de unidade</label>
+                  <select
+                    value={formAtendimento.tipo_unidade}
+                    onChange={e => setFormAtendimento(p => ({ ...p, tipo_unidade: e.target.value }))}
+                    className="w-full h-12 px-4 bg-surface-container-high border-none rounded-xl outline-none font-medium">
+                    <option value="">Selecione...</option>
+                    <option value="ubs">UBS</option>
+                    <option value="ame">AME</option>
+                    <option value="caps">CAPS</option>
+                    <option value="centro_especialidades">Centro de Especialidades</option>
+                    <option value="hospital">Hospital</option>
+                    <option value="pronto_socorro">Pronto-Socorro</option>
+                    <option value="outro">Outro</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Unidade (nome livre) */}
+              <div className="space-y-2">
+                <label className="text-sm font-bold text-on-surface-variant">Nome da unidade*</label>
+                <input required
+                  placeholder="Ex: UBS Vila Industrial, AME Zona Leste, Hospital Municipal de SJC"
+                  value={formAtendimento.unidade}
+                  onChange={e => setFormAtendimento(p => ({ ...p, unidade: e.target.value }))}
+                  className="w-full h-12 px-4 bg-surface-container-high border-none rounded-xl outline-none font-medium" />
+              </div>
+
+              {/* Especialidade + Profissional */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-bold text-on-surface-variant">Especialidade</label>
+                  <input
+                    placeholder="Ex: Cardiologia, Ortopedia"
+                    value={formAtendimento.especialidade}
+                    onChange={e => setFormAtendimento(p => ({ ...p, especialidade: e.target.value }))}
+                    className="w-full h-12 px-4 bg-surface-container-high border-none rounded-xl outline-none font-medium" />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-bold text-on-surface-variant">Profissional</label>
+                  <input
+                    placeholder="Ex: Dr(a). Nome do médico"
+                    value={formAtendimento.profissional}
+                    onChange={e => setFormAtendimento(p => ({ ...p, profissional: e.target.value }))}
+                    className="w-full h-12 px-4 bg-surface-container-high border-none rounded-xl outline-none font-medium" />
+                </div>
+              </div>
+
+              {/* CID-10 principal + secundário */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-bold text-on-surface-variant">CID-10 Principal</label>
+                  <input
+                    maxLength={10}
+                    placeholder="Ex: I10, E11, J45.0"
+                    value={formAtendimento.cid_10_principal}
+                    onChange={e => setFormAtendimento(p => ({ ...p, cid_10_principal: e.target.value.toUpperCase() }))}
+                    className="w-full h-12 px-4 bg-surface-container-high border-none rounded-xl outline-none font-medium" />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-bold text-on-surface-variant">CID-10 Secundário</label>
+                  <input
+                    maxLength={10}
+                    placeholder="Ex: Z87.0"
+                    value={formAtendimento.cid_10_secundario}
+                    onChange={e => setFormAtendimento(p => ({ ...p, cid_10_secundario: e.target.value.toUpperCase() }))}
+                    className="w-full h-12 px-4 bg-surface-container-high border-none rounded-xl outline-none font-medium" />
+                </div>
+              </div>
+
+              {/* Conduta */}
+              <div className="space-y-2">
+                <label className="text-sm font-bold text-on-surface-variant">Conduta</label>
+                <textarea rows={3}
+                  placeholder="O que foi prescrito, encaminhado ou decidido neste atendimento"
+                  value={formAtendimento.conduta}
+                  onChange={e => setFormAtendimento(p => ({ ...p, conduta: e.target.value }))}
+                  className="w-full px-4 py-3 bg-surface-container-high border-none rounded-xl outline-none font-medium resize-none" />
+              </div>
+
+              {/* Observações */}
+              <div className="space-y-2">
+                <label className="text-sm font-bold text-on-surface-variant">Observações</label>
+                <textarea rows={2}
+                  placeholder="Notas adicionais sobre o atendimento"
+                  value={formAtendimento.observacoes}
+                  onChange={e => setFormAtendimento(p => ({ ...p, observacoes: e.target.value }))}
+                  className="w-full px-4 py-3 bg-surface-container-high border-none rounded-xl outline-none font-medium resize-none" />
+              </div>
+
+              {/* Botões */}
+              <div className="flex gap-3 pt-2">
+                <button type="button" onClick={() => setModalAtendimentoAberto(false)}
+                  className="flex-1 h-12 rounded-2xl border border-outline font-bold">
+                  Cancelar
+                </button>
+                <button type="submit" disabled={enviandoAtendimento}
+                  className="flex-1 h-12 rounded-2xl bg-primary text-white font-bold disabled:opacity-50">
+                  {enviandoAtendimento ? 'Salvando...' : (atendimentoEditando ? 'Salvar Alterações' : 'Registrar')}
                 </button>
               </div>
             </form>

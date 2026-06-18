@@ -1,4 +1,13 @@
+/**
+ * PÁGINA: VigilanciaGestor.jsx
+ * ─────────────────────────────────────────────────────────────────────────────
+ * FUNÇÃO: Monitoramento epidemiológico de agravos e doenças compulsórias.
+ * API: GET /api/gestor/vigilancia
+ * ─────────────────────────────────────────────────────────────────────────────
+ */
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import toast from 'react-hot-toast';
 import GestorLayout from '../../components/gestor/GestorLayout';
 import api from '../../services/api';
 
@@ -8,7 +17,14 @@ const STATUS_CORES = {
   DESCARTADO: 'bg-emerald-100 text-emerald-800 border-emerald-200',
 };
 
+const STATUS_LABELS = {
+  SUSPEITO:   'Em Investigação',
+  CONFIRMADO: 'Confirmado',
+  DESCARTADO: 'Descartado',
+};
+
 export default function VigilanciaGestor() {
+  const navigate = useNavigate();
   const [notificacoes, setNotificacoes] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -22,7 +38,8 @@ export default function VigilanciaGestor() {
       const { data } = await api.get('/gestor/vigilancia');
       setNotificacoes(data);
     } catch (err) {
-      console.error('Erro ao buscar vigilância:', err);
+      console.error('[VigilanciaGestor]', err);
+      toast.error('Não foi possível carregar as notificações. Tente novamente.');
     } finally {
       setLoading(false);
     }
@@ -36,6 +53,7 @@ export default function VigilanciaGestor() {
           <p className="text-on-surface-variant mt-1">Monitoramento de surtos e doenças de notificação compulsória no território.</p>
         </div>
         <button
+          onClick={() => toast.info('Notificação epidemiológica disponível na Fase 2.')}
           className="h-12 px-6 text-sm md:h-14 md:px-8 md:text-base bg-primary text-white font-bold rounded-2xl shadow-lg shadow-primary/30 hover:shadow-primary/40 hover:-translate-y-0.5 active:translate-y-0 active:scale-95 transition-all flex items-center gap-2 self-start sm:self-auto flex-shrink-0"
         >
           <span className="material-symbols-outlined">coronavirus</span>
@@ -119,11 +137,14 @@ export default function VigilanciaGestor() {
                     </td>
                     <td className="px-6 py-4">
                       <span className={`inline-flex px-3 py-1 rounded-xl text-xs font-bold border ${STATUS_CORES[notificacao.status_investigacao]}`}>
-                        {notificacao.status_investigacao}
+                        {STATUS_LABELS[notificacao.status_investigacao] || notificacao.status_investigacao}
                       </span>
                     </td>
                     <td className="px-6 py-4 text-right">
-                      <button className="text-primary hover:bg-primary/10 p-2 rounded-lg font-bold text-sm transition-colors">
+                      <button 
+                        onClick={() => notificacao.paciente_id ? navigate('/gestor/paciente/' + notificacao.paciente_id) : toast.info('Investigação disponível em breve.')}
+                        className="text-primary hover:bg-primary/10 p-2 rounded-lg font-bold text-sm transition-colors"
+                      >
                         Investigar
                       </button>
                     </td>

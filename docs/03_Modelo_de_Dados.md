@@ -81,6 +81,13 @@ Representa os munícipes cadastrados no sistema com acesso ao Portal do Paciente
 | `ativo` | BOOLEAN | DEFAULT true | Cadastro ativo ou inativo |
 | `criado_em` | TIMESTAMP | DEFAULT NOW() | Data de cadastro |
 | `atualizado_em` | TIMESTAMP | DEFAULT NOW() | Data da última atualização cadastral |
+| `tipo_sanguineo` | VARCHAR(5) | nullable | Tipo sanguíneo (ex: 'A+', 'O-', 'AB+') — migration 013 |
+| `peso_kg` | DECIMAL(5,2) | nullable | Peso em kg (ex: 72.50) — migration 013 |
+| `altura_cm` | SMALLINT | nullable | Altura em cm (ex: 175) — migration 013 |
+| `alergias` | TEXT | nullable | Lista livre de alergias (ex: "Penicilina, Dipirona") — migration 013 |
+| `comorbidades` | TEXT | nullable | Doenças crônicas (ex: "Diabetes tipo 2, Hipertensão") — migration 013 |
+| `medicamentos_uso_continuo` | TEXT | nullable | Medicamentos em uso regular — migration 013 |
+| `observacoes_clinicas` | TEXT | nullable | Anotações clínicas livres da equipe — migration 013 |
 
 ---
 
@@ -102,6 +109,8 @@ Representa cada exame, consulta ou procedimento solicitado para um paciente.
 | `data_conclusao` | DATE | | Quando foi concluído (NULL se pendente) |
 | `observacao_gestor` | TEXT | | Nota interna da gestão |
 | `observacao_paciente` | TEXT | | Mensagem exibida ao paciente sobre esta solicitação |
+| `resultado` | TEXT | nullable | Laudo ou resultado clínico do exame/consulta — migration 014 |
+| `cid_10` | VARCHAR(10) | nullable | Código de diagnóstico CID-10 (ex: 'E11', 'I10') — migration 014 |
 | `criado_em` | TIMESTAMP | DEFAULT NOW() | |
 | `atualizado_em` | TIMESTAMP | DEFAULT NOW() | |
 
@@ -171,6 +180,28 @@ Horários disponibilizados pela gestão para atendimento presencial de pacientes
 
 ---
 
+### 2.9 Tabela: `atendimentos`
+Registra encontros clínicos do paciente em qualquer unidade de saúde — UBS, AME, CAPS, hospital, pronto-socorro, etc. Constitui a **linha do tempo clínica** do paciente, distinta das solicitações (que rastreiam processos burocráticos). Adicionada na migration 015.
+
+| Coluna | Tipo | Restrição | Descrição |
+|---|---|---|---|
+| `id` | SERIAL | PRIMARY KEY | |
+| `paciente_id` | INTEGER | FK → pacientes.id CASCADE | Paciente atendido |
+| `registrado_por` | INTEGER | FK → usuarios_gestores.id SET NULL | Gestor que inseriu o registro |
+| `data_atendimento` | DATE | NOT NULL | Data do atendimento (pode ser retroativa) |
+| `unidade` | VARCHAR(200) | NOT NULL | Nome livre da unidade (ex: "AME Zona Leste") |
+| `tipo_unidade` | VARCHAR(30) | nullable | 'ubs', 'ame', 'caps', 'centro_especialidades', 'hospital', 'pronto_socorro', 'outro' |
+| `especialidade` | VARCHAR(100) | nullable | Especialidade médica (ex: "Cardiologia") |
+| `profissional` | VARCHAR(150) | nullable | Nome do profissional que realizou o atendimento |
+| `cid_10_principal` | VARCHAR(10) | nullable | Diagnóstico principal (ex: 'I10', 'E11') |
+| `cid_10_secundario` | VARCHAR(10) | nullable | Diagnóstico secundário |
+| `conduta` | TEXT | nullable | O que foi prescrito ou decidido no atendimento |
+| `observacoes` | TEXT | nullable | Notas adicionais |
+| `criado_em` | TIMESTAMP | DEFAULT NOW() | |
+| `atualizado_em` | TIMESTAMP | DEFAULT NOW() | |
+
+---
+
 ## 3. Valores Aceitos: Status de Solicitação
 
 | Valor no Banco | Texto Exibido ao Paciente | Cor Sugerida |
@@ -203,6 +234,9 @@ Horários disponibilizados pela gestão para atendimento presencial de pacientes
 [usuarios_gestores] 1 ──── N [medicamentos] (atualizado_por)
 [usuarios_gestores] 1 ──── N [comunicados]
 [usuarios_gestores] 1 ──── N [agendamentos_gestao] (gestor_responsavel)
+
+[pacientes] 1 ──── N [atendimentos]
+[usuarios_gestores] 1 ──── N [atendimentos] (registrado_por)
 ```
 
 ---

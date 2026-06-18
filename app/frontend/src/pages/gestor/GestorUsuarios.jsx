@@ -26,14 +26,16 @@ const FORM_CRIACAO_INICIAL = {
 
 const PERFIL_BADGE = {
   recepcionista: 'bg-blue-100 text-blue-700',
-  gestor: 'bg-emerald-100 text-emerald-700',
-  admin: 'bg-violet-100 text-violet-700',
+  gestor:        'bg-emerald-100 text-emerald-700',
+  admin:         'bg-violet-100 text-violet-700',
+  medico:        'bg-cyan-100 text-cyan-700',
 };
 
 const PERFIL_LABEL = {
   recepcionista: 'Recepcionista',
-  gestor: 'Gestor',
-  admin: 'Administrador',
+  gestor:        'Gestor',
+  admin:         'Administrador',
+  medico:        'Médico',
 };
 
 export default function GestorUsuarios() {
@@ -368,6 +370,7 @@ function CampoPerfil({ value, onChange }) {
         <option value="recepcionista">Recepcionista</option>
         <option value="gestor">Gestor</option>
         <option value="admin">Administrador</option>
+        <option value="medico">Médico</option>
       </select>
     </label>
   );

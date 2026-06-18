@@ -1,4 +1,13 @@
+/**
+ * PÁGINA: RegulacaoGestor.jsx
+ * ─────────────────────────────────────────────────────────────────────────────
+ * FUNÇÃO: Gerencia os encaminhamentos de pacientes para a regulação de saúde externa (CROSS).
+ * API: GET /api/gestor/encaminhamentos
+ * ─────────────────────────────────────────────────────────────────────────────
+ */
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import toast from 'react-hot-toast';
 import GestorLayout from '../../components/gestor/GestorLayout';
 import api from '../../services/api';
 
@@ -6,6 +15,12 @@ const PRIORIDADE_CORES = {
   VERMELHO: 'bg-red-100 text-red-800 border-red-200',
   AMARELO: 'bg-amber-100 text-amber-800 border-amber-200',
   VERDE: 'bg-emerald-100 text-emerald-800 border-emerald-200',
+};
+
+const PRIORIDADE_LABELS = {
+  VERMELHO: 'Alta',
+  AMARELO:  'Média',
+  VERDE:    'Baixa',
 };
 
 const STATUS_LABELS = {
@@ -16,6 +31,7 @@ const STATUS_LABELS = {
 };
 
 export default function RegulacaoGestor() {
+  const navigate = useNavigate();
   const [encaminhamentos, setEncaminhamentos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filtroStatus, setFiltroStatus] = useState('TODOS');
@@ -30,7 +46,8 @@ export default function RegulacaoGestor() {
       const { data } = await api.get('/gestor/encaminhamentos');
       setEncaminhamentos(data);
     } catch (err) {
-      console.error('Erro ao buscar regulação:', err);
+      console.error('[RegulacaoGestor]', err);
+      toast.error('Não foi possível carregar os encaminhamentos. Tente novamente.');
     } finally {
       setLoading(false);
     }
@@ -55,6 +72,7 @@ export default function RegulacaoGestor() {
           <p className="text-on-surface-variant mt-1">Gerencie os encaminhamentos para CAPS, AMEs e Hospitais.</p>
         </div>
         <button
+          onClick={() => toast.info('Funcionalidade em implementação — disponível na Fase 2.')}
           className="h-12 px-6 text-sm md:h-14 md:px-8 md:text-base bg-primary text-white font-bold rounded-2xl shadow-lg shadow-primary/30 hover:shadow-primary/40 hover:-translate-y-0.5 active:translate-y-0 active:scale-95 transition-all flex items-center gap-2 self-start sm:self-auto flex-shrink-0"
         >
           <span className="material-symbols-outlined">post_add</span>
@@ -140,7 +158,7 @@ export default function RegulacaoGestor() {
                       </td>
                       <td className="px-6 py-4">
                         <span className={`inline-flex px-2.5 py-1 rounded-lg text-xs font-bold border ${PRIORIDADE_CORES[enc.prioridade]}`}>
-                          {enc.prioridade}
+                          {PRIORIDADE_LABELS[enc.prioridade] || enc.prioridade}
                         </span>
                       </td>
                       <td className="px-6 py-4">
@@ -169,7 +187,10 @@ export default function RegulacaoGestor() {
                         </span>
                       </td>
                       <td className="px-6 py-4 text-right">
-                        <button className="text-primary hover:bg-primary/10 p-2 rounded-lg font-bold text-sm transition-colors">
+                        <button 
+                          onClick={() => navigate('/gestor/paciente/' + enc.paciente_id)}
+                          className="text-primary hover:bg-primary/10 p-2 rounded-lg font-bold text-sm transition-colors"
+                        >
                           Ver Detalhes
                         </button>
                       </td>

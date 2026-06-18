@@ -1,4 +1,13 @@
+/**
+ * PÁGINA: ServicoSocialGestor.jsx
+ * ─────────────────────────────────────────────────────────────────────────────
+ * FUNÇÃO: Acompanhamento de famílias e pacientes sob vulnerabilidade social.
+ * API: GET /api/gestor/servico-social
+ * ─────────────────────────────────────────────────────────────────────────────
+ */
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import toast from 'react-hot-toast';
 import GestorLayout from '../../components/gestor/GestorLayout';
 import api from '../../services/api';
 
@@ -9,6 +18,13 @@ const VULNERABILIDADE_CORES = {
   HIGIENE: 'bg-blue-100 text-blue-800 border-blue-200',
 };
 
+const VULNERABILIDADE_LABELS = {
+  FOME:                'Insegurança Alimentar',
+  VIOLENCIA_DOMESTICA: 'Violência Doméstica',
+  ABANDONO_TRATAMENTO: 'Abandono de Tratamento',
+  HIGIENE:             'Condições de Higiene',
+};
+
 const STATUS_LABELS = {
   EM_ACOMPANHAMENTO: 'Em Acompanhamento',
   ENCAMINHADO_CRAS: 'Encaminhado CRAS/CREAS',
@@ -16,6 +32,7 @@ const STATUS_LABELS = {
 };
 
 export default function ServicoSocialGestor() {
+  const navigate = useNavigate();
   const [casos, setCasos] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -29,7 +46,8 @@ export default function ServicoSocialGestor() {
       const { data } = await api.get('/gestor/servico-social');
       setCasos(data);
     } catch (err) {
-      console.error('Erro ao buscar serviço social:', err);
+      console.error('[ServicoSocialGestor]', err);
+      toast.error('Não foi possível carregar os casos sociais. Tente novamente.');
     } finally {
       setLoading(false);
     }
@@ -43,6 +61,7 @@ export default function ServicoSocialGestor() {
           <p className="text-on-surface-variant mt-1">Acompanhamento de vulnerabilidades e apoio CRAS/CREAS.</p>
         </div>
         <button
+          onClick={() => toast.info('Triagem social disponível na Fase 2.')}
           className="h-12 px-6 text-sm md:h-14 md:px-8 md:text-base bg-primary text-white font-bold rounded-2xl shadow-lg shadow-primary/30 hover:shadow-primary/40 hover:-translate-y-0.5 active:translate-y-0 active:scale-95 transition-all flex items-center gap-2 self-start sm:self-auto flex-shrink-0"
         >
           <span className="material-symbols-outlined">person_add</span>
@@ -86,7 +105,7 @@ export default function ServicoSocialGestor() {
                     </td>
                     <td className="px-6 py-4">
                       <span className={`inline-flex px-2.5 py-1 rounded-lg text-xs font-bold border ${VULNERABILIDADE_CORES[caso.vulnerabilidade] || 'bg-gray-100 text-gray-800'}`}>
-                        {caso.vulnerabilidade.replace('_', ' ')}
+                        {VULNERABILIDADE_LABELS[caso.vulnerabilidade] || caso.vulnerabilidade}
                       </span>
                     </td>
                     <td className="px-6 py-4">
@@ -101,7 +120,10 @@ export default function ServicoSocialGestor() {
                       </p>
                     </td>
                     <td className="px-6 py-4 text-right">
-                      <button className="text-primary hover:bg-primary/10 p-2 rounded-lg font-bold text-sm transition-colors">
+                      <button 
+                        onClick={() => navigate('/gestor/paciente/' + caso.paciente_id)}
+                        className="text-primary hover:bg-primary/10 p-2 rounded-lg font-bold text-sm transition-colors"
+                      >
                         Ver Relatório
                       </button>
                     </td>

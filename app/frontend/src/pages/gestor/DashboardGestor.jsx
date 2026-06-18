@@ -167,7 +167,11 @@ export default function DashboardGestor() {
           </div>
           {alertas.total > 5 && (
             <div className="p-4 bg-white/50 border-t border-red-100 text-center">
-              <button className="text-red-700 font-bold text-sm hover:underline">
+              {/* Navega para Regulação, que lista todas as solicitações pendentes por prioridade */}
+              <button
+                onClick={() => navigate('/gestor/regulacao')}
+                className="text-red-700 font-bold text-sm hover:underline"
+              >
                 Ver todos os {alertas.total} casos
               </button>
             </div>

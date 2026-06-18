@@ -14,6 +14,8 @@ export const STATUS_LABELS = {
   aguardando_resultado:  'Aguardando resultado',
   concluido:             'Concluído',
   cancelado:             'Cancelado',
+  // Evento especial: prioridade elevada para urgente pela equipe gestora
+  urgente_escalado:      'Pedido escalado para urgente pela equipe',
 };
 
 export const STATUS_CORES = {
@@ -24,6 +26,8 @@ export const STATUS_CORES = {
   aguardando_resultado:  'bg-indigo-100 text-indigo-800',
   concluido:             'bg-green-100 text-green-800',
   cancelado:             'bg-gray-100 text-gray-500',
+  // Cor vermelha para reforçar a urgência na timeline do paciente
+  urgente_escalado:      'bg-red-100 text-red-800',
 };
 
 // ─────────────────────────────────────────────────────────────────────────────

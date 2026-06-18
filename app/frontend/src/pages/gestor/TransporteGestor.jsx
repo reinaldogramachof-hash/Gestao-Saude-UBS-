@@ -1,4 +1,12 @@
+/**
+ * PÁGINA: TransporteGestor.jsx
+ * ─────────────────────────────────────────────────────────────────────────────
+ * FUNÇÃO: Controla as viagens e frotas de transporte sanitário de pacientes.
+ * API: GET /api/gestor/transporte
+ * ─────────────────────────────────────────────────────────────────────────────
+ */
 import React, { useState, useEffect } from 'react';
+import toast from 'react-hot-toast';
 import GestorLayout from '../../components/gestor/GestorLayout';
 import api from '../../services/api';
 
@@ -7,6 +15,13 @@ const STATUS_CORES = {
   EM_TRANSITO: 'bg-blue-100 text-blue-800',
   CONCLUIDO: 'bg-emerald-100 text-emerald-800',
   FALTOU: 'bg-red-100 text-red-800',
+};
+
+const STATUS_LABELS = {
+  AGENDADO:     'Agendado',
+  EM_TRANSITO:  'Em trânsito',
+  CONCLUIDO:    'Concluído',
+  FALTOU:       'Paciente faltou',
 };
 
 export default function TransporteGestor() {
@@ -23,7 +38,8 @@ export default function TransporteGestor() {
       const { data } = await api.get('/gestor/transporte');
       setViagens(data);
     } catch (err) {
-      console.error('Erro ao buscar transporte:', err);
+      console.error('[TransporteGestor]', err);
+      toast.error('Não foi possível carregar as viagens. Tente novamente.');
     } finally {
       setLoading(false);
     }
@@ -37,6 +53,7 @@ export default function TransporteGestor() {
           <p className="text-on-surface-variant mt-1">Gestão de frotas e pacientes em trânsito para exames externos.</p>
         </div>
         <button
+          onClick={() => toast.info('Agendamento de transporte disponível na Fase 2.')}
           className="h-12 px-6 text-sm md:h-14 md:px-8 md:text-base bg-primary text-white font-bold rounded-2xl shadow-lg shadow-primary/30 hover:shadow-primary/40 hover:-translate-y-0.5 active:translate-y-0 active:scale-95 transition-all flex items-center gap-2 self-start sm:self-auto flex-shrink-0"
         >
           <span className="material-symbols-outlined">directions_bus</span>
@@ -54,7 +71,7 @@ export default function TransporteGestor() {
             <div key={viagem.id} className="bg-surface-container-lowest border border-surface-variant rounded-3xl p-5 shadow-sm hover:shadow-md transition-all">
               <div className="flex items-center justify-between mb-4">
                 <span className={`px-3 py-1 rounded-full text-xs font-bold ${STATUS_CORES[viagem.status]}`}>
-                  {viagem.status}
+                  {STATUS_LABELS[viagem.status] || viagem.status}
                 </span>
                 <span className="text-sm font-bold text-on-surface-variant flex items-center gap-1">
                   <span className="material-symbols-outlined text-base">schedule</span>
