@@ -7,6 +7,8 @@
  *
  * API: GET /api/paciente/meus-dados
  *      GET /api/paciente/minhas-solicitacoes
+ *      GET /api/paciente/comunicados
+ *      GET /api/paciente/agendamentos/meus
  * ─────────────────────────────────────────────────────────────────────────────
  */
 import { useEffect, useState } from 'react';
@@ -15,9 +17,58 @@ import api from '../../services/api';
 import PacienteLayout from '../../components/paciente/PacienteLayout';
 import { STATUS_LABELS, STATUS_CORES, formatarDataBR } from '../../utils/statusHelper';
 
+// ─────────────────────────────────────────────────────────────────────────────
+// COMPONENTE: QuickAccessCard
+// FUNÇÃO: Card de acesso rápido na home screen. Exibe ícone, título, valor resumido
+//         e navega ao clicar. Usado no grid 2x2 do Dashboard.
+// PROPS:
+//   - icon: string — Material Symbol
+//   - titulo: string — nome do módulo
+//   - valor: string — resumo do estado atual
+//   - cor: string — classe Tailwind para a cor do ícone (ex: 'text-blue-600')
+//   - bg: string — classe Tailwind para o fundo do ícone (ex: 'bg-blue-50')
+//   - rota: string — rota de destino
+//   - badge: number|null — número vermelho no canto superior direito (opcional)
+//   - navigate: function — passado do pai
+// ─────────────────────────────────────────────────────────────────────────────
+function QuickAccessCard({ icon, titulo, valor, cor, bg, rota, badge, navigate }) {
+  return (
+    <button
+      onClick={() => navigate(rota)}
+      className="flex-1 min-w-0 bg-surface-container-lowest rounded-2xl border border-surface-variant p-4 text-left shadow-sm hover:shadow-md active:scale-[0.98] transition-all relative"
+    >
+      {/* Badge de notificação no canto superior direito */}
+      {badge > 0 && (
+        <span className="absolute top-2 right-2 bg-red-500 text-white text-[9px] font-extrabold w-4 h-4 flex items-center justify-center rounded-full">
+          {badge > 9 ? '9+' : badge}
+        </span>
+      )}
+      <div className={`w-9 h-9 rounded-xl flex items-center justify-center mb-3 ${bg}`}>
+        <span className={`material-symbols-outlined text-xl ${cor}`}>{icon}</span>
+      </div>
+      <p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider mb-0.5">{titulo}</p>
+      <p className="text-sm font-bold text-on-surface leading-tight truncate">{valor}</p>
+    </button>
+  );
+}
+
+// Formata o próximo agendamento de forma curta — "Seg, 23/06 às 10:00"
+const formatarProximoAg = (dataHora) => {
+  if (!dataHora) return null;
+  const dateStr = dataHora.includes('T') ? dataHora : dataHora + 'T12:00:00';
+  const d = new Date(dateStr);
+  const diasSemana = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+  const dia = diasSemana[d.getDay()];
+  const data = d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+  const hora = d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+  return `${dia}, ${data} às ${hora}`;
+};
+
 export default function DashboardPaciente() {
   const [sols, setSols] = useState([]);
   const [paciente, setPaciente] = useState({});
+  const [unreadComunicados, setUnreadComunicados] = useState(0);
+  const [proximoAgendamento, setProximoAgendamento] = useState(null);
   const [loading, setLoading] = useState(true);
   const [erro, setErro] = useState(false);
   const navigate = useNavigate();
@@ -29,10 +80,20 @@ export default function DashboardPaciente() {
     Promise.all([
       api.get('/paciente/meus-dados'),
       api.get('/paciente/minhas-solicitacoes'),
+      api.get('/paciente/comunicados'),
+      api.get('/paciente/agendamentos/meus'),
     ])
-      .then(([rDados, rSols]) => {
+      .then(([rDados, rSols, rComuns, rAgendamentos]) => {
         setPaciente(rDados.data);
         setSols(rSols.data);
+        setUnreadComunicados(rComuns.data.filter(c => !c.lido).length);
+
+        // Filtra agendamentos futuros e pega o mais próximo
+        const agora = new Date();
+        const futuros = rAgendamentos.data
+          .filter(ag => ag.status === 'reservado' && new Date(ag.data_hora) > agora)
+          .sort((a, b) => new Date(a.data_hora) - new Date(b.data_hora));
+        setProximoAgendamento(futuros[0] || null);
       })
       .catch(() => setErro(true))
       .finally(() => setLoading(false));
@@ -44,13 +105,27 @@ export default function DashboardPaciente() {
   if (loading) {
     return (
       <PacienteLayout>
-        <div className="animate-pulse">
+        <div className="animate-pulse space-y-4">
           <div className="bg-primary pt-4 pb-12 px-6 rounded-b-[1.5rem] md:pt-6 md:pb-10 md:rounded-b-none">
             <div className="h-3.5 w-20 bg-white/30 rounded mb-2"></div>
             <div className="h-6 w-40 bg-white/40 rounded"></div>
           </div>
-          <div className="px-6 -mt-6 md:-mt-4 relative z-20 space-y-4 max-w-5xl mx-auto w-full">
-            {[1, 2, 3].map(i => (
+          
+          {/* Skeleton do grid de acesso rápido */}
+          <div className="px-6 pt-4 pb-2 max-w-5xl mx-auto w-full">
+            <div className="flex gap-3 mb-3">
+              <div className="flex-1 h-28 bg-surface-container-low rounded-2xl" />
+              <div className="flex-1 h-28 bg-surface-container-low rounded-2xl" />
+            </div>
+            <div className="flex gap-3">
+              <div className="flex-1 h-28 bg-surface-container-low rounded-2xl" />
+              <div className="flex-1 h-28 bg-surface-container-low rounded-2xl" />
+            </div>
+          </div>
+
+          <div className="px-6 relative z-20 space-y-4 max-w-5xl mx-auto w-full pb-28">
+            <div className="h-5 w-48 bg-surface-container-low rounded mb-4" />
+            {[1, 2].map(i => (
               <div key={i} className="bg-surface-container-lowest rounded-2xl p-5 shadow-sm border border-surface-variant">
                 <div className="h-5 w-3/4 bg-surface-container-high rounded mb-3"></div>
                 <div className="h-12 bg-surface-container-high rounded-xl"></div>
@@ -103,8 +178,56 @@ export default function DashboardPaciente() {
         </div>
       </header>
 
+      {/* ── Grid de acesso rápido aos módulos ── */}
+      <section className="px-6 pt-4 pb-2 max-w-5xl mx-auto w-full">
+        <div className="flex gap-3 mb-3">
+          <QuickAccessCard
+            icon="notifications"
+            titulo="Avisos"
+            valor={unreadComunicados > 0 ? `${unreadComunicados} novo${unreadComunicados > 1 ? 's' : ''}` : 'Sem novidades'}
+            cor="text-blue-600"
+            bg="bg-blue-50"
+            rota="/paciente/comunicados"
+            badge={unreadComunicados}
+            navigate={navigate}
+          />
+          <QuickAccessCard
+            icon="calendar_month"
+            titulo="Próximo Agendamento"
+            valor={proximoAgendamento ? formatarProximoAg(proximoAgendamento.data_hora) : 'Sem agendamentos'}
+            cor="text-emerald-600"
+            bg="bg-emerald-50"
+            rota="/paciente/agendamentos"
+            badge={null}
+            navigate={navigate}
+          />
+        </div>
+        <div className="flex gap-3">
+          <QuickAccessCard
+            icon="medication"
+            titulo="Medicamentos"
+            valor="Consultar estoque"
+            cor="text-purple-600"
+            bg="bg-purple-50"
+            rota="/paciente/medicamentos"
+            badge={null}
+            navigate={navigate}
+          />
+          <QuickAccessCard
+            icon="folder_open"
+            titulo="Solicitações"
+            valor={sols.length > 0 ? `${sols.length} ativa${sols.length > 1 ? 's' : ''}` : 'Nenhuma ativa'}
+            cor="text-primary"
+            bg="bg-primary/10"
+            rota="/paciente/solicitacoes"
+            badge={null}
+            navigate={navigate}
+          />
+        </div>
+      </section>
+
       {/* ── Conteúdo principal ── */}
-      <main className="px-6 -mt-6 md:-mt-4 md:pb-12 relative z-20 space-y-6 pb-28 max-w-5xl mx-auto w-full">
+      <main className="px-6 mt-2 md:pb-12 relative z-20 space-y-6 pb-28 max-w-5xl mx-auto w-full">
         {/* Linha de título com atalho para histórico completo */}
         <div className="flex justify-between items-center mb-2">
           <h2 className="text-lg font-extrabold text-on-surface leading-tight">Minhas Solicitações Ativas</h2>
