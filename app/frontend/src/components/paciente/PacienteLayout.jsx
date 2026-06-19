@@ -34,15 +34,30 @@ export default function PacienteLayout({ children, semNav = false }) {
   const [pacienteDados, setPacienteDados] = useState(null);
 
   // Busca e monitora quantidade de comunicados não lidos a cada troca de rota
+  // ou quando eventos personalizados de leitura são disparados na mesma página.
   useEffect(() => {
     if (semNav || !user) return;
     
-    api.get('/paciente/comunicados')
-      .then(r => {
-        const unread = r.data.filter(c => !c.lido).length;
-        setUnreadCount(unread);
-      })
-      .catch(() => {});
+    const buscarContagem = () => {
+      api.get('/paciente/comunicados')
+        .then(r => {
+          const unread = r.data.filter(c => !c.lido).length;
+          setUnreadCount(unread);
+        })
+        .catch(() => {});
+    };
+
+    // Execução inicial ao montar ou trocar de rota
+    buscarContagem();
+
+    // Adiciona listener para escutar evento customizado disparado quando o paciente
+    // marca comunicados como lidos dentro da página de comunicados.
+    window.addEventListener('comunicado-lido', buscarContagem);
+    
+    // Cleanup do event listener ao desmontar o componente
+    return () => {
+      window.removeEventListener('comunicado-lido', buscarContagem);
+    };
   }, [pathname, semNav, user]);
 
   // Carrega informações da UBS do paciente logado (como o nome para exibição no Drawer)
