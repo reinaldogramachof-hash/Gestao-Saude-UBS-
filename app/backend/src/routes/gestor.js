@@ -994,10 +994,10 @@ router.get('/comunicados', async (req, res) => {
 
 // ─── POST /api/gestor/comunicado ──────────────────────────────────────────────
 // Épico 3: Cria um novo comunicado (geral para todos ou individual para um paciente).
-// Body: { titulo, mensagem, tipo, paciente_id }
+// Body: { titulo, mensagem, tipo, paciente_id, urgente }
 router.post('/comunicado', async (req, res) => {
   try {
-    const { titulo, mensagem, tipo = 'geral', paciente_id } = req.body;
+    const { titulo, mensagem, tipo = 'geral', paciente_id, urgente = false } = req.body;
 
     // Campos obrigatórios
     if (!titulo || !mensagem) {
@@ -1022,6 +1022,7 @@ router.post('/comunicado', async (req, res) => {
         titulo,
         mensagem,
         tipo,
+        urgente: Boolean(urgente), // garante tipo booleano mesmo se vier como string do form
       })
       .returning('*');
 

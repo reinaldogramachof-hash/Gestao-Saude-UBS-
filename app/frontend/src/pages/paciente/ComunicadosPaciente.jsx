@@ -18,12 +18,8 @@ export default function ComunicadosPaciente() {
   const [expandidos, setExpandidos] = useState({});
   const [erro, setErro] = useState(false);
 
-  // Heurística baseada em palavras-chave no título para determinar a urgência de um comunicado,
-  // servindo de fallback enquanto o campo no banco de dados não é implementado.
-  const isUrgente = (titulo) => {
-    const palavras = ['urgente', 'urgência', 'amanhã', 'hoje', 'prazo', 'imediato', 'alerta', 'atenção'];
-    return palavras.some(p => titulo.toLowerCase().includes(p));
-  };
+  // O estado de urgência agora é determinado diretamente pelo campo 'urgente'
+  // configurado pelo gestor no banco de dados, eliminando falsos positivos.
 
   const carregar = () => {
     setLoading(true);
@@ -84,8 +80,8 @@ export default function ComunicadosPaciente() {
   // 4. Não urgentes lidos
   // Dentro de cada grupo, exibe os comunicados mais recentes primeiro.
   const comunicadosOrdenados = [...comunicados].sort((a, b) => {
-    const aUrgente = isUrgente(a.titulo);
-    const bUrgente = isUrgente(b.titulo);
+    const aUrgente = Boolean(a.urgente);
+    const bUrgente = Boolean(b.urgente);
 
     // 1. Não lidos antes de lidos
     if (!a.lido && b.lido) return -1;
@@ -154,7 +150,7 @@ export default function ComunicadosPaciente() {
           </>
         ) : comunicados.length > 0 ? (
           comunicadosOrdenados.map(c => {
-            const isUrgenteComunicado = isUrgente(c.titulo);
+            const isUrgenteComunicado = Boolean(c.urgente);
             
             // Definição dinâmica de classes visuais conforme urgência e status de leitura
             let cardStyle = '';

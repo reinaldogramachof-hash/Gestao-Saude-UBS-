@@ -297,6 +297,7 @@ router.get('/comunicados', async (req, res) => {
         'comunicados.titulo', 
         'comunicados.mensagem', 
         'comunicados.tipo', 
+        'comunicados.urgente',   // campo explícito — substituiu a heurística de palavras-chave
         'comunicados.criado_em', 
         'comunicados.paciente_id',
         knex.raw('CASE WHEN comunicados_leitura.id IS NOT NULL THEN true ELSE false END as lido')

@@ -21,7 +21,7 @@ export default function ComunicadosGestor() {
   const [loading, setLoading] = useState(true);
   const [modalAberto, setModalAberto] = useState(false);
   const [enviando, setEnviando] = useState(false);
-  const [form, setForm] = useState({ titulo: '', mensagem: '', tipo: 'geral', paciente_id: '' });
+  const [form, setForm] = useState({ titulo: '', mensagem: '', tipo: 'geral', paciente_id: '', urgente: false });
 
   const carregarComunicados = () => {
     setLoading(true);
@@ -46,10 +46,14 @@ export default function ComunicadosGestor() {
     e.preventDefault();
     setEnviando(true);
     try {
-      await api.post('/gestor/comunicado', { ...form, paciente_id: form.tipo === 'individual' ? form.paciente_id : null });
+      await api.post('/gestor/comunicado', {
+        ...form,
+        paciente_id: form.tipo === 'individual' ? form.paciente_id : null,
+        urgente: form.urgente,
+      });
       toast.success('Comunicado publicado com sucesso!');
       setModalAberto(false);
-      setForm({ titulo: '', mensagem: '', tipo: 'geral', paciente_id: '' });
+      setForm({ titulo: '', mensagem: '', tipo: 'geral', paciente_id: '', urgente: false });
       carregarComunicados();
     } catch {
       toast.error('Erro ao criar comunicado.');
@@ -102,6 +106,12 @@ export default function ComunicadosGestor() {
                     <span className={`text-xs font-bold px-2 py-0.5 rounded-full flex-shrink-0 ${c.tipo === 'individual' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'}`}>
                       {c.tipo === 'individual' ? 'INDIVIDUAL' : 'GERAL'}
                     </span>
+                    {/* Badge de urgência: visível apenas quando o gestor marcou como urgente */}
+                    {c.urgente && (
+                      <span className="text-xs font-bold px-2 py-0.5 rounded-full flex-shrink-0 bg-red-100 text-red-600">
+                        URGENTE
+                      </span>
+                    )}
                   </div>
                   {c.tipo === 'individual' && c.paciente_nome && (
                     <p className="text-xs font-semibold text-on-surface-variant mb-1">Para: {c.paciente_nome}</p>
@@ -147,6 +157,34 @@ export default function ComunicadosGestor() {
                   <option value="geral">Geral — Para todos os pacientes</option>
                   <option value="individual">Individual — Para um paciente específico</option>
                 </select>
+              </div>
+
+              {/* Toggle: marcar comunicado como urgente */}
+              <div className="space-y-2">
+                <label className="text-sm font-bold text-on-surface-variant">Urgência</label>
+                <button
+                  type="button"
+                  onClick={() => setForm(prev => ({ ...prev, urgente: !prev.urgente }))}
+                  className={`w-full flex items-center gap-3 p-3 rounded-xl border-2 transition-colors text-left ${
+                    form.urgente
+                      ? 'border-red-400 bg-red-50'
+                      : 'border-surface-variant bg-surface-container-high'
+                  }`}
+                >
+                  <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-colors flex-shrink-0 ${
+                    form.urgente ? 'bg-red-500 border-red-500' : 'border-on-surface-variant/40'
+                  }`}>
+                    {form.urgente && <span className="material-symbols-outlined text-white text-sm">check</span>}
+                  </div>
+                  <div>
+                    <p className={`text-sm font-bold ${form.urgente ? 'text-red-700' : 'text-on-surface'}`}>
+                      {form.urgente ? 'Marcado como URGENTE' : 'Marcar como urgente'}
+                    </p>
+                    <p className="text-xs text-on-surface-variant">
+                      Comunicados urgentes aparecem destacados em vermelho para o paciente.
+                    </p>
+                  </div>
+                </button>
               </div>
               {form.tipo === 'individual' && (
                 <div className="space-y-2">
