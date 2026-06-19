@@ -30,27 +30,36 @@ import { STATUS_LABELS, STATUS_CORES, formatarDataBR } from '../../utils/statusH
 function CardSolicitacao({ sol, navigate }) {
   return (
     <div
-      className={`bg-white p-5 rounded-2xl shadow-sm border ${
-        sol.prioridade === 'urgente' ? 'border-red-300' : 'border-surface-variant'
+      className={`bg-white p-5 rounded-2xl shadow-sm border-y border-r transition-all hover:scale-[1.01] hover:shadow-md duration-200 ${
+        sol.prioridade === 'urgente'
+          ? 'border-l-4 border-l-red-500 border-red-300'
+          : 'border-l-4 border-l-primary border-surface-variant'
       }`}
     >
-      <div className="flex items-center gap-3 mb-3">
-        <div className="w-9 h-9 bg-primary/10 rounded-full flex items-center justify-center text-primary flex-shrink-0">
-          <span className="material-symbols-outlined text-lg">
-            {sol.tipo === 'exame' ? 'biotech' : 
-             sol.tipo === 'consulta' ? 'medical_services' :
-             sol.tipo === 'procedimento' ? 'healing' :
-             sol.tipo === 'cirurgia' ? 'local_hospital' : 'event_note'}
-          </span>
+      <div className="flex justify-between items-start mb-3 gap-2">
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 bg-primary/10 rounded-full flex items-center justify-center text-primary flex-shrink-0">
+            <span className="material-symbols-outlined text-lg">
+              {sol.tipo === 'exame' ? 'biotech' : 
+               sol.tipo === 'consulta' ? 'medical_services' :
+               sol.tipo === 'procedimento' ? 'healing' :
+               sol.tipo === 'cirurgia' ? 'local_hospital' : 'event_note'}
+            </span>
+          </div>
+          <div>
+            <span className="text-[10px] font-extrabold text-primary tracking-wider uppercase block mb-0.5">
+              {sol.tipo === 'exame' ? 'Exame' :
+               sol.tipo === 'consulta' ? 'Consulta' :
+               sol.tipo === 'procedimento' ? 'Procedimento' :
+               sol.tipo === 'cirurgia' ? 'Cirurgia' : sol.tipo}
+            </span>
+            <h3 className="font-bold text-on-surface text-sm leading-tight">{sol.descricao_paciente}</h3>
+          </div>
         </div>
-        <div>
-          <span className="text-[10px] font-extrabold text-primary tracking-wider uppercase block mb-0.5">
-            {sol.tipo === 'exame' ? 'Exame' :
-             sol.tipo === 'consulta' ? 'Consulta' :
-             sol.tipo === 'procedimento' ? 'Procedimento' :
-             sol.tipo === 'cirurgia' ? 'Cirurgia' : sol.tipo}
-          </span>
-          <h3 className="font-bold text-on-surface text-sm leading-tight">{sol.descricao_paciente}</h3>
+        {/* Indicador discreto de última movimentação no canto do card */}
+        <div className="text-right flex-shrink-0 select-none">
+          <span className="text-[9px] font-bold text-on-surface-variant/65 block uppercase tracking-wider leading-none mb-0.5">Movimentado</span>
+          <span className="text-[11px] font-extrabold text-on-surface-variant/80">{formatarDataBR(sol.atualizado_em || sol.criado_em)}</span>
         </div>
       </div>
       <div className={`rounded-xl px-3 py-2 mb-3 ${STATUS_CORES[sol.status] || 'bg-surface-container-low text-on-surface'}`}>

@@ -36,13 +36,16 @@ export default function BottomNavSimples() {
 
       {/* ── Botão Central FAB: Agendar (+) ── */}
       <div className="flex-1 flex justify-center relative h-full">
+        {/* Contorno circular decorativo que integra visualmente o FAB elevado à barra */}
+        <div className="absolute -top-12 w-[4.5rem] h-[4.5rem] rounded-full bg-surface-container-lowest border-t border-surface-variant z-20 shadow-[0_-3px_6px_rgba(0,0,0,0.03)]" />
+        
+        {/* FAB real */}
         <button
           onClick={() => navigate('/paciente/agendamentos')}
-          className="absolute -top-5 w-14 h-14 rounded-full bg-primary text-white shadow-lg shadow-primary/40 flex flex-col items-center justify-center gap-0.5 active:scale-95 transition-transform select-none"
+          className="absolute -top-10 w-14 h-14 rounded-full bg-primary text-white shadow-lg shadow-primary/40 flex items-center justify-center active:scale-95 transition-transform select-none z-30"
           aria-label="Agendar atendimento"
         >
-          <span className="material-symbols-outlined text-2xl font-bold">add</span>
-          <span className="text-[9px] font-bold leading-none">Agendar</span>
+          <span className="material-symbols-outlined text-3xl font-bold">add</span>
         </button>
       </div>
 
