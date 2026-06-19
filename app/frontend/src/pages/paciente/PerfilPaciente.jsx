@@ -10,14 +10,53 @@
  * ─────────────────────────────────────────────────────────────────────────────
  */
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import api from '../../services/api';
 import PacienteLayout from '../../components/paciente/PacienteLayout';
 
 export default function PerfilPaciente() {
+  const navigate = useNavigate();
   const [perfil, setPerfil] = useState(null);
   const [loading, setLoading] = useState(true);
   const [erro, setErro] = useState(false);
+
+  // Aplica máscara parcial ao CPF do paciente: "123.456.789-10" → "***.***.789-10"
+  // Mantém os últimos 5 dígitos visíveis para fácil conferência pelo paciente.
+  const mascaraCPF = (cpf) => {
+    if (!cpf) return '—';
+    const nums = cpf.replace(/\D/g, ''); // remove pontuação
+    if (nums.length !== 11) return cpf;  // caso o CPF possua tamanho inesperado, exibe sem mascarar
+    return `***.***.${nums.substring(6, 9)}-${nums.substring(9, 11)}`;
+  };
+
+  // Exibe o valor em formato legível ou um placeholder cinza e em itálico "Não informado"
+  // caso o dado clínico esteja ausente.
+  const valorOuPlaceholder = (valor) => {
+    if (!valor || valor === '—') {
+      return <span className="text-on-surface-variant/50 italic text-xs">Não informado</span>;
+    }
+    return <span className="font-medium text-on-surface text-sm whitespace-pre-wrap">{valor}</span>;
+  };
+
+  // Calcula o Índice de Massa Corporal (IMC) e retorna o valor numérico com sua respectiva classificação.
+  // Destinado apenas a contexto informativo do paciente.
+  const calcularIMC = (peso, altura) => {
+    if (!peso || !altura || peso === '—' || altura === '—') return null;
+    const pesoNum = parseFloat(peso);
+    const alturaNum = parseFloat(altura);
+    
+    // Tratamento de segurança contra valores inválidos ou divisões por zero
+    if (isNaN(pesoNum) || isNaN(alturaNum) || alturaNum <= 0) return null;
+    
+    const alturaM = alturaNum / 100;
+    const imc = (pesoNum / (alturaM * alturaM)).toFixed(1);
+    const classificacao =
+      imc < 18.5 ? 'Abaixo do peso' :
+      imc < 25   ? 'Peso normal' :
+      imc < 30   ? 'Sobrepeso' : 'Obesidade';
+    return { imc, classificacao };
+  };
 
   const carregarPerfil = () => {
     setLoading(true);
@@ -97,7 +136,7 @@ export default function PerfilPaciente() {
                 </div>
                 <div>
                   <label className="text-xs font-bold text-on-surface-variant uppercase tracking-wider">CPF</label>
-                  <p className="font-semibold text-on-surface mt-0.5 text-sm">{perfil.cpf}</p>
+                  <p className="font-semibold text-on-surface mt-0.5 text-sm font-mono tracking-wider">{mascaraCPF(perfil.cpf)}</p>
                 </div>
                 <div>
                   <label className="text-xs font-bold text-on-surface-variant uppercase tracking-wider">Telefone</label>
@@ -125,7 +164,7 @@ export default function PerfilPaciente() {
                 <h2 className="text-lg font-extrabold text-on-surface">Informações de Saúde</h2>
               </div>
               
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <div className="bg-red-50/50 dark:bg-red-950/10 p-4 rounded-2xl border border-red-100 dark:border-red-900/30">
                   <label className="text-xs font-bold text-red-800 dark:text-red-300 uppercase tracking-wider">Tipo Sanguíneo</label>
                   <p className="font-extrabold text-red-600 dark:text-red-400 mt-1 text-base">{perfil.tipo_sanguineo}</p>
@@ -142,6 +181,17 @@ export default function PerfilPaciente() {
                     {perfil.altura_cm !== '—' ? `${perfil.altura_cm} cm` : '—'}
                   </p>
                 </div>
+                {/* Card de IMC - Calculado e exibido de forma informativa se ambos peso e altura existirem */}
+                {calcularIMC(perfil.peso_kg, perfil.altura_cm) && (() => {
+                  const { imc, classificacao } = calcularIMC(perfil.peso_kg, perfil.altura_cm);
+                  return (
+                    <div className="bg-amber-50/50 dark:bg-amber-950/10 p-4 rounded-2xl border border-amber-100 dark:border-amber-900/30">
+                      <label className="text-xs font-bold text-amber-800 dark:text-amber-300 uppercase tracking-wider">IMC</label>
+                      <p className="font-extrabold text-amber-600 dark:text-amber-400 mt-1 text-base">{imc}</p>
+                      <p className="text-[10px] text-amber-700 dark:text-amber-300 mt-0.5 font-medium">{classificacao}</p>
+                    </div>
+                  );
+                })()}
               </div>
 
               <div className="space-y-4 pt-2">
@@ -149,31 +199,49 @@ export default function PerfilPaciente() {
                   <label className="text-xs font-bold text-on-surface-variant uppercase tracking-wider flex items-center gap-1.5 text-amber-600">
                     <span className="material-symbols-outlined text-sm">warning</span> Alergias
                   </label>
-                  <p className="font-medium text-on-surface mt-1 text-sm whitespace-pre-wrap">{perfil.alergias}</p>
+                  <div className="mt-1">{valorOuPlaceholder(perfil.alergias)}</div>
                 </div>
 
                 <div className="p-4 bg-surface-container-low rounded-2xl border border-surface-variant">
                   <label className="text-xs font-bold text-on-surface-variant uppercase tracking-wider flex items-center gap-1.5 text-primary">
                     <span className="material-symbols-outlined text-sm">coronavirus</span> Comorbidades
                   </label>
-                  <p className="font-medium text-on-surface mt-1 text-sm whitespace-pre-wrap">{perfil.comorbidades}</p>
+                  <div className="mt-1">{valorOuPlaceholder(perfil.comorbidades)}</div>
                 </div>
 
                 <div className="p-4 bg-surface-container-low rounded-2xl border border-surface-variant">
                   <label className="text-xs font-bold text-on-surface-variant uppercase tracking-wider flex items-center gap-1.5 text-emerald-600">
                     <span className="material-symbols-outlined text-sm">medication</span> Medicamentos de Uso Contínuo
                   </label>
-                  <p className="font-medium text-on-surface mt-1 text-sm whitespace-pre-wrap">{perfil.medicamentos_uso_continuo}</p>
+                  <div className="mt-1">{valorOuPlaceholder(perfil.medicamentos_uso_continuo)}</div>
                 </div>
 
                 <div className="p-4 bg-surface-container-low rounded-2xl border border-surface-variant">
                   <label className="text-xs font-bold text-on-surface-variant uppercase tracking-wider flex items-center gap-1.5">
                     <span className="material-symbols-outlined text-sm">description</span> Observações Clínicas
                   </label>
-                  <p className="font-medium text-on-surface mt-1 text-sm whitespace-pre-wrap">{perfil.observacoes_clinicas}</p>
+                  <div className="mt-1">{valorOuPlaceholder(perfil.observacoes_clinicas)}</div>
                 </div>
               </div>
             </section>
+
+            {/* ── Ação: Solicitar correção de dados ── */}
+            <div className="bg-amber-50 border border-amber-200 rounded-2xl p-5 flex items-start gap-3 shadow-sm">
+              <span className="material-symbols-outlined text-amber-600 text-xl flex-shrink-0 mt-0.5">info</span>
+              <div className="flex-1">
+                <p className="text-sm font-bold text-amber-800">Dados incorretos ou desatualizados?</p>
+                <p className="text-xs text-amber-700 mt-0.5">
+                  Seus dados cadastrais e prontuário de saúde são gerenciados pela equipe da UBS.
+                  Agende um atendimento presencial com a gestão para solicitar eventuais correções.
+                </p>
+                <button
+                  onClick={() => navigate('/paciente/agendamentos')}
+                  className="mt-3 text-sm font-bold text-amber-800 border border-amber-400 px-4 py-1.5 rounded-xl hover:bg-amber-100 transition-colors bg-white/50"
+                >
+                  Agendar atendimento
+                </button>
+              </div>
+            </div>
           </>
         )}
       </main>
