@@ -26,6 +26,9 @@ export default function Medicamentos() {
   const [busca, setBusca] = useState('');
   const [loading, setLoading] = useState(true);
   const [erro, setErro] = useState(false);
+  
+  // Controla se a lista deve exibir apenas medicamentos disponíveis no momento.
+  const [soDisponiveis, setSoDisponiveis] = useState(false);
 
   // Carrega medicamentos com o termo de busca atual
   const carregar = useCallback((termo) => {
@@ -43,6 +46,10 @@ export default function Medicamentos() {
     const timer = setTimeout(() => carregar(busca), 400);
     return () => clearTimeout(timer);
   }, [busca, carregar]);
+
+  // Aplica o filtro de disponibilidade localmente, permitindo resposta instantânea
+  // sem gerar chamadas de rede redundantes para a API do backend.
+  const medsFiltrados = soDisponiveis ? meds.filter(m => m.disponivel) : meds;
 
   return (
     <PacienteLayout>
@@ -67,6 +74,16 @@ export default function Medicamentos() {
             </button>
           )}
         </div>
+        {/* Toggle: filtrar apenas medicamentos disponíveis */}
+        <button
+          onClick={() => setSoDisponiveis(v => !v)}
+          className={`mt-4 flex items-center gap-2 text-xs font-bold transition-colors ${soDisponiveis ? 'text-white font-extrabold' : 'text-white/60 font-semibold'}`}
+        >
+          <span className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-colors ${soDisponiveis ? 'bg-white border-white' : 'border-white/50'}`}>
+            {soDisponiveis && <span className="material-symbols-outlined text-primary text-sm font-black">check</span>}
+          </span>
+          Mostrar apenas disponíveis
+        </button>
       </header>
 
       <main className="px-6 py-6 space-y-4 pb-28">
@@ -87,15 +104,19 @@ export default function Medicamentos() {
         )}
 
         {/* Estado: sem resultados para a busca */}
-        {!loading && !erro && meds.length === 0 && (
+        {!loading && !erro && medsFiltrados.length === 0 && (
           <div className="py-16 text-center text-on-surface-variant font-medium">
             <span className="material-symbols-outlined text-5xl block mb-4 opacity-30">medication</span>
-            {busca ? `Nenhum resultado para "${busca}".` : 'Nenhum medicamento cadastrado.'}
+            {busca
+              ? `Nenhum resultado para "${busca}".`
+              : soDisponiveis
+              ? 'Nenhum medicamento disponível no momento.'
+              : 'Nenhum medicamento cadastrado.'}
           </div>
         )}
 
         {/* Lista de medicamentos */}
-        {!loading && !erro && meds.map(m => (
+        {!loading && !erro && medsFiltrados.map(m => (
           <div key={m.id} className="bg-surface-container-lowest p-5 rounded-2xl shadow-sm border border-surface-variant relative overflow-hidden">
             {/* Barra lateral: verde = disponível, vermelha = em falta */}
             <div className={`absolute top-0 left-0 w-1.5 h-full ${m.disponivel ? 'bg-primary' : 'bg-red-500'}`} />
@@ -115,8 +136,20 @@ export default function Medicamentos() {
                   </span>
                 )}
               </div>
+              
               {m.observacao && (
-                <p className="text-xs text-on-surface-variant mt-2 italic">{m.observacao}</p>
+                <p className="text-xs text-on-surface-variant mt-2.5 italic leading-relaxed">{m.observacao}</p>
+              )}
+
+              {/* Bloco "Como retirar": visível apenas quando o gestor preencheu as instruções */}
+              {m.instrucoes_retirada && (
+                <div className="mt-3 flex items-start gap-2.5 bg-blue-50 rounded-xl p-3 border border-blue-100">
+                  <span className="material-symbols-outlined text-blue-600 text-sm flex-shrink-0 mt-0.5">info</span>
+                  <div>
+                    <p className="text-[10px] font-bold text-blue-700 uppercase tracking-wider mb-0.5">Como retirar</p>
+                    <p className="text-xs text-blue-800 leading-relaxed">{m.instrucoes_retirada}</p>
+                  </div>
+                </div>
               )}
             </div>
           </div>

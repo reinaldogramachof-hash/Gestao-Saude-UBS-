@@ -249,14 +249,14 @@ router.get('/solicitacao/:id', async (req, res) => {
 // ─── GET /api/paciente/medicamentos ──────────────────────────────────────────
 // Lista medicamentos da UBS do paciente com busca parcial por nome/princípio ativo.
 // Query param opcional: ?busca=metform → retorna "Metformina 500mg" (ILIKE)
-// Retorna: disponíveis primeiro, depois alfabético.
+// Retorna: disponíveis primeiro, depois alfabético, incluindo instruções de retirada.
 router.get('/medicamentos', async (req, res) => {
   try {
     const { busca } = req.query;
 
     const query = knex('medicamentos')
       .where({ ubs_id: req.user.ubs_id })
-      .select('id', 'nome', 'principio_ativo', 'disponivel', 'observacao', 'atualizado_em')
+      .select('id', 'nome', 'principio_ativo', 'disponivel', 'observacao', 'instrucoes_retirada', 'atualizado_em')
       .orderBy([{ column: 'disponivel', order: 'desc' }, { column: 'nome' }]);
 
     // Aplica busca parcial se o parâmetro foi enviado

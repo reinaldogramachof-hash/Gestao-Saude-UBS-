@@ -613,12 +613,12 @@ router.get('/medicamentos', async (req, res) => {
 
 
 // ─── PUT /api/gestor/medicamento/:id ─────────────────────────────────────────
-// Atualiza a disponibilidade e/ou observação de um medicamento.
+// Atualiza a disponibilidade, observação e/ou instruções de retirada de um medicamento.
 // O toggle de disponibilidade na tela do gestor chama esta rota.
-// Body: { disponivel: boolean, observacao: string }
+// Body: { disponivel: boolean, observacao: string, instrucoes_retirada: string }
 router.put('/medicamento/:id', async (req, res) => {
   try {
-    const { disponivel, observacao } = req.body;
+    const { disponivel, observacao, instrucoes_retirada } = req.body;
 
     // Garante que o gestor só edita medicamentos da própria UBS
     const existente = await knex('medicamentos')
@@ -633,9 +633,10 @@ router.put('/medicamento/:id', async (req, res) => {
       .where({ id: req.params.id })
       .update({
         disponivel,
-        observacao:    observacao ?? existente.observacao,
-        atualizado_em: knex.fn.now(),
-        atualizado_por: req.user.id,
+        observacao:          observacao          ?? existente.observacao,
+        instrucoes_retirada: instrucoes_retirada ?? existente.instrucoes_retirada,
+        atualizado_em:       knex.fn.now(),
+        atualizado_por:      req.user.id,
       });
 
     const atualizado = await knex('medicamentos').where({ id: req.params.id }).first();
@@ -649,10 +650,10 @@ router.put('/medicamento/:id', async (req, res) => {
 
 // ─── POST /api/gestor/medicamento ─────────────────────────────────────────────
 // Adiciona um novo medicamento ao catálogo da UBS.
-// Body: { nome: string, principio_ativo: string, disponivel: boolean, observacao: string }
+// Body: { nome: string, principio_ativo: string, disponivel: boolean, observacao: string, instrucoes_retirada: string }
 router.post('/medicamento', async (req, res) => {
   try {
-    const { nome, principio_ativo, disponivel = false, observacao } = req.body;
+    const { nome, principio_ativo, disponivel = false, observacao, instrucoes_retirada } = req.body;
 
     if (!nome) {
       return res.status(400).json({ error: 'O nome do medicamento é obrigatório.' });
@@ -660,12 +661,13 @@ router.post('/medicamento', async (req, res) => {
 
     const [inserido] = await knex('medicamentos')
       .insert({
-        ubs_id:         req.user.ubs_id,
+        ubs_id:              req.user.ubs_id,
         nome,
-        principio_ativo: principio_ativo || null,
+        principio_ativo:     principio_ativo || null,
         disponivel,
-        observacao:      observacao || null,
-        atualizado_por:  req.user.id,
+        observacao:          observacao          || null,
+        instrucoes_retirada: instrucoes_retirada || null,
+        atualizado_por:      req.user.id,
       })
       .returning('*');
 

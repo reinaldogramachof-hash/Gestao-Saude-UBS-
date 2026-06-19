@@ -18,6 +18,7 @@ const FORM_INICIAL = {
   principio_ativo: '',
   disponivel: true,
   observacao: '',
+  instrucoes_retirada: '',
 };
 
 const FILTROS = [
@@ -34,7 +35,7 @@ export default function MedicamentosGestor() {
   const [modalCadastroAberto, setModalCadastroAberto] = useState(false);
   const [medicamentoEdicao, setMedicamentoEdicao] = useState(null);
   const [formCadastro, setFormCadastro] = useState(FORM_INICIAL);
-  const [formEdicao, setFormEdicao] = useState({ disponivel: false, observacao: '' });
+  const [formEdicao, setFormEdicao] = useState({ disponivel: false, observacao: '', instrucoes_retirada: '' });
   const [salvando, setSalvando] = useState(false);
 
   // Mantém erro e loading separados para permitir retry sem esconder a causa.
@@ -82,8 +83,9 @@ export default function MedicamentosGestor() {
   const abrirEdicao = (medicamento) => {
     setMedicamentoEdicao(medicamento);
     setFormEdicao({
-      disponivel: Boolean(medicamento.disponivel),
-      observacao: medicamento.observacao || '',
+      disponivel:          Boolean(medicamento.disponivel),
+      observacao:          medicamento.observacao          || '',
+      instrucoes_retirada: medicamento.instrucoes_retirada || '',
     });
   };
 
@@ -102,12 +104,13 @@ export default function MedicamentosGestor() {
     }
   };
 
-  // O toggle rápido preserva a observação atual e atualiza só a disponibilidade.
+  // O toggle rápido preserva a observação e as instruções e atualiza só a disponibilidade.
   const toggle = async (medicamento) => {
     try {
       await api.put(`/gestor/medicamento/${medicamento.id}`, {
-        disponivel: !medicamento.disponivel,
-        observacao: medicamento.observacao,
+        disponivel:          !medicamento.disponivel,
+        observacao:          medicamento.observacao,
+        instrucoes_retirada: medicamento.instrucoes_retirada,
       });
       toast.success(`"${medicamento.nome}" atualizado.`);
       await load();
@@ -244,6 +247,16 @@ export default function MedicamentosGestor() {
                 <span className="text-sm font-bold text-on-surface-variant">Observação</span>
                 <textarea rows="3" value={formCadastro.observacao} onChange={(e) => setFormCadastro((prev) => ({ ...prev, observacao: e.target.value }))} placeholder="Ex: Em falta por 15 dias" className="w-full px-4 py-3 bg-surface-container-high border-none rounded-xl outline-none font-medium resize-none" />
               </label>
+              <label className="block space-y-2">
+                <span className="text-sm font-bold text-on-surface-variant">Como retirar</span>
+                <textarea
+                  rows="3"
+                  value={formCadastro.instrucoes_retirada}
+                  onChange={(e) => setFormCadastro((prev) => ({ ...prev, instrucoes_retirada: e.target.value }))}
+                  placeholder="Ex: Retirada Seg–Sex, 8h–17h. Levar RG e cartão SUS. Guichê 3."
+                  className="w-full px-4 py-3 bg-surface-container-high border-none rounded-xl outline-none font-medium resize-none"
+                />
+              </label>
               <div className="flex gap-3">
                 <button type="button" onClick={() => setModalCadastroAberto(false)} className="flex-1 h-12 rounded-2xl border border-outline font-bold">Cancelar</button>
                 <button type="submit" disabled={salvando} className="flex-1 h-12 rounded-2xl bg-primary text-white font-bold disabled:opacity-50">{salvando ? 'Salvando...' : 'Cadastrar'}</button>
@@ -269,6 +282,16 @@ export default function MedicamentosGestor() {
               <label className="block space-y-2">
                 <span className="text-sm font-bold text-on-surface-variant">Observação</span>
                 <textarea rows="4" value={formEdicao.observacao} onChange={(e) => setFormEdicao((prev) => ({ ...prev, observacao: e.target.value }))} className="w-full px-4 py-3 bg-surface-container-high border-none rounded-xl outline-none font-medium resize-none" />
+              </label>
+              <label className="block space-y-2">
+                <span className="text-sm font-bold text-on-surface-variant">Como retirar</span>
+                <textarea
+                  rows="3"
+                  value={formEdicao.instrucoes_retirada}
+                  onChange={(e) => setFormEdicao((prev) => ({ ...prev, instrucoes_retirada: e.target.value }))}
+                  placeholder="Ex: Retirada Seg–Sex, 8h–17h. Levar RG e cartão SUS. Guichê 3."
+                  className="w-full px-4 py-3 bg-surface-container-high border-none rounded-xl outline-none font-medium resize-none"
+                />
               </label>
               <div className="flex gap-3">
                 <button type="button" onClick={() => setMedicamentoEdicao(null)} className="flex-1 h-12 rounded-2xl border border-outline font-bold">Cancelar</button>
