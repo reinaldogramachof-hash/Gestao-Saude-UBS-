@@ -46,7 +46,9 @@ exports.seed = async function(knex) {
       cra: `DEMO-${padIndex}`,
       nome: nome,
       cpf: `123.456.${String(index).padStart(3, '0')}-00`,
-      data_nascimento: new Date(1950 + Math.floor(Math.random() * 50), Math.floor(Math.random() * 12), Math.floor(Math.random() * 28) + 1).toISOString().split('T')[0],
+      // Ana Clara tem data fixa para permitir login reproduzível na demo e nos testes.
+      // Os demais pacientes mantêm data aleatória.
+      data_nascimento: isAnaClara ? '1985-03-22' : new Date(1950 + Math.floor(Math.random() * 50), Math.floor(Math.random() * 12), Math.floor(Math.random() * 28) + 1).toISOString().split('T')[0],
       telefone: `(12) 99${String(Math.floor(Math.random() * 10000000)).padStart(7, '0')}`,
       email: `${nome.split(' ')[0].toLowerCase()}@email.com`,
       ativo: index < 20, // Primeiros 20 ativos, 5 inativos (aguardando aprovação)

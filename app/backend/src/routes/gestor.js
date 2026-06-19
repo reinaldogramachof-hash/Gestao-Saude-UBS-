@@ -292,6 +292,14 @@ router.put('/solicitacao/:id/status', async (req, res) => {
         .where('solicitacoes.id', req.params.id)
         .update({ status: status_novo, atualizado_em: trx.fn.now() });
 
+      // Atualiza a observação visível ao paciente na própria solicitação se houver uma nova
+      // observação enviada pelo gestor (exige a regra de comentários do projeto)
+      if (observacao) {
+        await trx('solicitacoes')
+          .where('id', req.params.id)
+          .update({ observacao_paciente: observacao });
+      }
+
       await trx('historico_status').insert({
         solicitacao_id: req.params.id,
         gestor_id:      req.user.id,
@@ -954,6 +962,12 @@ router.get('/dashboard/pendentes', async (req, res) => {
 // Faz LEFT JOIN com pacientes para trazer o nome quando for comunicado individual.
 router.get('/comunicados', async (req, res) => {
   try {
+    // Guarda de segurança: impede erro de SQL (Undefined binding) caso o ubs_id 
+    // não esteja definido no token decodificado do gestor (ex: sessões antigas)
+    if (!req.user?.ubs_id) {
+      return res.status(400).json({ error: 'ubs_id não identificado no token de autenticação.' });
+    }
+
     const comunicados = await knex('comunicados')
       .leftJoin('pacientes', 'comunicados.paciente_id', 'pacientes.id')
       .where('comunicados.ubs_id', req.user.ubs_id)
