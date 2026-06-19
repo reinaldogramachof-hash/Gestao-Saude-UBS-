@@ -127,7 +127,7 @@ export default function ComunicadosPaciente() {
         </div>
       </header>
 
-      <main className="px-6 py-6 space-y-4 pb-28">
+      <main className="px-6 py-5 space-y-3 md:space-y-4 pb-28">
         {loading ? (
           Array(3).fill(0).map((_, i) => (
             <div key={i} className="h-28 bg-surface-container-low rounded-2xl animate-pulse" />

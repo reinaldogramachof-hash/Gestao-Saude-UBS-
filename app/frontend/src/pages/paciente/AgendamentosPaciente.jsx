@@ -112,7 +112,22 @@ export default function AgendamentosPaciente() {
     const dateStr = dt.includes('T') ? dt : dt + 'T12:00:00';
     const data = new Date(dateStr).toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' });
     const hora = new Date(dateStr).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-    return `${data}, às ${hora}`;
+    // Capitaliza apenas a primeira letra do dia da semana (português correto).
+    // NÃO usar CSS 'capitalize' pois capitaliza cada palavra individualmente.
+    const str = `${data}, às ${hora}`;
+    return str.charAt(0).toUpperCase() + str.slice(1);
+  };
+
+  // Formato compacto para listagem de horários: "Dom, 12/07 · 14:00"
+  // Usado nos cards de horários disponíveis para evitar quebra de linha.
+  const formatarSlotCompacto = (dt) => {
+    const dateStr = dt.includes('T') ? dt : dt + 'T12:00:00';
+    const d = new Date(dateStr);
+    const diasSemana = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+    const dia = diasSemana[d.getDay()];
+    const data = d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+    const hora = d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    return `${dia}, ${data} · ${hora}`;
   };
 
   return (
@@ -153,8 +168,8 @@ export default function AgendamentosPaciente() {
                   {disponiveis.map(slot => (
                     <div key={slot.id} className="bg-surface-container-lowest rounded-2xl border border-surface-variant p-4 flex justify-between items-center gap-4">
                       <div>
-                        <p className="font-bold text-on-background capitalize text-sm">{formatarDataHora(slot.data_hora)}</p>
-                        <p className="text-xs text-on-surface-variant font-medium mt-1">{slot.duracao_minutos} minutos</p>
+                        <p className="font-bold text-on-background text-sm">{formatarSlotCompacto(slot.data_hora)}</p>
+                        <p className="text-xs text-on-surface-variant font-medium mt-0.5">{slot.duracao_minutos} min</p>
                       </div>
                       <button onClick={() => abrirModal(slot)}
                         className="px-5 py-2.5 bg-primary text-white font-bold rounded-xl shadow-md shadow-primary/20 hover:scale-105 active:scale-95 transition-all text-sm flex-shrink-0">
@@ -180,7 +195,7 @@ export default function AgendamentosPaciente() {
                     <div key={ag.id} className="bg-surface-container-lowest rounded-2xl border border-surface-variant p-4">
                       <div className="flex justify-between items-start gap-4">
                         <div className="flex-1 min-w-0">
-                          <p className="font-bold text-on-background capitalize text-sm">{formatarDataHora(ag.data_hora)}</p>
+                          <p className="font-bold text-on-background text-sm">{formatarDataHora(ag.data_hora)}</p>
                           <p className="text-xs text-on-surface-variant font-medium mt-1">{ag.duracao_minutos} minutos</p>
                           {ag.motivo && <p className="text-xs text-on-surface-variant italic mt-1">{ag.motivo}</p>}
                         </div>
@@ -222,7 +237,7 @@ export default function AgendamentosPaciente() {
             </header>
             <form onSubmit={handleReservar} className="p-6 space-y-5">
               <div className="bg-primary/10 rounded-2xl p-4 text-center">
-                <p className="text-primary font-extrabold capitalize text-sm">{formatarDataHora(slotSelecionado.data_hora)}</p>
+                <p className="text-primary font-extrabold text-sm">{formatarDataHora(slotSelecionado.data_hora)}</p>
                 <p className="text-primary/70 text-xs font-medium">{slotSelecionado.duracao_minutos} minutos</p>
               </div>
               <div className="space-y-2">
@@ -258,7 +273,7 @@ export default function AgendamentosPaciente() {
               </div>
               <h3 className="text-xl font-extrabold text-on-background mb-2">Cancelar agendamento?</h3>
               {/* Exibe data/hora do agendamento que será cancelado */}
-              <p className="text-sm text-on-surface-variant mb-1 capitalize font-medium">
+              <p className="text-sm text-on-surface-variant mb-1 font-medium">
                 {formatarDataHora(agendamentoCancelando.data_hora)}
               </p>
               <p className="text-xs text-on-surface-variant mb-6">

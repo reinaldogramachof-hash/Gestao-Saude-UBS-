@@ -30,6 +30,20 @@ export default function PerfilPaciente() {
     return `***.***.${nums.substring(6, 9)}-${nums.substring(9, 11)}`;
   };
 
+  // Formata telefone brasileiro para exibição: "12992191018" → "(12) 99219-1018"
+  // Suporta celular (11 dígitos) e fixo (10 dígitos).
+  const formatarTelefone = (tel) => {
+    if (!tel || tel === '—') return tel || '—';
+    const nums = tel.replace(/\D/g, '');
+    if (nums.length === 11) {
+      return `(${nums.slice(0, 2)}) ${nums.slice(2, 7)}-${nums.slice(7)}`;
+    }
+    if (nums.length === 10) {
+      return `(${nums.slice(0, 2)}) ${nums.slice(2, 6)}-${nums.slice(6)}`;
+    }
+    return tel; // formato desconhecido: exibe como veio
+  };
+
   // Exibe o valor em formato legível ou um placeholder cinza e em itálico "Não informado"
   // caso o dado clínico esteja ausente.
   const valorOuPlaceholder = (valor) => {
@@ -140,7 +154,7 @@ export default function PerfilPaciente() {
                 </div>
                 <div>
                   <label className="text-xs font-bold text-on-surface-variant uppercase tracking-wider">Telefone</label>
-                  <p className="font-semibold text-on-surface mt-0.5 text-sm">{perfil.telefone}</p>
+                  <p className="font-semibold text-on-surface mt-0.5 text-sm">{perfil.telefone ? formatarTelefone(perfil.telefone) : '—'}</p>
                 </div>
                 <div>
                   <label className="text-xs font-bold text-on-surface-variant uppercase tracking-wider">E-mail</label>

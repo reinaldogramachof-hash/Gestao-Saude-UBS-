@@ -54,9 +54,9 @@ export default function Medicamentos() {
   return (
     <PacienteLayout>
       {/* ── Cabeçalho com campo de busca integrado ── */}
-      <header className="bg-primary pt-12 pb-4 px-6">
-        <h1 className="text-on-primary text-2xl font-extrabold">Consulta de Estoque</h1>
-        <p className="text-white/70 text-sm mt-1 mb-4">Medicamentos disponíveis na sua UBS</p>
+      <header className="bg-primary pt-12 pb-3 px-6">
+        <h1 className="text-on-primary text-xl font-extrabold">Consulta de Estoque</h1>
+        <p className="text-white/70 text-xs mt-0.5 mb-3">Medicamentos disponíveis na sua UBS</p>
         {/* Campo de busca parcial por nome ou substância ativa */}
         <div className="relative">
           <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-white/60 text-xl">search</span>
