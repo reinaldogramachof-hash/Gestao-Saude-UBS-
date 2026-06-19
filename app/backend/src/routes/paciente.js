@@ -15,6 +15,8 @@
  *   GET /api/paciente/minhas-solicitacoes   → solicitações ativas do paciente
  *   GET /api/paciente/solicitacao/:id       → detalhe + histórico de status
  *   GET /api/paciente/medicamentos          → medicamentos da UBS de referência
+ *   POST /api/paciente/agendamento/:id/reservar → reserva um horário de atendimento
+ *   PUT /api/paciente/agendamento/:id/cancelar → cancela um agendamento reservado
  * ─────────────────────────────────────────────────────────────────────────────
  */
 const express = require('express');
@@ -400,6 +402,43 @@ router.post('/agendamento/:id/reservar', async (req, res) => {
   } catch (err) {
     console.error('[POST /paciente/agendamento/:id/reservar]', err);
     return res.status(500).json({ error: 'Erro ao reservar agendamento.' });
+  }
+});
+
+
+// ─── PUT /api/paciente/agendamento/:id/cancelar ───────────────────────────────
+// Permite que o paciente cancele um agendamento com status 'reservado'.
+// Verifica que o agendamento pertence ao paciente logado antes de qualquer ação.
+// Ao cancelar: status → 'cancelado', paciente_id → NULL (libera o slot para reuso pelo gestor).
+router.put('/agendamento/:id/cancelar', async (req, res) => {
+  try {
+    // Busca o agendamento garantindo que pertence ao paciente logado
+    const agendamento = await knex('agendamentos_gestao')
+      .where({ id: req.params.id, paciente_id: req.user.id })
+      .first();
+
+    if (!agendamento) {
+      return res.status(404).json({ error: 'Agendamento não encontrado.' });
+    }
+
+    // Impede cancelamento de agendamentos já concluídos ou já cancelados
+    if (agendamento.status !== 'reservado') {
+      return res.status(409).json({ error: 'Apenas agendamentos reservados podem ser cancelados.' });
+    }
+
+    // Cancela: limpa o vínculo com o paciente e marca como cancelado
+    await knex('agendamentos_gestao')
+      .where({ id: req.params.id })
+      .update({
+        status:      'cancelado',
+        paciente_id: null,
+        motivo:      null,
+      });
+
+    return res.json({ ok: true, mensagem: 'Agendamento cancelado com sucesso.' });
+  } catch (err) {
+    console.error('[PUT /paciente/agendamento/:id/cancelar]', err);
+    return res.status(500).json({ error: 'Erro ao cancelar agendamento.' });
   }
 });
 

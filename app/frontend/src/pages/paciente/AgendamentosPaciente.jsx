@@ -40,6 +40,11 @@ export default function AgendamentosPaciente() {
   const [reservando, setReservando] = useState(false);
   const [erro, setErro] = useState(false);
 
+  // Controla o modal de confirmação de cancelamento e o feedback de carregamento da requisição
+  const [cancelando, setCancelando] = useState(false);
+  // Objeto do agendamento que o paciente selecionou para cancelar
+  const [agendamentoCancelando, setAgendamentoCancelando] = useState(null);
+
   const carregarTodos = () => {
     setLoading(true);
     setErro(false);
@@ -79,6 +84,27 @@ export default function AgendamentosPaciente() {
       toast.error(err.response?.data?.error || 'Erro ao reservar agendamento.');
     } finally {
       setReservando(false);
+    }
+  };
+
+  // Abre o modal de confirmação para cancelar o agendamento informado
+  const abrirConfirmacaoCancelamento = (ag) => {
+    setAgendamentoCancelando(ag);
+  };
+
+  // Executa o cancelamento após confirmação do paciente no modal
+  const handleCancelar = async () => {
+    if (!agendamentoCancelando) return;
+    setCancelando(true);
+    try {
+      await api.put(`/paciente/agendamento/${agendamentoCancelando.id}/cancelar`);
+      toast.success('Agendamento cancelado.');
+      setAgendamentoCancelando(null);
+      carregarTodos();
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Erro ao cancelar agendamento.');
+    } finally {
+      setCancelando(false);
     }
   };
 
@@ -153,14 +179,25 @@ export default function AgendamentosPaciente() {
                   {meus.map(ag => (
                     <div key={ag.id} className="bg-surface-container-lowest rounded-2xl border border-surface-variant p-5">
                       <div className="flex justify-between items-start gap-4">
-                        <div>
+                        <div className="flex-1 min-w-0">
                           <p className="font-bold text-on-background capitalize text-sm">{formatarDataHora(ag.data_hora)}</p>
                           <p className="text-xs text-on-surface-variant font-medium mt-1">{ag.duracao_minutos} minutos</p>
                           {ag.motivo && <p className="text-xs text-on-surface-variant italic mt-1">{ag.motivo}</p>}
                         </div>
-                        <span className={`text-xs font-bold px-3 py-1 rounded-full flex-shrink-0 ${STATUS_BADGE[ag.status] || 'bg-gray-100 text-gray-600'}`}>
-                          {STATUS_LABEL[ag.status] || ag.status}
-                        </span>
+                        <div className="flex flex-col items-end gap-2 flex-shrink-0">
+                          <span className={`text-xs font-bold px-3 py-1 rounded-full ${STATUS_BADGE[ag.status] || 'bg-gray-100 text-gray-600'}`}>
+                            {STATUS_LABEL[ag.status] || ag.status}
+                          </span>
+                          {/* Botão cancelar: só aparece em agendamentos reservados (não concluídos) */}
+                          {ag.status === 'reservado' && (
+                            <button
+                              onClick={() => abrirConfirmacaoCancelamento(ag)}
+                              className="text-xs font-bold text-red-500 border border-red-200 px-3 py-1 rounded-xl hover:bg-red-50 transition-colors"
+                            >
+                              Cancelar
+                            </button>
+                          )}
+                        </div>
                       </div>
                     </div>
                   ))}
@@ -201,6 +238,51 @@ export default function AgendamentosPaciente() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* ── Modal: Confirmar Cancelamento ── */}
+      {agendamentoCancelando && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-6">
+          {/* Overlay semitransparente com blur */}
+          <div
+            className="absolute inset-0 bg-on-surface/40 backdrop-blur-sm"
+            onClick={() => !cancelando && setAgendamentoCancelando(null)}
+          />
+          <div className="relative w-full sm:max-w-md bg-surface-container-lowest rounded-t-[2rem] sm:rounded-[2rem] shadow-2xl">
+            <div className="p-6 text-center">
+              {/* Ícone de aviso */}
+              <div className="w-14 h-14 rounded-full bg-red-100 flex items-center justify-center mx-auto mb-4">
+                <span className="material-symbols-outlined text-red-500 text-3xl">event_busy</span>
+              </div>
+              <h3 className="text-xl font-extrabold text-on-background mb-2">Cancelar agendamento?</h3>
+              {/* Exibe data/hora do agendamento que será cancelado */}
+              <p className="text-sm text-on-surface-variant mb-1 capitalize font-medium">
+                {formatarDataHora(agendamentoCancelando.data_hora)}
+              </p>
+              <p className="text-xs text-on-surface-variant mb-6">
+                Esta ação não pode ser desfeita. Se quiser reagendar, precisará escolher um novo horário disponível.
+              </p>
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => setAgendamentoCancelando(null)}
+                  disabled={cancelando}
+                  className="flex-1 h-14 rounded-2xl border border-outline font-bold disabled:opacity-50"
+                >
+                  Voltar
+                </button>
+                <button
+                  type="button"
+                  onClick={handleCancelar}
+                  disabled={cancelando}
+                  className="flex-1 h-14 rounded-2xl bg-red-50 text-white font-bold disabled:opacity-50"
+                >
+                  {cancelando ? 'Cancelando...' : 'Confirmar cancelamento'}
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}
