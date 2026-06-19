@@ -36,8 +36,31 @@ export default function RegulacaoGestor() {
   const [loading, setLoading] = useState(true);
   const [filtroStatus, setFiltroStatus] = useState('TODOS');
 
+  // Estados do modal de criação
+  const [modalCriarAberto, setModalCriarAberto] = useState(false);
+  const [criando, setCriando] = useState(false);
+
+  // Lista de pacientes para o select
+  const [pacientes, setPacientes] = useState([]);
+
+  // Solicitações ativas do paciente selecionado (para o bridge opcional)
+  const [solicitacoesDisponiveis, setSolicitacoesDisponiveis] = useState([]);
+
+  // Formulário de novo encaminhamento
+  const FORM_INICIAL = {
+    paciente_id:   '',
+    destino:       '',
+    especialidade: '',
+    prioridade:    'AMARELO',
+    observacoes:   '',
+    solicitacao_id: '',
+  };
+  const [form, setForm] = useState(FORM_INICIAL);
+
+  // Carrega encaminhamentos e lista de pacientes ao montar o componente
   useEffect(() => {
     fetchEncaminhamentos();
+    api.get('/gestor/pacientes').then(r => setPacientes(r.data)).catch(() => {});
   }, []);
 
   const fetchEncaminhamentos = async () => {
@@ -50,6 +73,72 @@ export default function RegulacaoGestor() {
       toast.error('Não foi possível carregar os encaminhamentos. Tente novamente.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Quando o gestor seleciona um paciente, carrega as solicitações ativas dele
+  // para permitir o bridge opcional com a regulação.
+  const handlePacienteChange = async (pacienteId) => {
+    setForm(prev => ({ ...prev, paciente_id: pacienteId, solicitacao_id: '' }));
+    setSolicitacoesDisponiveis([]);
+    if (!pacienteId) return;
+    try {
+      const { data } = await api.get(`/gestor/paciente/${pacienteId}`);
+      // O endpoint /gestor/paciente/:id retorna o paciente com suas solicitações em data.solicitacoes
+      const ativas = (data.solicitacoes || []).filter(s => !['concluido', 'cancelado'].includes(s.status));
+      setSolicitacoesDisponiveis(ativas);
+    } catch (err) {
+      console.error('Erro ao carregar solicitações do paciente', err);
+    }
+  };
+
+  // Cria o encaminhamento via POST e atualiza a lista localmente
+  const handleCriar = async (e) => {
+    e.preventDefault();
+    setCriando(true);
+    try {
+      await api.post('/gestor/encaminhamento', {
+        ...form,
+        paciente_id:    Number(form.paciente_id),
+        solicitacao_id: form.solicitacao_id ? Number(form.solicitacao_id) : null,
+      });
+      toast.success('Encaminhamento criado com sucesso!');
+      setModalCriarAberto(false);
+      setForm(FORM_INICIAL);
+      setSolicitacoesDisponiveis([]);
+      fetchEncaminhamentos(); // re-fetch da lista
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Erro ao criar encaminhamento.');
+    } finally {
+      setCriando(false);
+    }
+  };
+
+  // Atualiza status do encaminhamento inline na tabela.
+  // Para AGENDADO: usa window.prompt para data (solução simples para MVP).
+  // Para REALIZADO: confirmação direta.
+  const handleAtualizarStatus = async (enc, novoStatus) => {
+    let data_agendamento = null;
+
+    if (novoStatus === 'AGENDADO') {
+      // Pede a data no formato esperado pelo backend (YYYY-MM-DD)
+      const input = window.prompt('Data do agendamento (DD/MM/AAAA):');
+      if (!input) return;
+      // Converte DD/MM/AAAA → YYYY-MM-DD
+      const partes = input.split('/');
+      if (partes.length !== 3) return toast.error('Formato de data inválido.');
+      data_agendamento = `${partes[2]}-${partes[1]}-${partes[0]}`;
+    }
+
+    try {
+      await api.put(`/gestor/encaminhamento/${enc.id}/status`, {
+        status_novo: novoStatus,
+        data_agendamento,
+      });
+      toast.success(`Encaminhamento atualizado para ${STATUS_LABELS[novoStatus]}.`);
+      fetchEncaminhamentos();
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Erro ao atualizar status.');
     }
   };
 
@@ -72,7 +161,7 @@ export default function RegulacaoGestor() {
           <p className="text-on-surface-variant mt-1">Gerencie os encaminhamentos para CAPS, AMEs e Hospitais.</p>
         </div>
         <button
-          onClick={() => toast.info('Funcionalidade em implementação — disponível na Fase 2.')}
+          onClick={() => setModalCriarAberto(true)}
           className="h-12 px-6 text-sm md:h-14 md:px-8 md:text-base bg-primary text-white font-bold rounded-2xl shadow-lg shadow-primary/30 hover:shadow-primary/40 hover:-translate-y-0.5 active:translate-y-0 active:scale-95 transition-all flex items-center gap-2 self-start sm:self-auto flex-shrink-0"
         >
           <span className="material-symbols-outlined">post_add</span>
@@ -187,12 +276,33 @@ export default function RegulacaoGestor() {
                         </span>
                       </td>
                       <td className="px-6 py-4 text-right">
-                        <button 
-                          onClick={() => navigate('/gestor/paciente/' + enc.paciente_id)}
-                          className="text-primary hover:bg-primary/10 p-2 rounded-lg font-bold text-sm transition-colors"
-                        >
-                          Ver Detalhes
-                        </button>
+                        <div className="flex items-center justify-end gap-2">
+                          {/* Avançar status */}
+                          {enc.status === 'AGUARDANDO_VAGA' && (
+                            <button
+                              onClick={() => handleAtualizarStatus(enc, 'AGENDADO')}
+                              className="text-xs font-bold text-blue-600 bg-blue-50 px-3 py-1.5 rounded-lg hover:bg-blue-100 transition-colors"
+                            >
+                              Marcar Agendado
+                            </button>
+                          )}
+                          {enc.status === 'AGENDADO' && (
+                            <button
+                              onClick={() => handleAtualizarStatus(enc, 'REALIZADO')}
+                              className="text-xs font-bold text-emerald-600 bg-emerald-50 px-3 py-1.5 rounded-lg hover:bg-emerald-100 transition-colors"
+                            >
+                              Marcar Realizado
+                            </button>
+                          )}
+                          {/* Ver paciente */}
+                          <button
+                            onClick={() => navigate('/gestor/paciente/' + enc.paciente_id)}
+                            className="text-primary hover:bg-primary/10 p-2 rounded-lg text-sm transition-colors"
+                            title="Ver Paciente"
+                          >
+                            <span className="material-symbols-outlined text-lg">open_in_new</span>
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );
@@ -202,6 +312,137 @@ export default function RegulacaoGestor() {
           </table>
         </div>
       </div>
+      {/* ── Modal: Novo Encaminhamento ── */}
+      {modalCriarAberto && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setModalCriarAberto(false)} />
+          <div className="relative w-full max-w-lg bg-surface-container-lowest rounded-3xl shadow-2xl max-h-[90vh] overflow-y-auto">
+            <header className="p-6 border-b border-surface-variant flex items-center justify-between">
+              <h3 className="text-xl font-extrabold text-on-background">Novo Encaminhamento</h3>
+              <button onClick={() => setModalCriarAberto(false)} className="w-8 h-8 rounded-full hover:bg-surface-container-high flex items-center justify-center">
+                <span className="material-symbols-outlined text-lg">close</span>
+              </button>
+            </header>
+            <form onSubmit={handleCriar} className="p-6 space-y-4">
+
+              {/* Paciente */}
+              <div className="space-y-1">
+                <label className="text-sm font-bold text-on-surface-variant">Paciente *</label>
+                <select
+                  required
+                  value={form.paciente_id}
+                  onChange={e => handlePacienteChange(e.target.value)}
+                  className="w-full px-4 py-3 bg-surface-container-high rounded-xl text-sm font-medium outline-none"
+                >
+                  <option value="">Selecione o paciente</option>
+                  {pacientes.map(p => (
+                    <option key={p.id} value={p.id}>{p.nome}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Destino */}
+              <div className="space-y-1">
+                <label className="text-sm font-bold text-on-surface-variant">Destino *</label>
+                <select
+                  required
+                  value={form.destino}
+                  onChange={e => setForm(prev => ({ ...prev, destino: e.target.value }))}
+                  className="w-full px-4 py-3 bg-surface-container-high rounded-xl text-sm font-medium outline-none"
+                >
+                  <option value="">Selecione</option>
+                  <option value="AME">AME</option>
+                  <option value="CAPS">CAPS</option>
+                  <option value="HOSPITAL_MUNICIPAL">Hospital Municipal</option>
+                  <option value="CENTRO_ESPECIALIDADES">Centro de Especialidades</option>
+                  <option value="OUTROS">Outros</option>
+                </select>
+              </div>
+
+              {/* Especialidade */}
+              <div className="space-y-1">
+                <label className="text-sm font-bold text-on-surface-variant">Especialidade *</label>
+                <input
+                  required
+                  type="text"
+                  placeholder="Ex: Ortopedia, Psiquiatria, Cardiologia..."
+                  value={form.especialidade}
+                  onChange={e => setForm(prev => ({ ...prev, especialidade: e.target.value }))}
+                  className="w-full px-4 py-3 bg-surface-container-high rounded-xl text-sm font-medium outline-none"
+                />
+              </div>
+
+              {/* Prioridade */}
+              <div className="space-y-1">
+                <label className="text-sm font-bold text-on-surface-variant">Prioridade *</label>
+                <div className="flex gap-2">
+                  {[
+                    { valor: 'VERDE',    label: 'Baixa',  cor: 'bg-emerald-100 text-emerald-800 border-emerald-300' },
+                    { valor: 'AMARELO',  label: 'Média',  cor: 'bg-amber-100 text-amber-800 border-amber-300' },
+                    { valor: 'VERMELHO', label: 'Alta',   cor: 'bg-red-100 text-red-800 border-red-300' },
+                  ].map(p => (
+                    <button
+                      key={p.valor}
+                      type="button"
+                      onClick={() => setForm(prev => ({ ...prev, prioridade: p.valor }))}
+                      className={`flex-1 py-2.5 rounded-xl border-2 text-sm font-bold transition-all ${
+                        form.prioridade === p.valor
+                          ? p.cor + ' border-current'
+                          : 'bg-surface-container-high text-on-surface-variant border-transparent'
+                      }`}
+                    >
+                      {p.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Bridge: solicitação ativa (opcional) */}
+              {solicitacoesDisponiveis.length > 0 && (
+                <div className="space-y-1">
+                  <label className="text-sm font-bold text-on-surface-variant">
+                    Vincular a solicitação <span className="font-normal text-on-surface-variant/60">(opcional)</span>
+                  </label>
+                  <select
+                    value={form.solicitacao_id}
+                    onChange={e => setForm(prev => ({ ...prev, solicitacao_id: e.target.value }))}
+                    className="w-full px-4 py-3 bg-surface-container-high rounded-xl text-sm font-medium outline-none"
+                  >
+                    <option value="">Sem vínculo (encaminhamento avulso)</option>
+                    {solicitacoesDisponiveis.map(s => (
+                      <option key={s.id} value={s.id}>{s.descricao_paciente} — {s.status}</option>
+                    ))}
+                  </select>
+                  <p className="text-xs text-on-surface-variant">
+                    Se vinculado, a solicitação avançará para "Aguardando Regulação" automaticamente.
+                  </p>
+                </div>
+              )}
+
+              {/* Observações */}
+              <div className="space-y-1">
+                <label className="text-sm font-bold text-on-surface-variant">Observações <span className="font-normal">(opcional)</span></label>
+                <textarea
+                  rows={2}
+                  placeholder="Ex: Paciente já passou por triagem, urgência clínica documentada..."
+                  value={form.observacoes}
+                  onChange={e => setForm(prev => ({ ...prev, observacoes: e.target.value }))}
+                  className="w-full px-4 py-3 bg-surface-container-high rounded-xl text-sm font-medium outline-none resize-none"
+                />
+              </div>
+
+              <div className="flex gap-3 pt-2">
+                <button type="button" onClick={() => setModalCriarAberto(false)} className="flex-1 h-12 rounded-2xl border border-outline font-bold text-sm">
+                  Cancelar
+                </button>
+                <button type="submit" disabled={criando} className="flex-1 h-12 rounded-2xl bg-primary text-white font-bold text-sm disabled:opacity-50">
+                  {criando ? 'Criando...' : 'Criar Encaminhamento'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </GestorLayout>
   );
 }

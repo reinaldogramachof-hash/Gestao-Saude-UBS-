@@ -1185,29 +1185,39 @@ router.delete('/agendamento/:id', async (req, res) => {
     return res.status(500).json({ error: 'Erro ao excluir agendamento.' });
   }
 });
-// ─── GET /api/gestor/encaminhamentos ──────────────────────────────────────────
-// Módulo de Regulação e Encaminhamentos: Lista todos os encaminhamentos.
+// ─── GET /api/gestor/encaminhamentos ─────────────────────────────────────────
+// Lista todos os encaminhamentos da UBS do gestor logado.
+// Ordenação: prioridade (VERMELHO > AMARELO > VERDE) e depois por data de solicitação ASC.
+// Calcula dias_na_fila em SQL apenas para encaminhamentos com status AGUARDANDO_VAGA.
+// Cancelados são excluídos da listagem principal.
 router.get('/encaminhamentos', async (req, res) => {
   try {
+    const ubsId = req.user.ubs_id;
     const encaminhamentos = await knex('encaminhamentos')
       .join('pacientes', 'encaminhamentos.paciente_id', 'pacientes.id')
-      // MODO MATRIZ: Se quisermos exibir encaminhamentos de qualquer UBS, podemos remover a linha abaixo. 
-      // Mas para focar na gestão local, mantemos.
-      // .where('pacientes.ubs_id', req.user.ubs_id)
+      .where('encaminhamentos.ubs_id', ubsId)
+      .whereNot('encaminhamentos.status', 'CANCELADO')
       .select(
         'encaminhamentos.*',
         'pacientes.nome as paciente_nome',
-        knex.raw('EXTRACT(DAY FROM NOW() - encaminhamentos.data_solicitacao) AS dias_na_fila')
+        // dias_na_fila calculado em SQL — só relevante enquanto aguarda vaga
+        knex.raw(`
+          CASE
+            WHEN encaminhamentos.status = 'AGUARDANDO_VAGA'
+            THEN EXTRACT(DAY FROM NOW() - encaminhamentos.data_solicitacao)::integer
+            ELSE NULL
+          END as dias_na_fila
+        `)
       )
       .orderByRaw(`
-        CASE
-          WHEN encaminhamentos.status = 'AGUARDANDO_VAGA' AND encaminhamentos.prioridade = 'VERMELHO' THEN 1
-          WHEN encaminhamentos.status = 'AGUARDANDO_VAGA' AND encaminhamentos.prioridade = 'AMARELO' THEN 2
-          WHEN encaminhamentos.status = 'AGUARDANDO_VAGA' AND encaminhamentos.prioridade = 'VERDE' THEN 3
+        CASE encaminhamentos.prioridade
+          WHEN 'VERMELHO' THEN 1
+          WHEN 'AMARELO'  THEN 2
+          WHEN 'VERDE'    THEN 3
           ELSE 4
-        END
-      `)
-      .orderBy('dias_na_fila', 'desc');
+        END ASC,
+        encaminhamentos.data_solicitacao ASC
+      `);
 
     return res.json(encaminhamentos);
   } catch (err) {
@@ -1215,11 +1225,167 @@ router.get('/encaminhamentos', async (req, res) => {
     return res.status(500).json({ error: 'Erro ao buscar encaminhamentos.' });
   }
 });
+
+// ─── POST /api/gestor/encaminhamento ─────────────────────────────────────────
+// Cria novo encaminhamento de regulação para um paciente.
+//
+// BRIDGE AUTOMÁTICO: Se solicitacao_id for fornecido, a solicitação vinculada
+// tem seu status atualizado para 'aguardando_regulacao' dentro da mesma transação.
+// O historico_status registra a mudança com observação descritiva.
+//
+// Body: { paciente_id, destino, especialidade, prioridade, observacoes?, solicitacao_id? }
+// Prioridade: 'VERDE' | 'AMARELO' | 'VERMELHO'
+router.post('/encaminhamento', async (req, res) => {
+  try {
+    const { paciente_id, destino, especialidade, prioridade, observacoes, solicitacao_id } = req.body;
+
+    if (!paciente_id || !destino || !especialidade || !prioridade) {
+      return res.status(400).json({ error: 'Paciente, destino, especialidade e prioridade são obrigatórios.' });
+    }
+
+    const PRIORIDADES_VALIDAS = ['VERDE', 'AMARELO', 'VERMELHO'];
+    if (!PRIORIDADES_VALIDAS.includes(prioridade)) {
+      return res.status(400).json({ error: 'Prioridade inválida. Use VERDE, AMARELO ou VERMELHO.' });
+    }
+
+    const resultado = await knex.transaction(async (trx) => {
+      // 1. Cria o encaminhamento
+      const [encaminhamento] = await trx('encaminhamentos')
+        .insert({
+          ubs_id:         req.user.ubs_id,
+          gestor_id:      req.user.id,
+          paciente_id,
+          destino,
+          especialidade,
+          prioridade,
+          observacoes:    observacoes || null,
+          solicitacao_id: solicitacao_id || null,
+          status:         'AGUARDANDO_VAGA',
+          data_solicitacao: trx.fn.now(),
+          atualizado_em:  trx.fn.now(),
+        })
+        .returning('*');
+
+      // 2. Se há solicitação vinculada, atualiza status para aguardando_regulacao
+      if (solicitacao_id) {
+        const solicitacao = await trx('solicitacoes').where({ id: solicitacao_id }).first();
+        if (solicitacao) {
+          await trx('solicitacoes')
+            .where({ id: solicitacao_id })
+            .update({ status: 'aguardando_regulacao', atualizado_em: trx.fn.now() });
+
+          await trx('historico_status').insert({
+            solicitacao_id,
+            gestor_id:       req.user.id,
+            status_anterior: solicitacao.status,
+            status_novo:     'aguardando_regulacao',
+            observacao:      `Encaminhamento criado para ${destino} — ${especialidade}.`,
+          });
+        }
+      }
+
+      return encaminhamento;
+    });
+
+    return res.status(201).json(resultado);
+  } catch (err) {
+    console.error('[POST /gestor/encaminhamento]', err);
+    return res.status(500).json({ error: 'Erro ao criar encaminhamento.' });
+  }
+});
+
+// ─── PUT /api/gestor/encaminhamento/:id/status ───────────────────────────────
+// Atualiza o status de um encaminhamento.
+//
+// REGRAS:
+//   - status AGENDADO exige data_agendamento no body
+//   - status REALIZADO → solicitação vinculada (se houver) vai para 'concluido'
+//   - status CANCELADO → solicitação vinculada NÃO é alterada (o gestor decide o próximo passo)
+//   - Só permite alterar encaminhamentos da própria UBS do gestor
+//
+// Body: { status_novo, data_agendamento?, observacoes? }
+router.put('/encaminhamento/:id/status', async (req, res) => {
+  try {
+    const { status_novo, data_agendamento, observacoes } = req.body;
+
+    const STATUS_VALIDOS = ['AGUARDANDO_VAGA', 'AGENDADO', 'REALIZADO', 'CANCELADO'];
+    if (!STATUS_VALIDOS.includes(status_novo)) {
+      return res.status(400).json({ error: 'Status inválido.' });
+    }
+
+    if (status_novo === 'AGENDADO' && !data_agendamento) {
+      return res.status(400).json({ error: 'data_agendamento é obrigatório ao marcar como Agendado.' });
+    }
+
+    // Garante que o encaminhamento pertence à UBS do gestor logado
+    const encaminhamento = await knex('encaminhamentos')
+      .where({ id: req.params.id, ubs_id: req.user.ubs_id })
+      .first();
+
+    if (!encaminhamento) {
+      return res.status(404).json({ error: 'Encaminhamento não encontrado.' });
+    }
+
+    await knex.transaction(async (trx) => {
+      // Atualiza o encaminhamento
+      await trx('encaminhamentos')
+        .where({ id: req.params.id })
+        .update({
+          status:          status_novo,
+          data_agendamento: data_agendamento || encaminhamento.data_agendamento,
+          observacoes:     observacoes !== undefined ? observacoes : encaminhamento.observacoes,
+          atualizado_em:   trx.fn.now(),
+        });
+
+      // Se realizado E há solicitação vinculada ainda não concluída → conclui automaticamente
+      if (status_novo === 'REALIZADO' && encaminhamento.solicitacao_id) {
+        const sol = await trx('solicitacoes').where({ id: encaminhamento.solicitacao_id }).first();
+        if (sol && !['concluido', 'cancelado'].includes(sol.status)) {
+          await trx('solicitacoes')
+            .where({ id: encaminhamento.solicitacao_id })
+            .update({ status: 'concluido', atualizado_em: trx.fn.now() });
+
+          await trx('historico_status').insert({
+            solicitacao_id: encaminhamento.solicitacao_id,
+            gestor_id:      req.user.id,
+            status_anterior: sol.status,
+            status_novo:    'concluido',
+            observacao:     'Encaminhamento realizado — solicitação concluída automaticamente.',
+          });
+        }
+      }
+    });
+
+    // Retorna o encaminhamento atualizado com nome do paciente
+    const atualizado = await knex('encaminhamentos')
+      .join('pacientes', 'encaminhamentos.paciente_id', 'pacientes.id')
+      .where('encaminhamentos.id', req.params.id)
+      .select(
+        'encaminhamentos.*',
+        'pacientes.nome as paciente_nome',
+        knex.raw(`
+          CASE
+            WHEN encaminhamentos.status = 'AGUARDANDO_VAGA'
+            THEN EXTRACT(DAY FROM NOW() - encaminhamentos.data_solicitacao)::integer
+            ELSE NULL
+          END as dias_na_fila
+        `)
+      )
+      .first();
+
+    return res.json(atualizado);
+  } catch (err) {
+    console.error('[PUT /gestor/encaminhamento/:id/status]', err);
+    return res.status(500).json({ error: 'Erro ao atualizar status do encaminhamento.' });
+  }
+});
+
 // ============================================================================
-// =================  MÓDULOS 2, 3 e 4: REDE EXTERNA E APOIO  =================
+// =================  MÓDULOS 2 e 3: REDE EXTERNA (Legado inativo) ============
 // ============================================================================
 
 // ─── GET /api/gestor/servico-social ─────────────────────────────────────────
+// Rota mantida apenas para compatibilidade de banco de dados. Módulo inativo no front.
 router.get('/servico-social', async (req, res) => {
   try {
     const casos = await knex('casos_sociais')
@@ -1240,6 +1406,7 @@ router.get('/servico-social', async (req, res) => {
 });
 
 // ─── GET /api/gestor/transporte ─────────────────────────────────────────────
+// Rota mantida apenas para compatibilidade de banco de dados. Módulo inativo no front.
 router.get('/transporte', async (req, res) => {
   try {
     const transportes = await knex('transporte_sanitario')
@@ -1259,11 +1426,19 @@ router.get('/transporte', async (req, res) => {
   }
 });
 
-// ─── GET /api/gestor/vigilancia ─────────────────────────────────────────────
+// ============================================================================
+// =================  MÓDULO 4: VIGILÂNCIA EPIDEMIOLÓGICA  ====================
+// ============================================================================
+
+// ─── GET /api/gestor/vigilancia ──────────────────────────────────────────────
+// Lista todas as notificações epidemiológicas da UBS do gestor logado.
+// paciente_nome é NULL para surtos territoriais (sem paciente vinculado).
+// Ordenação: data_notificacao DESC (mais recentes primeiro).
 router.get('/vigilancia', async (req, res) => {
   try {
     const notificacoes = await knex('notificacoes_vigilancia')
       .leftJoin('pacientes', 'notificacoes_vigilancia.paciente_id', 'pacientes.id')
+      .where('notificacoes_vigilancia.ubs_id', req.user.ubs_id)
       .select(
         'notificacoes_vigilancia.*',
         'pacientes.nome as paciente_nome'
@@ -1273,7 +1448,78 @@ router.get('/vigilancia', async (req, res) => {
     return res.json(notificacoes);
   } catch (err) {
     console.error('[GET /gestor/vigilancia]', err);
-    return res.status(500).json({ error: 'Erro ao buscar dados de vigilância.' });
+    return res.status(500).json({ error: 'Erro ao buscar notificações de vigilância.' });
+  }
+});
+
+// ─── POST /api/gestor/vigilancia ─────────────────────────────────────────────
+// Registra nova notificação epidemiológica local.
+//
+// NOTA IMPORTANTE: Este registro é interno ao UBS+. Não substitui nem envia
+// dados ao SINAN (sistema oficial de notificação compulsória do MS).
+// O gestor deve continuar notificando o SINAN conforme obrigação legal.
+//
+// Body: { agravo, bairro, cep?, paciente_id? }
+// paciente_id é opcional — surtos territoriais não precisam de paciente específico.
+router.post('/vigilancia', async (req, res) => {
+  try {
+    const { agravo, bairro, cep, paciente_id } = req.body;
+
+    if (!agravo || !bairro) {
+      return res.status(400).json({ error: 'Agravo e bairro são obrigatórios.' });
+    }
+
+    const [notificacao] = await knex('notificacoes_vigilancia')
+      .insert({
+        ubs_id:              req.user.ubs_id,
+        gestor_id:           req.user.id,
+        paciente_id:         paciente_id || null,
+        agravo,
+        bairro,
+        cep:                 cep || null,
+        status_investigacao: 'SUSPEITO',
+        data_notificacao:    knex.fn.now(),
+        atualizado_em:       knex.fn.now(),
+      })
+      .returning('*');
+
+    return res.status(201).json(notificacao);
+  } catch (err) {
+    console.error('[POST /gestor/vigilancia]', err);
+    return res.status(500).json({ error: 'Erro ao registrar notificação de vigilância.' });
+  }
+});
+
+// ─── PUT /api/gestor/vigilancia/:id/status ───────────────────────────────────
+// Atualiza o status de investigação de uma notificação.
+// Body: { status_investigacao } — 'SUSPEITO' | 'CONFIRMADO' | 'DESCARTADO'
+router.put('/vigilancia/:id/status', async (req, res) => {
+  try {
+    const { status_investigacao } = req.body;
+
+    const STATUS_VALIDOS = ['SUSPEITO', 'CONFIRMADO', 'DESCARTADO'];
+    if (!STATUS_VALIDOS.includes(status_investigacao)) {
+      return res.status(400).json({ error: 'Status inválido. Use SUSPEITO, CONFIRMADO ou DESCARTADO.' });
+    }
+
+    // Garante isolamento por UBS
+    const notificacao = await knex('notificacoes_vigilancia')
+      .where({ id: req.params.id, ubs_id: req.user.ubs_id })
+      .first();
+
+    if (!notificacao) {
+      return res.status(404).json({ error: 'Notificação não encontrada.' });
+    }
+
+    const [atualizada] = await knex('notificacoes_vigilancia')
+      .where({ id: req.params.id })
+      .update({ status_investigacao, atualizado_em: knex.fn.now() })
+      .returning('*');
+
+    return res.json(atualizada);
+  } catch (err) {
+    console.error('[PUT /gestor/vigilancia/:id/status]', err);
+    return res.status(500).json({ error: 'Erro ao atualizar status da notificação.' });
   }
 });
 

@@ -11,11 +11,13 @@
  * ─────────────────────────────────────────────────────────────────────────────
  */
 import React, { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import api from '../../services/api';
 import GestorLayout from '../../components/gestor/GestorLayout';
 
 export default function ComunicadosGestor() {
+  const location = useLocation();
   const [comunicados, setComunicados] = useState([]);
   const [pacientes, setPacientes] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -36,6 +38,25 @@ export default function ComunicadosGestor() {
   };
 
   useEffect(() => { carregarComunicados(); carregarPacientes(); }, []);
+
+  // Abre o modal de novo comunicado pré-preenchido quando o gestor navega
+  // a partir do botão "Gerar Alerta" em VigilanciaGestor.
+  // Usa o mesmo padrão do FAB de agendamentos (TASK_22).
+  useEffect(() => {
+    if (location.state?.abrirModal) {
+      setForm(prev => ({
+        ...prev,
+        titulo:  location.state.titulo   || '',
+        mensagem: location.state.mensagem || '',
+        urgente: location.state.urgente  ?? false,
+        tipo:    'geral',
+      }));
+      setModalAberto(true);
+      // Limpa o state para evitar re-trigger
+      window.history.replaceState({}, document.title);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;

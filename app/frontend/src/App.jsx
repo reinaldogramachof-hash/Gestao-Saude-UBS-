@@ -33,8 +33,6 @@ import MedicamentosGestor from './pages/gestor/MedicamentosGestor';
 import ComunicadosGestor from './pages/gestor/ComunicadosGestor';   // Épico 3
 import AgendamentosGestor from './pages/gestor/AgendamentosGestor'; // Épico 4
 import RegulacaoGestor from './pages/gestor/RegulacaoGestor';       // Módulo 1 (Rede Externa)
-import TransporteGestor from './pages/gestor/TransporteGestor';     // Módulo 3
-import ServicoSocialGestor from './pages/gestor/ServicoSocialGestor'; // Módulo 2
 import VigilanciaGestor from './pages/gestor/VigilanciaGestor';     // Módulo 4
 import GestorUsuarios from './pages/gestor/GestorUsuarios';         // Administração da equipe
 import PainelMedico from './pages/gestor/PainelMedico';             // Painel clínico de consulta (read-only)
@@ -89,8 +87,6 @@ export default function App() {
           <Route path="/gestor/comunicados"   element={<ProtectedRoute tipo="gestor"><ComunicadosGestor /></ProtectedRoute>} />
           <Route path="/gestor/agendamentos"  element={<ProtectedRoute tipo="gestor"><AgendamentosGestor /></ProtectedRoute>} />
           <Route path="/gestor/regulacao"     element={<ProtectedRoute tipo="gestor"><RegulacaoGestor /></ProtectedRoute>} />
-          <Route path="/gestor/transporte"    element={<ProtectedRoute tipo="gestor"><TransporteGestor /></ProtectedRoute>} />
-          <Route path="/gestor/servico-social" element={<ProtectedRoute tipo="gestor"><ServicoSocialGestor /></ProtectedRoute>} />
           <Route path="/gestor/vigilancia"    element={<ProtectedRoute tipo="gestor"><VigilanciaGestor /></ProtectedRoute>} />
           <Route path="/gestor/usuarios"       element={<ProtectedRoute tipo="gestor"><GestorUsuarios /></ProtectedRoute>} />
           <Route path="/gestor/medico"         element={<ProtectedRoute tipo="gestor"><PainelMedico /></ProtectedRoute>} />

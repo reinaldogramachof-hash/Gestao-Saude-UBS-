@@ -27,8 +27,6 @@ const PERFIS_ACESSO = {
   medico:            ['admin', 'medico'],
   agendamentos:      ['recepcionista', 'gestor', 'admin'],
   regulacao:         ['gestor', 'admin'],
-  transporte:        ['gestor', 'admin'],
-  'servico-social':  ['gestor', 'admin'],
   vigilancia:        ['gestor', 'admin'],
   medicamentos:      ['recepcionista', 'gestor', 'admin'],
   comunicados:       ['recepcionista', 'gestor', 'admin'],
@@ -176,8 +174,8 @@ export default function SideNavGestor({ onFechar, retraida, onToggle }) {
             SEÇÃO: REDE EXTERNA E APOIO
             Visível se o perfil tiver acesso a Regulação, Transporte, Serviço Social ou Vigilância
             ─────────────────────────────────────────────────────────────────── */}
-        {(pode('regulacao') || pode('transporte') || pode('servico-social') || pode('vigilancia')) && (
-          <SectionLabel label="REDE EXTERNA E APOIO" retraida={retraida} />
+        {(pode('regulacao') || pode('vigilancia')) && (
+          <SectionLabel label="REDE EXTERNA" retraida={retraida} />
         )}
         
         {/* Regulação: apenas para gestores e admins */}
@@ -188,30 +186,6 @@ export default function SideNavGestor({ onFechar, retraida, onToggle }) {
             label="Regulação"
             retraida={retraida}
             activeClass={isActive('regulacao')}
-            onClick={handleNavegar}
-          />
-        )}
-        
-        {/* Transporte Sanitário: apenas para gestores e admins */}
-        {pode('transporte') && (
-          <NavItem
-            to="/gestor/transporte"
-            icon="directions_bus"
-            label="Transporte Sanitário"
-            retraida={retraida}
-            activeClass={isActive('transporte')}
-            onClick={handleNavegar}
-          />
-        )}
-        
-        {/* Serviço Social: apenas para gestores e admins */}
-        {pode('servico-social') && (
-          <NavItem
-            to="/gestor/servico-social"
-            icon="diversity_1"
-            label="Serviço Social"
-            retraida={retraida}
-            activeClass={isActive('servico-social')}
             onClick={handleNavegar}
           />
         )}
