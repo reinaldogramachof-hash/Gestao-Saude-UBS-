@@ -17,7 +17,7 @@ export default function HeaderPaciente({ onOpenDrawer, unreadCount = 0 }) {
   return (
     <header
       className="fixed top-0 left-0 right-0 bg-surface-container-lowest border-b border-surface-variant flex items-end justify-between px-4 z-30 shadow-sm"
-      style={{ paddingTop: 'env(safe-area-inset-top)', minHeight: 'calc(56px + env(safe-area-inset-top))' }}
+      style={{ paddingTop: 'var(--safe-top)', minHeight: 'var(--content-top)' }}
     >
       
       {/* ── Botão Hamburger + Logo ── */}

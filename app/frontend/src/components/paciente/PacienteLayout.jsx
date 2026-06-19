@@ -76,7 +76,7 @@ export default function PacienteLayout({ children, semNav = false }) {
         {/* Conteúdo scrollável principal */}
         <div
           className={`flex-1 overflow-y-auto ${semNav ? '' : 'pb-20'}`}
-          style={semNav ? {} : { paddingTop: 'calc(56px + env(safe-area-inset-top))' }}
+          style={semNav ? {} : { paddingTop: 'var(--content-top)' }}
         >
           {children}
         </div>

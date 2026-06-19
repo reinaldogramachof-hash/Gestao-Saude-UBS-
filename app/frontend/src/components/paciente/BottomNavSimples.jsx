@@ -21,7 +21,7 @@ export default function BottomNavSimples() {
   return (
     <nav
       className="fixed bottom-0 left-0 right-0 bg-surface-container-lowest border-t border-surface-variant flex items-center justify-around z-30 shadow-[0_-2px_8px_rgba(0,0,0,0.08)]"
-      style={{ paddingBottom: 'env(safe-area-inset-bottom)', minHeight: '64px' }}
+      style={{ paddingBottom: 'var(--safe-bottom)', minHeight: 'var(--bottom-nav-h)' }}
     >
       {/* ── Botão Lateral Esquerdo: Início ── */}
       <button

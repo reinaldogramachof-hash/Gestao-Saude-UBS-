@@ -50,7 +50,10 @@ export default function DrawerPaciente({ aberto, onClose, unreadCount = 0, pacie
         }`}
       >
         {/* Cabeçalho: Dados do Usuário */}
-        <header className="p-6 bg-primary text-on-primary flex flex-col gap-3">
+        <header
+          className="px-6 pb-6 bg-primary text-on-primary flex flex-col gap-3"
+          style={{ paddingTop: 'calc(var(--safe-top) + 24px)' }}
+        >
           <div className="flex items-center gap-3">
             <span className="material-symbols-outlined text-4xl select-none">account_circle</span>
             <div className="overflow-hidden">
