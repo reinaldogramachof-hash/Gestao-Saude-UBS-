@@ -99,6 +99,66 @@ router.get('/meus-dados', async (req, res) => {
 });
 
 
+// ─── GET /api/paciente/perfil ───────────────────────────────────────────────
+// Retorna todos os dados pessoais (com CPF mascarado e formatado) e os dados
+// clínicos do paciente logado. Realiza JOIN com a tabela de UBS para trazer
+// as informações da unidade de saúde vinculada e mapeia ubs.bairro para exibição.
+router.get('/perfil', async (req, res) => {
+  try {
+    const resultado = await knex('pacientes')
+      .join('ubs', 'pacientes.ubs_id', 'ubs.id')
+      .where('pacientes.id', req.user.id)
+      .select(
+        'pacientes.*',
+        'ubs.nome        as ubs_nome',
+        'ubs.endereco    as ubs_endereco',
+        'ubs.telefone    as ubs_telefone',
+        'ubs.bairro      as ubs_bairro'
+      )
+      .first();
+
+    if (!resultado) {
+      return res.status(404).json({ error: 'Paciente não encontrado.' });
+    }
+
+    // Mascara o CPF para segurança (LGPD) mantendo os primeiros 3 e os últimos 2 dígitos
+    // Ex: 123.456.789-00 -> 123.***.***-00
+    let cpfMascarado = '—';
+    if (resultado.cpf) {
+      const cpfLimpo = resultado.cpf.replace(/[^\d]/g, '');
+      if (cpfLimpo.length === 11) {
+        cpfMascarado = `${cpfLimpo.slice(0, 3)}.***.***-${cpfLimpo.slice(9)}`;
+      }
+    }
+
+    const perfilCompleto = {
+      id:                         resultado.id,
+      nome:                       resultado.nome,
+      cra:                        resultado.cra,
+      cpf:                        cpfMascarado,
+      data_nascimento:            resultado.data_nascimento,
+      telefone:                   resultado.telefone || '—',
+      email:                      resultado.email || '—',
+      ubs_bairro:                 resultado.ubs_bairro || '—', // Mapeia o bairro do paciente como o bairro da sua UBS de referência
+      ubs_nome:                   resultado.ubs_nome,
+      // Informações clínicas do paciente
+      tipo_sanguineo:             resultado.tipo_sanguineo || '—',
+      peso_kg:                    resultado.peso_kg || '—',
+      altura_cm:                  resultado.altura_cm || '—',
+      alergias:                   resultado.alergias || '—',
+      comorbidades:               resultado.comorbidades || '—',
+      medicamentos_uso_continuo:  resultado.medicamentos_uso_continuo || '—',
+      observacoes_clinicas:       resultado.observacoes_clinicas || '—',
+    };
+
+    return res.json(perfilCompleto);
+  } catch (err) {
+    console.error('[GET /paciente/perfil]', err);
+    return res.status(500).json({ error: 'Erro ao buscar perfil completo do paciente.' });
+  }
+});
+
+
 // ─── GET /api/paciente/minhas-solicitacoes ────────────────────────────────────
 // Retorna somente solicitações ativas. Urgências aparecem primeiro e, dentro
 // da mesma prioridade, o pedido mais recente vem antes.

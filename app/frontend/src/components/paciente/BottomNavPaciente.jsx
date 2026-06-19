@@ -106,6 +106,11 @@ export default function BottomNavPaciente() {
         <span className="text-[10px] font-semibold md:text-[14px]">Agenda</span>
       </Link>
 
+      <Link to="/paciente/perfil" className={`flex flex-col items-center gap-1 ${isActive('perfil')} md:flex-row md:gap-2`}>
+        <span className="material-symbols-outlined text-2xl md:text-[20px]">person</span>
+        <span className="text-[10px] font-semibold md:text-[14px]">Perfil</span>
+      </Link>
+
       {/* Botão de logout empurrado para a direita no desktop */}
       <button
         onClick={handleLogout}

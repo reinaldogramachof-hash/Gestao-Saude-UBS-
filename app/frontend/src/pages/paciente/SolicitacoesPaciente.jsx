@@ -37,10 +37,21 @@ function CardSolicitacao({ sol, navigate }) {
       <div className="flex items-center gap-3 mb-3">
         <div className="w-9 h-9 bg-primary/10 rounded-full flex items-center justify-center text-primary flex-shrink-0">
           <span className="material-symbols-outlined text-lg">
-            {sol.tipo === 'exame' ? 'bloodtype' : 'event_note'}
+            {sol.tipo === 'exame' ? 'biotech' : 
+             sol.tipo === 'consulta' ? 'medical_services' :
+             sol.tipo === 'procedimento' ? 'healing' :
+             sol.tipo === 'cirurgia' ? 'local_hospital' : 'event_note'}
           </span>
         </div>
-        <h3 className="font-bold text-on-surface text-sm leading-tight">{sol.descricao_paciente}</h3>
+        <div>
+          <span className="text-[10px] font-extrabold text-primary tracking-wider uppercase block mb-0.5">
+            {sol.tipo === 'exame' ? 'Exame' :
+             sol.tipo === 'consulta' ? 'Consulta' :
+             sol.tipo === 'procedimento' ? 'Procedimento' :
+             sol.tipo === 'cirurgia' ? 'Cirurgia' : sol.tipo}
+          </span>
+          <h3 className="font-bold text-on-surface text-sm leading-tight">{sol.descricao_paciente}</h3>
+        </div>
       </div>
       <div className={`rounded-xl px-3 py-2 mb-3 ${STATUS_CORES[sol.status] || 'bg-surface-container-low text-on-surface'}`}>
         <p className="text-sm font-semibold">{STATUS_LABELS[sol.status] || 'Status em atualização'}</p>

@@ -122,9 +122,20 @@ export default function DashboardPaciente() {
               <div className="flex justify-between items-start mb-3">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center text-primary flex-shrink-0">
-                    <span className="material-symbols-outlined">{sol.tipo === 'exame' ? 'bloodtype' : 'event_note'}</span>
+                    <span className="material-symbols-outlined">
+                      {sol.tipo === 'exame' ? 'biotech' : 
+                       sol.tipo === 'consulta' ? 'medical_services' :
+                       sol.tipo === 'procedimento' ? 'healing' :
+                       sol.tipo === 'cirurgia' ? 'local_hospital' : 'event_note'}
+                    </span>
                   </div>
                   <div>
+                    <span className="text-[10px] font-extrabold text-primary tracking-wider uppercase block mb-0.5">
+                      {sol.tipo === 'exame' ? 'Exame' :
+                       sol.tipo === 'consulta' ? 'Consulta' :
+                       sol.tipo === 'procedimento' ? 'Procedimento' :
+                       sol.tipo === 'cirurgia' ? 'Cirurgia' : sol.tipo}
+                    </span>
                     <h3 className="font-bold text-on-surface leading-tight">{sol.descricao_paciente}</h3>
                   </div>
                 </div>

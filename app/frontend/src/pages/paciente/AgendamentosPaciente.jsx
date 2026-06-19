@@ -10,7 +10,7 @@
  *      POST /api/paciente/agendamento/:id/reservar
  * ─────────────────────────────────────────────────────────────────────────────
  */
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import toast from 'react-hot-toast';
 import api from '../../services/api';
 import PacienteLayout from '../../components/paciente/PacienteLayout';
@@ -30,6 +30,7 @@ const STATUS_LABEL = {
 };
 
 export default function AgendamentosPaciente() {
+  const meusAgendamentosRef = useRef(null); // Referência para rolagem suave pós-agendamento
   const [disponiveis, setDisponiveis] = useState([]);
   const [meus, setMeus] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -67,9 +68,13 @@ export default function AgendamentosPaciente() {
     setReservando(true);
     try {
       await api.post(`/paciente/agendamento/${slotSelecionado.id}/reservar`, { motivo });
-      toast.success('Agendamento reservado com sucesso!');
+      toast.success('Agendamento confirmado! ✓');
       setModalAberto(false);
       carregarTodos();
+      // Rola a tela suavemente para a seção "Meus Agendamentos" para feedback imediato do novo slot reservado
+      setTimeout(() => {
+        meusAgendamentosRef.current?.scrollIntoView({ behavior: 'smooth' });
+      }, 300);
     } catch (err) {
       toast.error(err.response?.data?.error || 'Erro ao reservar agendamento.');
     } finally {
@@ -141,7 +146,7 @@ export default function AgendamentosPaciente() {
             </section>
 
             {/* ── Meus Agendamentos ── */}
-            <section>
+            <section ref={meusAgendamentosRef}>
               <h2 className="text-xl font-extrabold text-on-background mb-4">Meus Agendamentos</h2>
               {meus.length > 0 ? (
                 <div className="space-y-4">
@@ -184,8 +189,8 @@ export default function AgendamentosPaciente() {
                 <p className="text-primary/70 text-xs font-medium">{slotSelecionado.duracao_minutos} minutos</p>
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-bold text-on-surface-variant">Motivo (opcional)</label>
-                <textarea rows={3} placeholder="Ex: Renovação de receita, dor no joelho..." value={motivo}
+                <label className="text-sm font-bold text-on-surface-variant">Observações (opcional)</label>
+                <textarea rows={3} placeholder="Ex: Tenho dificuldade de locomoção, necessito de acompanhante, trarei documentos antigos..." value={motivo}
                   onChange={e => setMotivo(e.target.value)}
                   className="w-full px-4 py-3 bg-surface-container-high border-none rounded-xl outline-none font-medium resize-none" />
               </div>
