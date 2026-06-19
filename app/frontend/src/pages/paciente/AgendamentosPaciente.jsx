@@ -11,6 +11,7 @@
  * ─────────────────────────────────────────────────────────────────────────────
  */
 import React, { useState, useEffect, useRef } from 'react';
+import { useLocation } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import api from '../../services/api';
 import PacienteLayout from '../../components/paciente/PacienteLayout';
@@ -30,6 +31,7 @@ const STATUS_LABEL = {
 };
 
 export default function AgendamentosPaciente() {
+  const location = useLocation();
   const meusAgendamentosRef = useRef(null); // Referência para rolagem suave pós-agendamento
   const [disponiveis, setDisponiveis] = useState([]);
   const [meus, setMeus] = useState([]);
@@ -61,6 +63,28 @@ export default function AgendamentosPaciente() {
   };
 
   useEffect(() => { carregarTodos(); }, []);
+
+  // Abre automaticamente o modal de reserva quando o paciente chega via FAB "+"
+  // com uma categoria de intake selecionada. Só executa após o carregamento completo.
+  useEffect(() => {
+    if (!loading && location.state?.abrirModal) {
+      if (disponiveis.length > 0) {
+        // Pré-seleciona o primeiro slot disponível e preenche o motivo sugerido
+        setSlotSelecionado(disponiveis[0]);
+        setMotivo(location.state.motivoSugerido || '');
+        setModalAberto(true);
+      } else {
+        // Nenhum horário disponível: informa o paciente sem abrir o modal
+        toast('Não há horários disponíveis no momento. Tente novamente em breve.', {
+          icon: '📅',
+        });
+      }
+      // Limpa o state do router para evitar re-trigger em navegação futura
+      // (substitui o history entry atual sem o state)
+      window.history.replaceState({}, document.title);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading]);
 
   const abrirModal = (slot) => {
     setSlotSelecionado(slot);
@@ -241,10 +265,16 @@ export default function AgendamentosPaciente() {
                 <p className="text-primary/70 text-xs font-medium">{slotSelecionado.duracao_minutos} minutos</p>
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-bold text-on-surface-variant">Observações (opcional)</label>
+                <label className="text-sm font-bold text-on-surface-variant">Observações {motivo ? '' : '(opcional)'}</label>
                 <textarea rows={3} placeholder="Ex: Tenho dificuldade de locomoção, necessito de acompanhante, trarei documentos antigos..." value={motivo}
                   onChange={e => setMotivo(e.target.value)}
                   className="w-full px-4 py-3 bg-surface-container-high border-none rounded-xl outline-none font-medium resize-none" />
+                {/* Dica: quando pré-preenchido pelo FAB, lembra o paciente de complementar */}
+                {motivo && (
+                  <p className="text-xs text-on-surface-variant">
+                    Complete com mais detalhes se quiser.
+                  </p>
+                )}
               </div>
               <div className="flex gap-3">
                 <button type="button" onClick={() => setModalAberto(false)} className="flex-1 h-14 rounded-2xl border border-outline font-bold">Cancelar</button>
