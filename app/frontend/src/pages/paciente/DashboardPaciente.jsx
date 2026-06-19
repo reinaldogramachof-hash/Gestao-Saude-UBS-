@@ -45,7 +45,7 @@ export default function DashboardPaciente() {
     return (
       <PacienteLayout>
         <div className="animate-pulse">
-          <div className="bg-primary pt-12 pb-24 px-6 rounded-b-[2.5rem] md:pt-8 md:pb-12 md:rounded-b-none">
+          <div className="bg-primary pt-6 pb-24 px-6 rounded-b-[2.5rem] md:pt-6 md:pb-12 md:rounded-b-none">
             <div className="h-4 w-24 bg-white/30 rounded mb-3"></div>
             <div className="h-8 w-48 bg-white/40 rounded"></div>
           </div>
@@ -90,7 +90,7 @@ export default function DashboardPaciente() {
   return (
     <PacienteLayout>
       {/* ── Cabeçalho verde com nome e UBS ── */}
-      <header className="bg-primary pt-12 pb-24 px-6 rounded-b-[2.5rem] md:pt-8 md:pb-12 md:rounded-b-none relative overflow-hidden flex justify-center">
+      <header className="bg-primary pt-6 pb-24 px-6 rounded-b-[2.5rem] md:pt-6 md:pb-12 md:rounded-b-none relative overflow-hidden flex justify-center">
         <div className="relative z-10 w-full max-w-5xl flex justify-between items-start">
           <div>
           <p className="text-white/70 text-sm font-semibold tracking-wide uppercase mb-1">Bem-vindo(a)</p>
