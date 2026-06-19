@@ -15,13 +15,16 @@ export default function HeaderPaciente({ onOpenDrawer, unreadCount = 0 }) {
   const navigate = useNavigate();
 
   return (
-    <header className="fixed top-0 left-0 right-0 h-14 bg-surface-container-lowest border-b border-surface-variant flex items-center justify-between px-4 z-30 shadow-sm">
+    <header
+      className="fixed top-0 left-0 right-0 bg-surface-container-lowest border-b border-surface-variant flex items-end justify-between px-4 z-30 shadow-sm"
+      style={{ paddingTop: 'env(safe-area-inset-top)', minHeight: 'calc(56px + env(safe-area-inset-top))' }}
+    >
       
       {/* ── Botão Hamburger + Logo ── */}
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3 h-14">
         <button
           onClick={onOpenDrawer}
-          className="w-10 h-10 rounded-full hover:bg-surface-container-low flex items-center justify-center text-on-surface"
+          className="w-11 h-11 rounded-full hover:bg-surface-container-low flex items-center justify-center text-on-surface transition-colors"
           aria-label="Abrir menu de navegação"
         >
           <span className="material-symbols-outlined text-2xl">menu</span>
@@ -35,18 +38,20 @@ export default function HeaderPaciente({ onOpenDrawer, unreadCount = 0 }) {
       </div>
 
       {/* ── Notificações (Sino com badge) ── */}
-      <button
-        onClick={() => navigate('/paciente/comunicados')}
-        className="relative w-10 h-10 rounded-full hover:bg-surface-container-low flex items-center justify-center text-on-surface-variant hover:text-primary transition-colors"
-        aria-label="Ver comunicados"
-      >
-        <span className="material-symbols-outlined text-2xl">notifications</span>
-        {unreadCount > 0 && (
-          <span className="absolute top-1 right-1 bg-red-500 text-white text-[9px] font-bold w-4 h-4 flex items-center justify-center rounded-full border border-surface-container-lowest animate-bounce">
-            {unreadCount}
-          </span>
-        )}
-      </button>
+      <div className="h-14 flex items-center">
+        <button
+          onClick={() => navigate('/paciente/comunicados')}
+          className="relative w-11 h-11 rounded-full hover:bg-surface-container-low flex items-center justify-center text-on-surface-variant hover:text-primary transition-colors"
+          aria-label="Ver comunicados"
+        >
+          <span className="material-symbols-outlined text-2xl">notifications</span>
+          {unreadCount > 0 && (
+            <span className="absolute top-1 right-1 bg-red-500 text-white text-[9px] font-bold w-4 h-4 flex items-center justify-center rounded-full border border-surface-container-lowest animate-bounce">
+              {unreadCount}
+            </span>
+          )}
+        </button>
+      </div>
     </header>
   );
 }

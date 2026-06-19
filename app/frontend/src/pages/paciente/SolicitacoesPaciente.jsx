@@ -61,7 +61,7 @@ function CardSolicitacao({ sol, navigate }) {
       </div>
       <button
         onClick={() => navigate(`/paciente/solicitacao/${sol.id}`)}
-        className="w-full text-center py-2 bg-primary/10 text-primary font-bold rounded-xl text-sm hover:bg-primary/20 transition-colors"
+        className="w-full py-2 rounded-xl border border-primary text-primary text-sm font-bold hover:bg-primary/5 active:bg-primary/10 transition-colors text-center"
       >
         Ver Detalhes
       </button>

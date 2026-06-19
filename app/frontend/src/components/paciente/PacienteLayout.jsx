@@ -21,6 +21,7 @@ import React, { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import HeaderPaciente from './HeaderPaciente';
 import DrawerPaciente from './DrawerPaciente';
+import BottomNavSimples from './BottomNavSimples';
 import api from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -73,7 +74,10 @@ export default function PacienteLayout({ children, semNav = false }) {
         )}
 
         {/* Conteúdo scrollável principal */}
-        <div className={`flex-1 overflow-y-auto ${semNav ? '' : 'pt-14'}`}>
+        <div
+          className={`flex-1 overflow-y-auto ${semNav ? '' : 'pb-20'}`}
+          style={semNav ? {} : { paddingTop: 'calc(56px + env(safe-area-inset-top))' }}
+        >
           {children}
         </div>
 
@@ -87,6 +91,9 @@ export default function PacienteLayout({ children, semNav = false }) {
             ubsNome={pacienteDados?.ubs?.nome || 'Carregando...'}
           />
         )}
+
+        {/* Bottom Navigation fixa inferior de 3 botões */}
+        {!semNav && <BottomNavSimples />}
 
       </div>
     </div>

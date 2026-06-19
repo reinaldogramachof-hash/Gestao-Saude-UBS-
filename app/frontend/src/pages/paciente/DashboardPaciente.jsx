@@ -107,7 +107,7 @@ export default function DashboardPaciente() {
       <main className="px-6 -mt-16 md:-mt-8 md:pb-12 relative z-20 space-y-6 pb-28 max-w-5xl mx-auto w-full">
         {/* Linha de título com atalho para histórico completo */}
         <div className="flex justify-between items-center mb-2">
-          <h2 className="text-xl font-extrabold text-on-surface">Minhas Solicitações Ativas</h2>
+          <h2 className="text-lg font-extrabold text-on-surface leading-tight">Minhas Solicitações Ativas</h2>
           <button
             onClick={() => navigate('/paciente/solicitacoes')}
             className="text-primary text-sm font-semibold flex items-center gap-0.5 hover:underline"
@@ -151,7 +151,7 @@ export default function DashboardPaciente() {
               </div>
               <button
                 onClick={() => navigate(`/paciente/solicitacao/${sol.id}`)}
-                className="w-full text-center py-2.5 bg-primary/10 text-primary font-bold rounded-xl text-sm hover:bg-primary/20 transition-colors"
+                className="w-full py-2.5 rounded-xl border border-primary text-primary text-sm font-bold hover:bg-primary/5 active:bg-primary/10 transition-colors text-center"
               >
                 Ver Detalhes
               </button>
