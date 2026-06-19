@@ -106,7 +106,7 @@ export default function ComunicadosPaciente() {
   return (
     <PacienteLayout>
       {/* ── Cabeçalho verde padrão do portal do paciente com ação em lote ── */}
-      <header className="bg-primary pt-12 pb-6 px-6">
+      <header className="bg-primary pt-12 pb-4 px-6">
         <div className="flex justify-between items-start">
           <div>
             <h1 className="text-on-primary text-2xl font-extrabold flex items-center gap-2">
@@ -190,7 +190,7 @@ export default function ComunicadosPaciente() {
               <div 
                 key={c.id} 
                 onClick={() => handleExpandir(c)}
-                className={`rounded-2xl border p-5 cursor-pointer transition-all duration-200 ${cardStyle}`}
+                className={`rounded-2xl border p-3 md:p-5 cursor-pointer transition-all duration-200 ${cardStyle}`}
               >
                 <div className="flex gap-4 items-start">
                   <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 transition-colors duration-200 ${iconBg} ${iconText}`}>

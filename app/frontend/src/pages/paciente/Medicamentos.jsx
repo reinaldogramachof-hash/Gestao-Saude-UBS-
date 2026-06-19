@@ -54,7 +54,7 @@ export default function Medicamentos() {
   return (
     <PacienteLayout>
       {/* ── Cabeçalho com campo de busca integrado ── */}
-      <header className="bg-primary pt-12 pb-5 px-6">
+      <header className="bg-primary pt-12 pb-4 px-6">
         <h1 className="text-on-primary text-2xl font-extrabold">Consulta de Estoque</h1>
         <p className="text-white/70 text-sm mt-1 mb-4">Medicamentos disponíveis na sua UBS</p>
         {/* Campo de busca parcial por nome ou substância ativa */}
@@ -117,7 +117,7 @@ export default function Medicamentos() {
 
         {/* Lista de medicamentos */}
         {!loading && !erro && medsFiltrados.map(m => (
-          <div key={m.id} className="bg-surface-container-lowest p-5 rounded-2xl shadow-sm border border-surface-variant relative overflow-hidden">
+          <div key={m.id} className="bg-surface-container-lowest p-4 rounded-2xl shadow-sm border border-surface-variant relative overflow-hidden">
             {/* Barra lateral: verde = disponível, vermelha = em falta */}
             <div className={`absolute top-0 left-0 w-1.5 h-full ${m.disponivel ? 'bg-primary' : 'bg-red-500'}`} />
             <div className="pl-4">

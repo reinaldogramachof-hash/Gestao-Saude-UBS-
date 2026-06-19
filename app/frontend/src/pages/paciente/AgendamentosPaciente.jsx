@@ -118,12 +118,12 @@ export default function AgendamentosPaciente() {
   return (
     <PacienteLayout>
       {/* ── Cabeçalho verde ── */}
-      <header className="bg-primary pt-12 pb-6 px-6">
+      <header className="bg-primary pt-12 pb-4 px-6">
         <h1 className="text-on-primary text-2xl font-extrabold">Agendamentos</h1>
         <p className="text-white/70 text-sm mt-1">Agende um atendimento presencial</p>
       </header>
 
-      <main className="px-6 py-6 space-y-8">
+      <main className="px-6 py-5 space-y-5">
         {loading ? (
           Array(3).fill(0).map((_, i) => <div key={i} className="h-24 bg-surface-container-low rounded-2xl animate-pulse" />)
         ) : erro ? (
@@ -151,7 +151,7 @@ export default function AgendamentosPaciente() {
               {disponiveis.length > 0 ? (
                 <div className="space-y-4">
                   {disponiveis.map(slot => (
-                    <div key={slot.id} className="bg-surface-container-lowest rounded-2xl border border-surface-variant p-5 flex justify-between items-center gap-4">
+                    <div key={slot.id} className="bg-surface-container-lowest rounded-2xl border border-surface-variant p-4 flex justify-between items-center gap-4">
                       <div>
                         <p className="font-bold text-on-background capitalize text-sm">{formatarDataHora(slot.data_hora)}</p>
                         <p className="text-xs text-on-surface-variant font-medium mt-1">{slot.duracao_minutos} minutos</p>
@@ -177,7 +177,7 @@ export default function AgendamentosPaciente() {
               {meus.length > 0 ? (
                 <div className="space-y-4">
                   {meus.map(ag => (
-                    <div key={ag.id} className="bg-surface-container-lowest rounded-2xl border border-surface-variant p-5">
+                    <div key={ag.id} className="bg-surface-container-lowest rounded-2xl border border-surface-variant p-4">
                       <div className="flex justify-between items-start gap-4">
                         <div className="flex-1 min-w-0">
                           <p className="font-bold text-on-background capitalize text-sm">{formatarDataHora(ag.data_hora)}</p>
@@ -277,7 +277,7 @@ export default function AgendamentosPaciente() {
                   type="button"
                   onClick={handleCancelar}
                   disabled={cancelando}
-                  className="flex-1 h-14 rounded-2xl bg-red-50 text-white font-bold disabled:opacity-50"
+                  className="flex-1 h-14 rounded-2xl bg-red-500 text-white font-bold disabled:opacity-50"
                 >
                   {cancelando ? 'Cancelando...' : 'Confirmar cancelamento'}
                 </button>

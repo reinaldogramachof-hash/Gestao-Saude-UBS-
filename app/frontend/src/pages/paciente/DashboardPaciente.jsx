@@ -165,7 +165,7 @@ export default function DashboardPaciente() {
   return (
     <PacienteLayout>
       {/* ── Cabeçalho verde com nome e UBS ── */}
-      <header className="bg-primary pt-4 pb-12 px-6 rounded-b-[1.5rem] md:pt-6 md:pb-10 md:rounded-b-none relative overflow-hidden flex justify-center">
+      <header className="bg-primary pt-4 pb-8 px-6 rounded-b-[1.5rem] md:pt-6 md:pb-10 md:rounded-b-none relative overflow-hidden flex justify-center">
         <div className="relative z-10 w-full max-w-5xl flex justify-between items-start">
           <div>
             <p className="text-white/80 text-[11px] font-bold tracking-wider uppercase mb-0.5">Bem-vindo(a)</p>
@@ -241,9 +241,10 @@ export default function DashboardPaciente() {
         </div>
         <div className="space-y-4">
           {sols.map(sol => (
-            <div
+            <button
               key={sol.id}
-              className={`bg-surface-container-lowest p-5 rounded-2xl shadow-sm border-y border-r transition-all hover:scale-[1.01] hover:shadow-md duration-200 ${
+              onClick={() => navigate(`/paciente/solicitacao/${sol.id}`)}
+              className={`w-full text-left bg-surface-container-lowest p-4 rounded-2xl shadow-sm border-y border-r transition-all hover:scale-[1.01] hover:shadow-md active:scale-[0.99] duration-200 ${
                 sol.prioridade === 'urgente'
                   ? 'border-l-4 border-l-red-500 border-red-300'
                   : 'border-l-4 border-l-primary border-surface-variant'
@@ -276,7 +277,7 @@ export default function DashboardPaciente() {
                 </div>
               </div>
               {/* O status técnico nunca é exibido diretamente ao paciente. */}
-              <div className={`rounded-xl p-3 mb-4 ${STATUS_CORES[sol.status] || 'bg-surface-container-low text-on-surface'}`}>
+              <div className={`rounded-xl p-3 ${STATUS_CORES[sol.status] || 'bg-surface-container-low text-on-surface'}`}>
                 <p className="text-sm font-semibold">
                   {STATUS_LABELS[sol.status] || 'Status em atualização'}
                 </p>
@@ -284,13 +285,7 @@ export default function DashboardPaciente() {
                   <p className="text-xs opacity-80 mt-1">Previsão: {formatarDataBR(sol.data_prevista)}</p>
                 )}
               </div>
-              <button
-                onClick={() => navigate(`/paciente/solicitacao/${sol.id}`)}
-                className="w-full py-2.5 rounded-xl border border-primary text-primary text-sm font-bold hover:bg-primary/5 active:bg-primary/10 transition-colors text-center"
-              >
-                Ver Detalhes
-              </button>
-            </div>
+            </button>
           ))}
           {sols.length === 0 && (
             <p className="text-center text-on-surface-variant p-6">Nenhuma solicitação ativa.</p>

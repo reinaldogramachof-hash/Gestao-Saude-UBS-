@@ -29,8 +29,9 @@ import { STATUS_LABELS, STATUS_CORES, formatarDataBR } from '../../utils/statusH
 // ─────────────────────────────────────────────────────────────────────────────
 function CardSolicitacao({ sol, navigate }) {
   return (
-    <div
-      className={`bg-white p-5 rounded-2xl shadow-sm border-y border-r transition-all hover:scale-[1.01] hover:shadow-md duration-200 ${
+    <button
+      onClick={() => navigate(`/paciente/solicitacao/${sol.id}`)}
+      className={`w-full text-left bg-white p-4 rounded-2xl shadow-sm border-y border-r transition-all hover:scale-[1.01] hover:shadow-md active:scale-[0.99] duration-200 ${
         sol.prioridade === 'urgente'
           ? 'border-l-4 border-l-red-500 border-red-300'
           : 'border-l-4 border-l-primary border-surface-variant'
@@ -62,19 +63,13 @@ function CardSolicitacao({ sol, navigate }) {
           <span className="text-[11px] font-extrabold text-on-surface-variant/80">{formatarDataBR(sol.atualizado_em || sol.criado_em)}</span>
         </div>
       </div>
-      <div className={`rounded-xl px-3 py-2 mb-3 ${STATUS_CORES[sol.status] || 'bg-surface-container-low text-on-surface'}`}>
+      <div className={`rounded-xl px-3 py-2 ${STATUS_CORES[sol.status] || 'bg-surface-container-low text-on-surface'}`}>
         <p className="text-sm font-semibold">{STATUS_LABELS[sol.status] || 'Status em atualização'}</p>
         {sol.data_prevista && (
           <p className="text-xs opacity-80 mt-0.5">Previsão: {formatarDataBR(sol.data_prevista)}</p>
         )}
       </div>
-      <button
-        onClick={() => navigate(`/paciente/solicitacao/${sol.id}`)}
-        className="w-full py-2 rounded-xl border border-primary text-primary text-sm font-bold hover:bg-primary/5 active:bg-primary/10 transition-colors text-center"
-      >
-        Ver Detalhes
-      </button>
-    </div>
+    </button>
   );
 }
 
@@ -143,7 +138,7 @@ export default function SolicitacoesPaciente() {
   return (
     <PacienteLayout>
       {/* ── Cabeçalho simples (sem o hero verde com nome — só o título da seção) ── */}
-      <header className="bg-primary pt-12 pb-6 px-6">
+      <header className="bg-primary pt-12 pb-4 px-6">
         <button
           onClick={() => navigate('/paciente/dashboard')}
           className="flex items-center gap-1 text-white/80 text-sm mb-4 hover:text-white"
@@ -158,7 +153,7 @@ export default function SolicitacoesPaciente() {
       </header>
 
       {/* ── Conteúdo principal com padding-bottom para não sumir atrás do nav ── */}
-      <main className="px-6 py-6 space-y-8 pb-28">
+      <main className="px-6 py-5 space-y-5 pb-28">
 
         {/* Seção: Solicitações Ativas */}
         {ativas.length > 0 && (
