@@ -219,7 +219,7 @@ export default function PerfilPaciente() {
   const [salvandoDados, setSalvandoDados] = useState(false);
   const [formDados, setFormDados] = useState({
     // Dados pessoais
-    nome: '', telefone: '', email: '',
+    nome: '', telefone: '', email: '', bairro: '',
     // Dados clínicos
     tipo_sanguineo: '', peso_kg: '', altura_cm: '',
     alergias: '', comorbidades: '',
@@ -267,6 +267,7 @@ export default function PerfilPaciente() {
       nome:                      paciente?.nome || '',
       telefone:                  paciente?.telefone || '',
       email:                     paciente?.email || '',
+      bairro:                    paciente?.bairro || '',
       tipo_sanguineo:            paciente?.tipo_sanguineo || '',
       peso_kg:                   paciente?.peso_kg || '',
       altura_cm:                 paciente?.altura_cm || '',
@@ -650,6 +651,7 @@ export default function PerfilPaciente() {
                     { label: 'Telefone', value: paciente?.telefone || '---' },
                     { label: 'Nascimento', value: paciente?.data_nascimento ? formatarDataBR(paciente.data_nascimento) : '---' },
                     { label: 'E-mail', value: paciente?.email || '---' },
+                    { label: 'Bairro', value: paciente?.bairro || '---' },
                     // UBS de origem: informativo — modo matriz, não restringe acesso
                     { label: 'UBS de Origem', value: paciente?.ubs_nome || '---' },
                   ].map(({ label, value }) => (

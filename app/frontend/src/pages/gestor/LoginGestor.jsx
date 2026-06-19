@@ -63,6 +63,7 @@ export default function LoginGestor() {
             <input
               required
               type="email"
+              autoComplete="off"
               placeholder="gestor@gestaoubs.dev"
               value={email}
               onChange={e => setEmail(e.target.value)}
@@ -75,7 +76,7 @@ export default function LoginGestor() {
             <input
               required
               type="password"
-                          autocomplete="current-password"
+              autoComplete="current-password"
               placeholder="••••••••"
               value={senha}
               onChange={e => setSenha(e.target.value)}

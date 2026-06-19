@@ -40,6 +40,8 @@ export default function GestorPacientes() {
   // Guarda {id, nome} do cadastro que está aguardando confirmação de rejeição.
   // null = modal fechado; objeto = modal de confirmação aberto para aquele paciente.
   const [confirmandoRejeicao, setConfirmandoRejeicao] = useState(null);
+  // Estado para confirmação de aprovação — segue o mesmo padrão da confirmação de rejeição
+  const [confirmacaoAprovacao, setConfirmacaoAprovacao] = useState(null); // { id, nome }
   const [enviando, setEnviando] = useState(false);
   const [erroCRA, setErroCRA] = useState('');
   const [formData, setFormData] = useState({
@@ -55,6 +57,12 @@ export default function GestorPacientes() {
       fetchPendentes();
     }
   }, [busca, paginaAtual, aba]);
+
+  // Carrega pendentes no mount para exibir badge de contagem mesmo na aba de ativos
+  // O gestor precisa ver quantos cadastros aguardam aprovação sem precisar clicar na aba.
+  useEffect(() => {
+    fetchPendentes();
+  }, []);
 
   const fetchPendentes = async () => {
     setLoadingPendentes(true);
@@ -177,6 +185,35 @@ export default function GestorPacientes() {
 
   return (
     <GestorLayout>
+
+      {/* Modal de confirmação de APROVAÇÃO */}
+      {confirmacaoAprovacao && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-6 backdrop-blur-sm">
+          <div className="bg-surface rounded-2xl p-6 w-full max-w-sm shadow-xl">
+            <h3 className="font-bold text-on-surface text-lg mb-2">Confirmar aprovação</h3>
+            <p className="text-on-surface-variant text-sm mb-6">
+              Aprovar o cadastro de <strong>{confirmacaoAprovacao.nome}</strong>? O paciente poderá acessar o portal imediatamente.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setConfirmacaoAprovacao(null)}
+                className="flex-1 h-11 rounded-xl border border-outline text-on-surface font-semibold text-sm"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={() => {
+                  handleAtivar(confirmacaoAprovacao.id, confirmacaoAprovacao.nome);
+                  setConfirmacaoAprovacao(null);
+                }}
+                className="flex-1 h-11 rounded-xl bg-primary text-on-primary font-semibold text-sm"
+              >
+                Aprovar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── Modal de confirmação de rejeição ────────────────────────────────
           Exibido quando o gestor clica em "Rejeitar" num cadastro pendente.
@@ -321,7 +358,7 @@ export default function GestorPacientes() {
                     Rejeitar
                   </button>
                   <button
-                    onClick={() => handleAtivar(p.id, p.nome)}
+                    onClick={() => setConfirmacaoAprovacao({ id: p.id, nome: p.nome })}
                     className="px-4 py-2 bg-emerald-600 text-white font-bold rounded-xl text-xs hover:bg-emerald-700 transition-colors shadow-sm"
                   >
                     Aprovar
