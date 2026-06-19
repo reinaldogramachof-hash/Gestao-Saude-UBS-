@@ -3,45 +3,90 @@
  * ─────────────────────────────────────────────────────────────────────────────
  * FUNÇÃO: Wrapper de layout para todas as páginas do portal do paciente.
  *
- * ARQUITETURA DE SCROLL (atualizada):
- *   O container usa h-screen + flex-col para ocupar exatamente a tela.
- *   O conteúdo interno (children) fica em uma div com overflow-y-auto,
- *   que é a única área que rola. O BottomNavPaciente fica FORA dessa div,
- *   como último item do flex — sempre visível, nunca rola.
- *
- *   Desktop: centralizado em max-w-md com sombra, simulando app mobile.
- *   Mobile: tela cheia, comportamento idêntico a um app nativo.
+ * ARQUITETURA DE NAVEGAÇÃO (atualizada - TASK_12):
+ *   Substitui o antigo BottomNavPaciente por um padrão Header + Drawer lateral (hamburger).
+ *   O contêiner principal usa h-screen + flex-col para ocupar exatamente a tela.
+ *   O HeaderPaciente fica fixo no topo com altura de 56px (h-14).
+ *   O conteúdo interno (children) fica em uma div com overflow-y-auto e pt-14
+ *   para compensar a barra superior fixa.
+ *   O DrawerPaciente desliza da esquerda quando o hamburger menu (☰) é clicado.
  *
  * PROPS:
  *   - children: conteúdo da página
- *   - semNav: boolean — se true, oculta o BottomNavPaciente
+ *   - semNav: boolean — se true, oculta o Header superior e o Drawer lateral
  *             (usar em LoginPaciente, CadastroPaciente, DetalheSolicitacao)
  * ─────────────────────────────────────────────────────────────────────────────
  */
-import BottomNavPaciente from './BottomNavPaciente';
+import React, { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
+import HeaderPaciente from './HeaderPaciente';
+import DrawerPaciente from './DrawerPaciente';
+import api from '../../services/api';
+import { useAuth } from '../../contexts/AuthContext';
 
 export default function PacienteLayout({ children, semNav = false }) {
+  const { pathname } = useLocation();
+  const { user } = useAuth();
+  
+  const [drawerAberto, setDrawerAberto] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [pacienteDados, setPacienteDados] = useState(null);
+
+  // Busca e monitora quantidade de comunicados não lidos a cada troca de rota
+  useEffect(() => {
+    if (semNav || !user) return;
+    
+    api.get('/paciente/comunicados')
+      .then(r => {
+        const unread = r.data.filter(c => !c.lido).length;
+        setUnreadCount(unread);
+      })
+      .catch(() => {});
+  }, [pathname, semNav, user]);
+
+  // Carrega informações da UBS do paciente logado (como o nome para exibição no Drawer)
+  useEffect(() => {
+    if (semNav || !user) return;
+
+    api.get('/paciente/meus-dados')
+      .then(r => setPacienteDados(r.data))
+      .catch(() => {});
+  }, [semNav, user]);
+
   return (
-    // Removido max-w-md e fundo externo
     <div className="h-screen bg-surface flex flex-col overflow-hidden">
-
-      {/*
-        Container principal — flex column com altura fixa da tela.
-        O conteúdo scrollável fica em um filho interno (overflow-y-auto).
-        A barra de navegação sobe para o topo no desktop via order-first.
+      
+      {/* 
+        Container principal:
+        No novo modelo com Header fixo no topo, adicionamos o HeaderPaciente.
+        O children ocupa flex-1 com pt-14 (56px) para compensar a barra superior fixa.
+        O DrawerPaciente fica posicionado absolutamente, abrindo lateralmente.
       */}
-      <div className="w-full flex flex-col h-full">
+      <div className="w-full flex flex-col h-full relative">
+        
+        {/* Header superior fixo */}
+        {!semNav && (
+          <HeaderPaciente 
+            onOpenDrawer={() => setDrawerAberto(true)} 
+            unreadCount={unreadCount} 
+          />
+        )}
 
-        {/*
-          Área de conteúdo: ocupa todo o espaço disponível (flex-1)
-          e rola independentemente.
-        */}
-        <div className={`flex-1 overflow-y-auto ${semNav ? '' : 'pb-20 md:pb-0'}`}>
+        {/* Conteúdo scrollável principal */}
+        <div className={`flex-1 overflow-y-auto ${semNav ? '' : 'pt-14'}`}>
           {children}
         </div>
 
-        {/* Nav inferior (mobile) / superior (desktop via order-first) */}
-        {!semNav && <BottomNavPaciente />}
+        {/* Drawer lateral oculto/deslizante */}
+        {!semNav && (
+          <DrawerPaciente
+            aberto={drawerAberto}
+            onClose={() => setDrawerAberto(false)}
+            unreadCount={unreadCount}
+            pacienteNome={user?.nome}
+            ubsNome={pacienteDados?.ubs?.nome || 'Carregando...'}
+          />
+        )}
 
       </div>
     </div>

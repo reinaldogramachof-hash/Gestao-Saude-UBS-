@@ -1,3 +1,5 @@
+// DEPRECIADO em 2026-06-19 — substituído por HeaderPaciente + DrawerPaciente (TASK_12)
+// Mantido para referência histórica. Não importar.
 /**
  * COMPONENTE: BottomNavPaciente.jsx
  * ─────────────────────────────────────────────────────────────────────────────
