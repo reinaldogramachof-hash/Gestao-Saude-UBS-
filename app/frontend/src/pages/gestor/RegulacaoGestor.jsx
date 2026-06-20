@@ -45,6 +45,8 @@ export default function RegulacaoGestor() {
 
   // Solicitações ativas do paciente selecionado (para o bridge opcional)
   const [solicitacoesDisponiveis, setSolicitacoesDisponiveis] = useState([]);
+  const [agendandoId, setAgendandoId] = useState(null);
+  const [dataAgendamento, setDataAgendamento] = useState('');
 
   // Formulário de novo encaminhamento
   const FORM_INICIAL = {
@@ -117,19 +119,31 @@ export default function RegulacaoGestor() {
   // Atualiza status do encaminhamento inline na tabela.
   // Para AGENDADO: usa window.prompt para data (solução simples para MVP).
   // Para REALIZADO: confirmação direta.
-  const handleAtualizarStatus = async (enc, novoStatus) => {
-    let data_agendamento = null;
+  // Abre a edicao inline da data. Evita window.prompt, que pode ser bloqueado
+  // em navegadores mobile durante a demo em producao.
+  const iniciarAgendamento = (enc) => {
+    setAgendandoId(enc.id);
+    setDataAgendamento(enc.data_agendamento ? enc.data_agendamento.slice(0, 10) : '');
+  };
 
-    if (novoStatus === 'AGENDADO') {
-      // Pede a data no formato esperado pelo backend (YYYY-MM-DD)
-      const input = window.prompt('Data do agendamento (DD/MM/AAAA):');
-      if (!input) return;
-      // Converte DD/MM/AAAA → YYYY-MM-DD
-      const partes = input.split('/');
-      if (partes.length !== 3) return toast.error('Formato de data inválido.');
-      data_agendamento = `${partes[2]}-${partes[1]}-${partes[0]}`;
+  // Cancela a escolha de data sem acionar a API.
+  const cancelarAgendamento = () => {
+    setAgendandoId(null);
+    setDataAgendamento('');
+  };
+
+  // Confirma o agendamento somente quando uma data foi preenchida.
+  const confirmarAgendamento = async (enc) => {
+    if (!dataAgendamento) {
+      toast.error('Informe a data do agendamento.');
+      return;
     }
 
+    await handleAtualizarStatus(enc, 'AGENDADO', dataAgendamento);
+    cancelarAgendamento();
+  };
+
+  const handleAtualizarStatus = async (enc, novoStatus, data_agendamento = null) => {
     try {
       await api.put(`/gestor/encaminhamento/${enc.id}/status`, {
         status_novo: novoStatus,
@@ -277,22 +291,50 @@ export default function RegulacaoGestor() {
                       </td>
                       <td className="px-6 py-4 text-right">
                         <div className="flex items-center justify-end gap-2">
-                          {/* Avançar status */}
-                          {enc.status === 'AGUARDANDO_VAGA' && (
-                            <button
-                              onClick={() => handleAtualizarStatus(enc, 'AGENDADO')}
-                              className="text-xs font-bold text-blue-600 bg-blue-50 px-3 py-1.5 rounded-lg hover:bg-blue-100 transition-colors"
-                            >
-                              Marcar Agendado
-                            </button>
-                          )}
-                          {enc.status === 'AGENDADO' && (
-                            <button
-                              onClick={() => handleAtualizarStatus(enc, 'REALIZADO')}
-                              className="text-xs font-bold text-emerald-600 bg-emerald-50 px-3 py-1.5 rounded-lg hover:bg-emerald-100 transition-colors"
-                            >
-                              Marcar Realizado
-                            </button>
+                          {/* Fluxo de Agendamento Inline (Evita window.prompt no iOS) */}
+                          {agendandoId === enc.id ? (
+                            <div className="flex items-center gap-1 bg-surface-container p-1 rounded-xl border border-surface-variant">
+                              <input
+                                type="date"
+                                value={dataAgendamento}
+                                onChange={(e) => setDataAgendamento(e.target.value)}
+                                className="px-2 py-1 text-xs bg-surface-container-highest border border-outline rounded-lg outline-none font-medium text-on-surface"
+                              />
+                              <button
+                                onClick={() => confirmarAgendamento(enc)}
+                                className="p-1 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors flex items-center justify-center"
+                                title="Confirmar"
+                              >
+                                <span className="material-symbols-outlined text-sm">check</span>
+                              </button>
+                              <button
+                                onClick={cancelarAgendamento}
+                                className="p-1 text-red-600 hover:bg-red-50 rounded-lg transition-colors flex items-center justify-center"
+                                title="Cancelar"
+                              >
+                                <span className="material-symbols-outlined text-sm">close</span>
+                              </button>
+                            </div>
+                          ) : (
+                            <>
+                              {/* Avançar status */}
+                              {enc.status === 'AGUARDANDO_VAGA' && (
+                                <button
+                                  onClick={() => iniciarAgendamento(enc)}
+                                  className="text-xs font-bold text-blue-600 bg-blue-50 px-3 py-1.5 rounded-lg hover:bg-blue-100 transition-colors"
+                                >
+                                  Marcar Agendado
+                                </button>
+                              )}
+                              {enc.status === 'AGENDADO' && (
+                                <button
+                                  onClick={() => handleAtualizarStatus(enc, 'REALIZADO')}
+                                  className="text-xs font-bold text-emerald-600 bg-emerald-50 px-3 py-1.5 rounded-lg hover:bg-emerald-100 transition-colors"
+                                >
+                                  Marcar Realizado
+                                </button>
+                              )}
+                            </>
                           )}
                           {/* Ver paciente */}
                           <button

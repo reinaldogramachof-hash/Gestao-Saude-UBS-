@@ -27,13 +27,14 @@
 
 ---
 
-## Status Real do Projeto — 19/06/2026
+## Status Real do Projeto — 20/06/2026
 
-**Fase:** 2 — Avançado (módulos principais implementados)
-**Build:** ✅ Passando
+**Fase:** 2 — Avançado (módulos principais + hardening implementados)
+**Build:** ✅ Passando — 36/36 testes, frontend build ok
 **Testes E2E:** ❌ Módulos Regulação e Vigilância nunca testados em produção
-**Migrations pendentes de aplicação:** 018, 019 (precisam de `knex migrate:latest` no Railway)
-**Deploy:** ✅ Ativo — mas pode estar desatualizado com TASK_22 e TASK_23
+**Migrations:** ✅ 018, 019, 020 aplicadas no Supabase e confirmadas
+**Deploy:** ✅ Atualizado — commit `fe500f4` em produção (Railway + Vercel)
+**Último commit:** `fe500f4` — feat(security): hardening HTTP, token_version, auditoria LGPD e RLS — TASK_24
 
 ---
 
@@ -43,7 +44,7 @@
 - [x] Documentação base em `docs/` (5 documentos acadêmicos)
 - [x] Frontend React + Vite + Tailwind — 9 páginas gestor, 7 paciente + cadastro
 - [x] Backend Node.js + Express + Knex — auth middleware, gestor.js (1526 linhas), paciente.js, admin.js
-- [x] 19+ migrations PostgreSQL no Supabase via Knex (incluindo 2 com timestamp de Antigravity)
+- [x] 20 migrations PostgreSQL no Supabase (001–020), todas aplicadas e validadas
 - [x] Seeds: UBSs de SJC + gestores de teste + dados de demo
 - [x] Autenticação JWT: gestor (e-mail + senha) e paciente (CRA + data nascimento)
 
@@ -59,9 +60,15 @@
 - [x] FAB "+" como hub de ações: bottom sheet com 4 categorias → pré-preenche agendamento
 - [x] PWA básico (manifest + service worker)
 
-### Backend Segurança
+### Backend Segurança (TASK_24 — 20/06)
 - [x] Multi-tenant isolation via `ubs_id` em todas as rotas novas (encaminhamentos, vigilância)
 - [x] Transações Knex para operações atômicas (encaminhamento → status solicitação)
+- [x] Helmet + CORS restrito + rate limit global (300 req/15min) + rate limit login (10/15min)
+- [x] `token_version` no JWT — revogação de sessão sem blacklist
+- [x] `security_audit_logs` — auditoria de logins e operações sensíveis (LGPD)
+- [x] RLS habilitado em 12 tabelas no Supabase
+- [x] Campos explícitos em todas as respostas (sem `SELECT *`)
+- [x] Validação Joi de entrada em rotas sensíveis
 
 ---
 
@@ -81,38 +88,23 @@
 
 ## Próximas Ações Imediatas (Ordem Obrigatória)
 
-### 🔴 ANTES DE QUALQUER CÓDIGO
-
-1. **Reinaldo** — Rotacionar SUPABASE_SECRET_KEY no dashboard do Supabase (exposta 17/06)
-
-### 🔴 TÉCNICO BLOQUEADOR
-
-2. **Reinaldo ou Antigravity** — Aplicar migrations 018 e 019 em produção:
-   ```bash
-   cd app/backend
-   npx knex migrate:latest --env production
-   ```
-   Confirmar no Supabase que `encaminhamentos.ubs_id` e `notificacoes_vigilancia.ubs_id` existem.
-
-3. **Reinaldo** — Verificar se último deploy do Vercel e Railway inclui TASK_22 e TASK_23 (commit hash).
-
 ### 🟡 TESTE FUNCIONAL (nunca testado em produção)
 
-4. **Reinaldo** — Testar fluxo completo de **Regulação**:
+1. **Reinaldo** — Testar fluxo completo de **Regulação**:
    - Gestor seleciona paciente → vê solicitações ativas → cria encaminhamento
    - Status da solicitação muda para `aguardando_regulacao` no portal do paciente
    - Marcar como Agendado (`window.prompt()` para data) → Realizado → solicitação fecha como `concluido`
 
-5. **Reinaldo** — Testar fluxo completo de **Vigilância**:
+2. **Reinaldo** — Testar fluxo completo de **Vigilância**:
    - Criar notificação de surto (sem paciente — surto territorial)
    - Confirmar → clicar "Gerar Alerta" → Comunicados abre pré-preenchido
    - Publicar comunicado → verificar no portal do paciente
 
-6. **Antigravity** — Validar `window.prompt()` no mobile (Chrome Android/iOS). Se não funcionar, implementar input `type="date"` inline no modal como alternativa.
+3. **Antigravity** — Validar `window.prompt()` no mobile (Chrome Android/iOS). Se não funcionar, implementar input `type="date"` inline no modal como alternativa.
 
 ### 🟡 DADOS DE DEMO PARA A BANCA
 
-7. **Antigravity** — Gerar seed de demo para 25/06:
+4. **Antigravity** — Gerar seed de demo para 25/06:
    - 3–4 pacientes com nomes fictícios e CRAs de fácil memorização
    - 2–3 solicitações por paciente em status diferentes
    - 1–2 encaminhamentos ativos (1 AGUARDANDO_VAGA, 1 AGENDADO)
@@ -121,7 +113,7 @@
 
 ### 🟡 ENSAIO FINAL
 
-8. **Reinaldo** — Ensaio completo em produção 24/06 (véspera da banca):
+5. **Reinaldo** — Ensaio completo em produção 24/06 (véspera da banca):
    - Fluxo 1: Auto-cadastro paciente → aprovação gestor → visualização de status
    - Fluxo 2: Gestor atualiza medicamento → paciente vê disponibilidade
    - Fluxo 3: Gestor cria comunicado urgente → paciente vê na home
