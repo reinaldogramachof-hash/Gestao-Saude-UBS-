@@ -1,16 +1,19 @@
 # Início de Sessão — Gestão Saúde UBS+
 > Este arquivo é atualizado pelo Arquiteto (Claude) ao final de cada fase ou sessão relevante.
 > Todo agente deve ler este arquivo ANTES de qualquer execução.
-> **Última atualização:** 2026-06-17 18:30 — Claude Sonnet 4.6 (Arquiteto)
+> **Última atualização:** 2026-06-19 — Claude Sonnet 4.6 (Arquiteto)
 
 ---
 
 ## ⚠️ LEIA ISTO PRIMEIRO — Contexto Crítico
 
-**Prazo:** Validação com banca acadêmica em **25/06/2026 (8 dias).**
+**Prazo:** Validação com banca acadêmica em **25/06/2026 (6 dias).**
 **Natureza da demo:** Dados simulados. A banca avalia interface e fluxo, não backend ao vivo.
-**Deploy obrigatório:** Frontend no Vercel. Backend em Railway ou Render. SEM deploy, não há demo.
-**Banco:** Neon (PostgreSQL serverless) — status a confirmar por Reinaldo.
+**Deploy ativo:**
+  - Frontend: https://gestao-saude-ubs.vercel.app
+  - Backend: https://gestao-saude-ubs-api.vercel.app
+  - Banco: Supabase (`crdtguvjuyfszxbpnwms`) com dados de demo
+**✅ SUPABASE_SECRET_KEY rotacionada (Claude Chrome Agent, pós 17/06) — sistema em produção confirmado.**
 
 ---
 
@@ -24,93 +27,121 @@
 
 ---
 
-## Status Real do Projeto — 17/06/2026
+## Status Real do Projeto — 19/06/2026
 
-**Fase:** 2 — Parcial Avançado *(NÃO "completo" — a auditoria de 11/06 confirmou)*
-**Build:** ✅ Passando (111 módulos, ~2.7s)
-**Testes automáticos:** 28 contratos passando (cobertura parcial)
-**Testes E2E:** ❌ Nunca executados contra banco real
-**Validação visual 375px:** ❌ Nunca executada de fato
-**Deploy:** ✅ REALIZADO em 17/06/2026
-  - Frontend: https://gestao-saude-ubs.vercel.app
-  - Backend: https://gestao-saude-ubs-api.vercel.app
-  - Banco: Supabase (`crdtguvjuyfszxbpnwms`) com dados de demo
+**Fase:** 2 — Avançado (módulos principais implementados)
+**Build:** ✅ Passando
+**Testes E2E:** ❌ Módulos Regulação e Vigilância nunca testados em produção
+**Migrations pendentes de aplicação:** 018, 019 (precisam de `knex migrate:latest` no Railway)
+**Deploy:** ✅ Ativo — mas pode estar desatualizado com TASK_22 e TASK_23
 
 ---
 
 ## O que foi feito até agora
 
+### Infraestrutura e Base
 - [x] Documentação base em `docs/` (5 documentos acadêmicos)
-- [x] Repositório e estrutura de pastas
-- [x] Frontend React + Vite + Tailwind — 15 páginas JSX (7 gestor, 7 paciente + cadastro)
-- [x] Backend Node.js + Express + Knex — server.js, auth middleware, 5 arquivos de rotas
-- [x] 12 migrations PostgreSQL (001–012) no Neon via Knex
-- [x] Seeds de desenvolvimento (UBSs de SJC + gestores de teste)
+- [x] Frontend React + Vite + Tailwind — 9 páginas gestor, 7 paciente + cadastro
+- [x] Backend Node.js + Express + Knex — auth middleware, gestor.js (1526 linhas), paciente.js, admin.js
+- [x] 19+ migrations PostgreSQL no Supabase via Knex (incluindo 2 com timestamp de Antigravity)
+- [x] Seeds: UBSs de SJC + gestores de teste + dados de demo
 - [x] Autenticação JWT: gestor (e-mail + senha) e paciente (CRA + data nascimento)
-- [x] Portal do Gestor: Dashboard, Pacientes, Perfil/Solicitações, Medicamentos, Comunicados, Agendamentos, Usuários
-- [x] Portal do Paciente: Dashboard, Solicitações, Detalhe, Medicamentos, Comunicados, Agendamentos, Cadastro
-- [x] Layouts responsivos: GestorLayout com drawer mobile, PacienteLayout mobile-first
-- [x] Módulo admin de gestores (criado 11/06) — CRUD de usuários da UBS
-- [x] Sidebar retrátil do gestor com persistência no localStorage (11/06)
-- [x] PWA básico: manifest.json + sw.js + ícones
+
+### Portal do Gestor
+- [x] Dashboard, Pacientes, Perfil/Solicitações, Medicamentos, Comunicados, Agendamentos, Usuários
+- [x] Sidebar retrátil com persistência no localStorage (mobile-first)
+- [x] Módulo Regulação — encaminhamentos externos com bridge automático para solicitações
+- [x] Módulo Vigilância e Surtos — notificações com fluxo para gerar Comunicados urgentes
+- [x] Módulos Transporte Sanitário e Serviço Social — REMOVIDOS (sem valor para MVP)
+
+### Portal do Paciente
+- [x] Dashboard, Solicitações, Detalhe, Medicamentos, Comunicados, Agendamentos, Cadastro
+- [x] FAB "+" como hub de ações: bottom sheet com 4 categorias → pré-preenche agendamento
+- [x] PWA básico (manifest + service worker)
+
+### Backend Segurança
+- [x] Multi-tenant isolation via `ubs_id` em todas as rotas novas (encaminhamentos, vigilância)
+- [x] Transações Knex para operações atômicas (encaminhamento → status solicitação)
 
 ---
 
 ## Bugs Críticos Abertos (BLOQUEADORES)
 
-> Devem ser corrigidos ANTES da demo. São simples de resolver — o Antigravity executa.
-
-| ID | Descrição | Arquivo(s) | Esforço |
+| ID | Descrição | Arquivo(s) | Prioridade |
 |---|---|---|---|
-| **C-01** | Gestor pode alterar solicitação de outra UBS por ID | `routes/gestor.js:123-146` | Baixo |
-| **C-02** | `observacao_gestor` (nota interna) exposta ao paciente via API | `routes/paciente.js:108-122` | Baixo |
-| **C-03** | Contas com `ativo=false` conseguem fazer login | `routes/auth.js:36-48,80-88` | Baixo |
-| **C-05** | Zero rate limit no login (força bruta possível) | `routes/auth.js` + `server.js` | Baixo |
+| **SEC-01** | SUPABASE_SECRET_KEY | ✅ Rotacionada (Claude Chrome, pós 17/06) | — |
+| **C-01** | Gestor pode alterar solicitação de outra UBS por ID | `routes/gestor.js:123-146` | 🟡 Antes da banca |
+| **C-02** | `observacao_gestor` exposta ao paciente via API | `routes/paciente.js:108-122` | 🟡 Antes da banca |
+| **C-03** | Contas com `ativo=false` conseguem login | `routes/auth.js:36-48,80-88` | 🟡 Antes da banca |
 
-> **C-04 (RBAC)** e **C-06 (dependências vulneráveis)** ficam para pós-25/06.
+> **C-04 (RBAC)**, **C-05 (rate limit)**, **C-06 (dependências)** — pós-25/06.
+> **Nota:** C-01 já está resolvido para encaminhamentos (ubs_id) e vigilância (ubs_id) criados em TASK_23. O bug persiste em solicitações gerais do módulo anterior.
 
 ---
 
-## Pendências Funcionais Prioritárias para a Demo
+## Próximas Ações Imediatas (Ordem Obrigatória)
 
-### Portal do Paciente (prioridade máxima — banca vai testar como usuário)
-- [ ] Linguagem simples: remover status bruto e texto técnico das telas
-- [ ] Separar solicitações ativas do histórico
-- [ ] Logout visível
-- [ ] Estado de erro com mensagem amigável (não skeleton infinito)
-- [ ] `observacao_gestor` invisível ao paciente (C-02)
+### 🔴 ANTES DE QUALQUER CÓDIGO
 
-### Portal do Gestor
-- [ ] Histórico inicial gravado ao criar solicitação (timeline nasce vazia — M-02)
-- [ ] Data de atualização nos medicamentos (paciente vê "atualizado em X")
-- [ ] Correção de datas: `new Date('YYYY-MM-DD')` exibe dia anterior em SJC (M-17)
+1. **Reinaldo** — Rotacionar SUPABASE_SECRET_KEY no dashboard do Supabase (exposta 17/06)
 
-### Deploy — ✅ CONCLUÍDO em 17/06
-- [x] Frontend no Vercel: `gestao-saude-ubs.vercel.app`
-- [x] Backend no Vercel (serverless): `gestao-saude-ubs-api.vercel.app`
-- [x] Variáveis de ambiente configuradas (DATABASE_URL, JWT_SECRET, VAPID_*)
-- [x] VITE_API_URL corrigida no projeto frontend
-- [x] Banco populado com dados de demo (003_demo_data.js)
+### 🔴 TÉCNICO BLOQUEADOR
 
-### Pendentes para Demo (próxima sessão)
-- [ ] Auto-refresh dashboard gestor (polling 30s + badge de novos cadastros)
-- [ ] Seção "Encaminhamentos" simulada no DashboardGestor.jsx
-- [ ] Rotacionar SUPABASE_SECRET_KEY no Supabase dashboard
-- [ ] Testar fluxo completo pré-cadastro → aprovação (usar UBS Alto da Ponte)
-- [ ] Painel do paciente: linguagem simples, logout visível, erro amigável
+2. **Reinaldo ou Antigravity** — Aplicar migrations 018 e 019 em produção:
+   ```bash
+   cd app/backend
+   npx knex migrate:latest --env production
+   ```
+   Confirmar no Supabase que `encaminhamentos.ubs_id` e `notificacoes_vigilancia.ubs_id` existem.
+
+3. **Reinaldo** — Verificar se último deploy do Vercel e Railway inclui TASK_22 e TASK_23 (commit hash).
+
+### 🟡 TESTE FUNCIONAL (nunca testado em produção)
+
+4. **Reinaldo** — Testar fluxo completo de **Regulação**:
+   - Gestor seleciona paciente → vê solicitações ativas → cria encaminhamento
+   - Status da solicitação muda para `aguardando_regulacao` no portal do paciente
+   - Marcar como Agendado (`window.prompt()` para data) → Realizado → solicitação fecha como `concluido`
+
+5. **Reinaldo** — Testar fluxo completo de **Vigilância**:
+   - Criar notificação de surto (sem paciente — surto territorial)
+   - Confirmar → clicar "Gerar Alerta" → Comunicados abre pré-preenchido
+   - Publicar comunicado → verificar no portal do paciente
+
+6. **Antigravity** — Validar `window.prompt()` no mobile (Chrome Android/iOS). Se não funcionar, implementar input `type="date"` inline no modal como alternativa.
+
+### 🟡 DADOS DE DEMO PARA A BANCA
+
+7. **Antigravity** — Gerar seed de demo para 25/06:
+   - 3–4 pacientes com nomes fictícios e CRAs de fácil memorização
+   - 2–3 solicitações por paciente em status diferentes
+   - 1–2 encaminhamentos ativos (1 AGUARDANDO_VAGA, 1 AGENDADO)
+   - 1 notificação de vigilância confirmada (ex: Dengue em Jardim das Indústrias)
+   - 3–4 slots de agendamento disponíveis para 25/06 manhã
+
+### 🟡 ENSAIO FINAL
+
+8. **Reinaldo** — Ensaio completo em produção 24/06 (véspera da banca):
+   - Fluxo 1: Auto-cadastro paciente → aprovação gestor → visualização de status
+   - Fluxo 2: Gestor atualiza medicamento → paciente vê disponibilidade
+   - Fluxo 3: Gestor cria comunicado urgente → paciente vê na home
+   - Fluxo 4: Paciente usa FAB "+" → seleciona consulta → agendamento pré-preenchido
 
 ---
 
 ## O que está pendente (pós-25/06)
 
-- RBAC completo (C-04) — perfis recepcionista/gestor/admin com permissões distintas
+- Substituir `window.prompt()` por DatePicker real no RegulacaoGestor
+- C-01 completo: gestor cross-UBS em solicitações gerais do módulo anterior
+- RBAC completo (C-04) — perfis recepcionista/gestor/admin
 - Suite de testes automatizados E2E
 - Atualização de dependências vulneráveis (C-06)
-- Filtros avançados na lista de pacientes (RF-G02)
-- Lido/não lido em comunicados (RF-P04)
-- Dashboard analítico completo (RF-G09)
-- Notificações WhatsApp Business API (Fase 2 original)
+- Download de comprovante de agendamento (PDF)
+- Push notifications frontend
+- HL7 FHIR / RNDS
+- WhatsApp Business API (Fase 2)
 - Domínio Hostgator (pós-validação)
+- Dashboard analítico completo (RF-G09)
 
 ---
 
@@ -133,44 +164,45 @@ npm run dev
 - industrial@gestaoubs.dev / senha123
 - satelite@gestaoubs.dev / senha123
 
-**Credencial paciente:** cadastrar via Portal do Gestor, usar CRA + data_nascimento.
+**Credencial paciente:** CRA + data de nascimento (cadastrar via Portal do Gestor).
 
 ---
 
 ## Banco de Dados
 
 - **Plataforma:** Supabase (PostgreSQL) — projeto `crdtguvjuyfszxbpnwms`, região us-east-1
-- **Pooler:** PgBouncer porta 6543 (transaction mode) — usar este em produção
+- **Pooler:** PgBouncer porta 6543 (transaction mode) — usar em produção
 - **SSL:** obrigatório — `knexfile.js` configurado com `ssl: { rejectUnauthorized: false }`
-- **Variável:** `DATABASE_URL` em `app/backend/.env` (não commitado) e nas env vars da Vercel
-- **Migrations:** 12 arquivos JS em `app/backend/src/db/migrations/` via Knex — todas aplicadas
-- **Seeds:** `001_ubs_sjc.js` (47 UBSs + gestores), `002_bairros_ubs.js`, `003_demo_data.js` (dados de demo)
-- **⚠️ SEGURANÇA:** `SUPABASE_SECRET_KEY` foi exposta em sessão de 17/06 — ROTACIONAR no dashboard do Supabase
+- **Migrations aplicadas:** 001–017 + 2 migrations com timestamp (Antigravity TASK_23)
+- **Migrations PENDENTES:** 018 (ubs_id em encaminhamentos), 019 (ubs_id em vigilância)
+- **✅ SUPABASE_SECRET_KEY:** Rotacionada pós 17/06 — sistema em produção confirmado
 
 ---
 
 ## Arquitetura de Layout (não alterar sem autorização)
 
 ### Portal do Gestor
-- Todas as páginas usam `<GestorLayout>` — gerencia estado `sidebarAberta` (drawer animado mobile)
-- `GestorLayout` aplica padding: `p-4 md:p-6 lg:p-10`
+- Todas as páginas usam `<GestorLayout>` — gerencia `sidebarAberta` (drawer animado mobile)
+- Padding: `p-4 md:p-6 lg:p-10`
 
 ### Portal do Paciente
 - Todas as páginas usam `<PacienteLayout>` — `max-w-md`, `position: relative`
-- `BottomNavPaciente` usa `absolute` (não `fixed`) ancorado ao container do PacienteLayout
+- `BottomNavSimples` usa `absolute` (não `fixed`) ancorado ao container do PacienteLayout
+- FAB "+" abre bottom sheet com overlay — z-index 50, renderizado fora do `<nav>`
 
 ---
 
 ## Relatório Mais Recente
 
-`.Agent/reports/2026-06-17_deploy-vercel-seed-demo.md`
+`.Agent/reports/2026-06-19_TASK22-TASK23_FAB_Regulacao_Vigilancia.md`
 
 ---
 
-## Próximas Ações Imediatas
+## Padrões de Código Obrigatórios
 
-1. **Reinaldo** — rotacionar SUPABASE_SECRET_KEY no dashboard do Supabase (exposta em sessão 17/06)
-2. **Reinaldo** — testar fluxo completo: auto-cadastro no portal do paciente (usar bairro do Alto da Ponte) → aprovar no painel do gestor
-3. **Antigravity** — implementar auto-refresh no DashboardGestor.jsx (polling 30s + badge de novos cadastros)
-4. **Antigravity** — adicionar card "Encaminhamentos" simulado no DashboardGestor.jsx
-5. **Arquiteto** — briefing do painel do paciente para otimização mobile (próxima sessão)
+1. **Comentários** — Todo arquivo .js/.jsx/.sql deve ter cabeçalho explicativo (ver CLAUDE.md)
+2. **Mobile-first** — Todas as telas devem funcionar em 375px antes de desktop
+3. **Linguagem simples** — Textos ao paciente nunca usam jargão médico/burocrático
+4. **LGPD** — Nenhuma rota expõe dados de pacientes sem autenticação
+5. **Multi-tenant** — Toda query nova filtra por `ubs_id` do token JWT (`req.user.ubs_id`)
+6. **Relatório de sessão** — Sessões que alteram arquivos geram relatório em `.Agent/reports/`

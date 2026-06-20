@@ -1,29 +1,41 @@
 /**
- * MIDDLEWARE DE AUTENTICAÇÃO (auth.js)
- * ---------------------------------------------------------
- * Middlewares são funções que "ficam no meio" do caminho da requisição (daí o nome).
- * Antes de chegar na lógica principal (Controller), o router passa por aqui.
- * O JWT (JSON Web Token) é um "crachá digital".
- * Aqui nós pegamos o token enviado pelo frontend, abrimos ele com nossa chave secreta
- * e verificamos se ele é autêntico. Se for inválido, barramos a requisição.
+ * MIDDLEWARE DE AUTENTICACAO (auth.js)
+ * -----------------------------------------------------------------------------
+ * Valida o JWT enviado no header Authorization e confirma no banco que a conta
+ * ainda esta ativa. A checagem de token_version permite revogar sessoes antigas
+ * apos troca de senha, desativacao ou incidente de seguranca.
  */
 const jwt = require('jsonwebtoken');
+const knex = require('../db/knex');
 
-module.exports = (req, res, next) => {
-  const token = req.headers.authorization?.split(' ')[1]; // Extrai do formato "Bearer TOKEN_AQUI"
+module.exports = async (req, res, next) => {
+  const token = req.headers.authorization?.split(' ')[1];
 
   if (!token) {
-    return res.status(401).json({ error: 'Token não fornecido!' });
+    return res.status(401).json({ error: 'Token nao fornecido!' });
   }
 
   try {
-    // Tenta decodificar. Se o token foi adulterado, ele atira um erro caindo no 'catch'
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    req.userId = decoded.id; // Compatibilidade com código existente
-    req.user   = decoded;    // Payload completo: { id, nome, ubs_id, tipo, perfil }
-    // next() libera a passagem. O request pode seguir viagem!
+
+    if (!['gestor', 'paciente'].includes(decoded.tipo)) {
+      return res.status(401).json({ error: 'Token invalido!' });
+    }
+
+    const tabela = decoded.tipo === 'gestor' ? 'usuarios_gestores' : 'pacientes';
+    const usuarioAtual = await knex(tabela)
+      .where({ id: decoded.id, ativo: true })
+      .select('id', 'token_version')
+      .first();
+
+    if (!usuarioAtual || Number(usuarioAtual.token_version || 0) !== Number(decoded.token_version || 0)) {
+      return res.status(401).json({ error: 'sessao_expirada' });
+    }
+
+    req.userId = decoded.id;
+    req.user = decoded;
     next();
   } catch (error) {
-    return res.status(401).json({ error: 'Token inválido!' });
+    return res.status(401).json({ error: 'Token invalido!' });
   }
 };

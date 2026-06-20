@@ -37,20 +37,180 @@
 const express      = require('express');
 const knex         = require('../db/knex');
 const pushService  = require('../services/pushService');
+const { requireTipo, requirePerfil } = require('../middleware/authorization');
+const validateBody = require('../middleware/validateBody');
+const { registrarAuditoria } = require('../services/auditService');
+const {
+  statusSolicitacaoSchema,
+  atendimentoSchema,
+  comunicadoSchema,
+  encaminhamentoSchema,
+  vigilanciaSchema,
+} = require('../validators/securitySchemas');
 
 const router = express.Router();
 
 // ─── Middleware local: garante que só gestores acessam estas rotas ────────────
 // req.user é populado pelo middleware auth.js (em src/middleware/auth.js)
-const soGestor = (req, res, next) => {
-  if (req.user?.tipo !== 'gestor') {
-    return res.status(403).json({ error: 'Acesso exclusivo para gestores da UBS.' });
-  }
-  next();
-};
+const soGestor = requireTipo('gestor');
 
 // Aplica o middleware em todas as rotas deste arquivo
 router.use(soGestor);
+
+const CAMPOS_PACIENTE_GESTOR = [
+  'pacientes.id',
+  'pacientes.ubs_id',
+  'pacientes.cra',
+  'pacientes.nome',
+  'pacientes.telefone',
+  'pacientes.email',
+  'pacientes.data_nascimento',
+  'pacientes.ativo',
+  'pacientes.tipo_sanguineo',
+  'pacientes.peso_kg',
+  'pacientes.altura_cm',
+  'pacientes.alergias',
+  'pacientes.comorbidades',
+  'pacientes.medicamentos_uso_continuo',
+  'pacientes.observacoes_clinicas',
+  'pacientes.criado_em',
+  'pacientes.atualizado_em',
+];
+
+const CAMPOS_PACIENTE_RETORNO = [
+  'id',
+  'ubs_id',
+  'cra',
+  'nome',
+  'telefone',
+  'email',
+  'data_nascimento',
+  'ativo',
+  'tipo_sanguineo',
+  'peso_kg',
+  'altura_cm',
+  'alergias',
+  'comorbidades',
+  'medicamentos_uso_continuo',
+  'observacoes_clinicas',
+  'criado_em',
+  'atualizado_em',
+];
+
+const CAMPOS_SOLICITACAO_GESTOR = [
+  'id',
+  'paciente_id',
+  'ubs_id',
+  'tipo',
+  'descricao',
+  'descricao_paciente',
+  'status',
+  'prioridade',
+  'data_solicitacao',
+  'data_prevista',
+  'data_conclusao',
+  'observacao_gestor',
+  'observacao_paciente',
+  'local_executor',
+  'resultado',
+  'cid_10',
+  'criado_em',
+  'atualizado_em',
+];
+
+const CAMPOS_ATENDIMENTO = [
+  'id',
+  'paciente_id',
+  'registrado_por',
+  'data_atendimento',
+  'unidade',
+  'tipo_unidade',
+  'especialidade',
+  'profissional',
+  'cid_10_principal',
+  'cid_10_secundario',
+  'conduta',
+  'observacoes',
+  'criado_em',
+  'atualizado_em',
+];
+
+const CAMPOS_MEDICAMENTO = [
+  'id',
+  'ubs_id',
+  'nome',
+  'principio_ativo',
+  'disponivel',
+  'observacao',
+  'instrucoes_retirada',
+  'atualizado_em',
+  'atualizado_por',
+];
+
+const CAMPOS_AGENDAMENTO = [
+  'id',
+  'ubs_id',
+  'gestor_responsavel_id',
+  'paciente_id',
+  'data_hora',
+  'duracao_minutos',
+  'status',
+  'motivo',
+  'criado_em',
+];
+
+const CAMPOS_COMUNICADO = [
+  'id',
+  'ubs_id',
+  'gestor_id',
+  'paciente_id',
+  'titulo',
+  'mensagem',
+  'tipo',
+  'urgente',
+  'criado_em',
+];
+
+const CAMPOS_ENCAMINHAMENTO = [
+  'id',
+  'ubs_id',
+  'gestor_id',
+  'paciente_id',
+  'solicitacao_id',
+  'destino',
+  'especialidade',
+  'prioridade',
+  'status',
+  'data_solicitacao',
+  'data_agendamento',
+  'observacoes',
+  'atualizado_em',
+];
+
+const CAMPOS_VIGILANCIA = [
+  'id',
+  'ubs_id',
+  'gestor_id',
+  'paciente_id',
+  'agravo',
+  'bairro',
+  'cep',
+  'status_investigacao',
+  'data_notificacao',
+  'atualizado_em',
+];
+
+function normalizarId(valor) {
+  return valor === '' || valor === undefined || valor === null ? null : Number(valor);
+}
+
+async function validarPacienteDaUbs(pacienteId, ubsId, trx = knex) {
+  if (!pacienteId) return null;
+  return trx('pacientes')
+    .where({ id: pacienteId, ubs_id: ubsId })
+    .select('id', 'ubs_id', 'nome')
+    .first();
+}
 
 
 // ─── GET /api/gestor/pacientes/pendentes ─────────────────────────────────────
@@ -99,6 +259,14 @@ router.patch('/paciente/:id/ativar', async (req, res) => {
       .where({ id: req.params.id })
       .update({ ativo: true, atualizado_em: knex.fn.now() });
 
+    await registrarAuditoria(req, {
+      acao: 'paciente_ativar',
+      entidade: 'pacientes',
+      entidade_id: paciente.id,
+      escopo_ubs_id: paciente.ubs_id,
+      metadata: { origem: 'modo_matriz' },
+    });
+
     return res.json({ mensagem: `Cadastro de ${paciente.nome} ativado com sucesso.` });
   } catch (err) {
     console.error('[PATCH /gestor/paciente/:id/ativar]', err);
@@ -119,6 +287,14 @@ router.delete('/paciente/:id/rejeitar', async (req, res) => {
     if (!paciente) {
       return res.status(404).json({ error: 'Cadastro pendente não encontrado.' });
     }
+
+    await registrarAuditoria(req, {
+      acao: 'paciente_rejeitar',
+      entidade: 'pacientes',
+      entidade_id: paciente.id,
+      escopo_ubs_id: paciente.ubs_id,
+      metadata: { origem: 'modo_matriz' },
+    });
 
     await knex('pacientes').where({ id: req.params.id }).del();
     return res.status(204).send();
@@ -240,7 +416,7 @@ router.get('/paciente/:id', async (req, res) => {
     const paciente = await knex('pacientes')
       .leftJoin('ubs', 'pacientes.ubs_id', 'ubs.id')
       .where('pacientes.id', req.params.id)
-      .select('pacientes.*', 'ubs.nome as ubs_nome')
+      .select(...CAMPOS_PACIENTE_GESTOR, 'ubs.nome as ubs_nome')
       .first();
 
     if (!paciente) {
@@ -248,12 +424,20 @@ router.get('/paciente/:id', async (req, res) => {
     }
 
     // Remove o CPF da resposta por segurança (LGPD — exibição mínima necessária)
-    delete paciente.cpf;
 
     // Busca todas as solicitações do paciente, independente da UBS de origem
     const solicitacoes = await knex('solicitacoes')
       .where({ paciente_id: req.params.id })
+      .select(CAMPOS_SOLICITACAO_GESTOR)
       .orderBy('criado_em', 'desc');
+
+    await registrarAuditoria(req, {
+      acao: 'paciente_visualizar_matriz',
+      entidade: 'pacientes',
+      entidade_id: paciente.id,
+      escopo_ubs_id: paciente.ubs_id,
+      metadata: { origem: 'modo_matriz' },
+    });
 
     return res.json({ ...paciente, solicitacoes });
   } catch (err) {
@@ -267,7 +451,7 @@ router.get('/paciente/:id', async (req, res) => {
 // Atualiza o status de uma solicitação E registra a mudança no histórico.
 // O histórico é imutável — cada mudança cria um novo registro (nunca edita).
 // Body: { status_novo: string, observacao: string }
-router.put('/solicitacao/:id/status', async (req, res) => {
+router.put('/solicitacao/:id/status', validateBody(statusSolicitacaoSchema), async (req, res) => {
   try {
     const { status_novo, observacao } = req.body;
 
@@ -281,7 +465,7 @@ router.put('/solicitacao/:id/status', async (req, res) => {
     const resultado = await knex.transaction(async (trx) => {
       const solicitacao = await trx('solicitacoes')
         .where('solicitacoes.id', req.params.id)
-        .select('solicitacoes.*')
+        .select(CAMPOS_SOLICITACAO_GESTOR)
         .first();
 
       if (!solicitacao) {
@@ -310,6 +494,7 @@ router.put('/solicitacao/:id/status', async (req, res) => {
 
       const atualizada = await trx('solicitacoes')
         .where({ id: req.params.id })
+        .select(CAMPOS_SOLICITACAO_GESTOR)
         .first();
 
       return { tipo: 'atualizada', solicitacao: atualizada };
@@ -318,6 +503,14 @@ router.put('/solicitacao/:id/status', async (req, res) => {
     if (resultado.tipo === 'nao_encontrada') {
       return res.status(404).json({ error: 'Solicitação não encontrada.' });
     }
+
+    await registrarAuditoria(req, {
+      acao: 'solicitacao_status_atualizar',
+      entidade: 'solicitacoes',
+      entidade_id: resultado.solicitacao.id,
+      escopo_ubs_id: resultado.solicitacao.ubs_id,
+      metadata: { status_novo: resultado.solicitacao.status },
+    });
 
     // Dispara push notification para o paciente informando a mudança de status.
     // Feito fora da transação: falha no push não deve reverter a atualização.
@@ -395,7 +588,10 @@ router.patch('/solicitacao/:id/escalar', async (req, res) => {
         observacao:      justificativa.trim(),
       });
 
-      const atualizada = await trx('solicitacoes').where({ id: req.params.id }).first();
+      const atualizada = await trx('solicitacoes')
+        .where({ id: req.params.id })
+        .select(CAMPOS_SOLICITACAO_GESTOR)
+        .first();
       return { tipo: 'escalada', solicitacao: atualizada };
     });
 
@@ -405,6 +601,14 @@ router.patch('/solicitacao/:id/escalar', async (req, res) => {
     if (resultado.tipo === 'ja_urgente') {
       return res.status(409).json({ error: 'Esta solicitação já possui prioridade urgente.' });
     }
+
+    await registrarAuditoria(req, {
+      acao: 'solicitacao_escalar',
+      entidade: 'solicitacoes',
+      entidade_id: resultado.solicitacao.id,
+      escopo_ubs_id: resultado.solicitacao.ubs_id,
+      metadata: { prioridade: resultado.solicitacao.prioridade },
+    });
 
     // Notifica o paciente da escalada. Feito fora da transação: falha no push
     // não deve reverter a atualização de prioridade já confirmada.
@@ -441,6 +645,7 @@ router.patch('/solicitacao/:id/resultado', async (req, res) => {
 
     const solicitacao = await knex('solicitacoes')
       .where({ id: req.params.id })
+      .select(CAMPOS_SOLICITACAO_GESTOR)
       .first();
 
     if (!solicitacao) {
@@ -455,8 +660,16 @@ router.patch('/solicitacao/:id/resultado', async (req, res) => {
         cid_10:       cid_10    !== undefined ? cid_10    : solicitacao.cid_10,
         atualizado_em: knex.fn.now(),
       })
-      .returning('*')
+      .returning(CAMPOS_SOLICITACAO_GESTOR)
       .then(rows => rows[0]);
+
+    await registrarAuditoria(req, {
+      acao: 'solicitacao_resultado_atualizar',
+      entidade: 'solicitacoes',
+      entidade_id: atualizada.id,
+      escopo_ubs_id: atualizada.ubs_id,
+      metadata: { resultado_alterado: resultado !== undefined, cid_10_alterado: cid_10 !== undefined },
+    });
 
     return res.json(atualizada);
   } catch (err) {
@@ -479,8 +692,9 @@ router.get('/paciente/:id/atendimentos', async (req, res) => {
     const atendimentos = await knex('atendimentos')
       .leftJoin('usuarios_gestores', 'atendimentos.registrado_por', 'usuarios_gestores.id')
       .where('atendimentos.paciente_id', req.params.id)
+      .whereNull('atendimentos.excluido_em')
       .select(
-        'atendimentos.*',
+        ...CAMPOS_ATENDIMENTO.map((campo) => `atendimentos.${campo}`),
         'usuarios_gestores.nome as registrado_por_nome',
       )
       .orderBy('atendimentos.data_atendimento', 'desc');
@@ -497,7 +711,7 @@ router.get('/paciente/:id/atendimentos', async (req, res) => {
 // Registra um novo atendimento clínico para o paciente.
 // Body: { data_atendimento, unidade, tipo_unidade, especialidade,
 //         profissional, cid_10_principal, cid_10_secundario, conduta, observacoes }
-router.post('/paciente/:id/atendimento', async (req, res) => {
+router.post('/paciente/:id/atendimento', validateBody(atendimentoSchema), async (req, res) => {
   try {
     const {
       data_atendimento, unidade, tipo_unidade, especialidade,
@@ -527,7 +741,15 @@ router.post('/paciente/:id/atendimento', async (req, res) => {
         conduta:           conduta || null,
         observacoes:       observacoes || null,
       })
-      .returning('*');
+      .returning(CAMPOS_ATENDIMENTO);
+
+    await registrarAuditoria(req, {
+      acao: 'atendimento_criar',
+      entidade: 'atendimentos',
+      entidade_id: atendimento.id,
+      escopo_ubs_id: paciente.ubs_id,
+      metadata: { paciente_id: paciente.id },
+    });
 
     return res.status(201).json(atendimento);
   } catch (err) {
@@ -541,9 +763,12 @@ router.post('/paciente/:id/atendimento', async (req, res) => {
 // Atualiza um atendimento clínico existente.
 // Permite corrigir data, unidade, resultado, CID etc. após o registro inicial.
 // Body: qualquer combinação dos campos de atendimento (todos opcionais)
-router.put('/atendimento/:id', async (req, res) => {
+router.put('/atendimento/:id', validateBody(atendimentoSchema), async (req, res) => {
   try {
-    const existente = await knex('atendimentos').where({ id: req.params.id }).first();
+    const existente = await knex('atendimentos')
+      .where({ id: req.params.id })
+      .whereNull('excluido_em')
+      .first();
     if (!existente) {
       return res.status(404).json({ error: 'Atendimento não encontrado.' });
     }
@@ -567,7 +792,14 @@ router.put('/atendimento/:id', async (req, res) => {
         observacoes:       observacoes       !== undefined ? observacoes       : existente.observacoes,
         atualizado_em:     knex.fn.now(),
       })
-      .returning('*');
+      .returning(CAMPOS_ATENDIMENTO);
+
+    await registrarAuditoria(req, {
+      acao: 'atendimento_atualizar',
+      entidade: 'atendimentos',
+      entidade_id: atualizado.id,
+      metadata: { paciente_id: atualizado.paciente_id },
+    });
 
     return res.json(atualizado);
   } catch (err) {
@@ -583,12 +815,31 @@ router.put('/atendimento/:id', async (req, res) => {
 // Não há soft delete — atendimentos errôneos simplesmente não existiram.
 router.delete('/atendimento/:id', async (req, res) => {
   try {
-    const existente = await knex('atendimentos').where({ id: req.params.id }).first();
+    const { motivo_exclusao } = req.body || {};
+    const existente = await knex('atendimentos')
+      .where({ id: req.params.id })
+      .whereNull('excluido_em')
+      .first();
     if (!existente) {
       return res.status(404).json({ error: 'Atendimento não encontrado.' });
     }
 
-    await knex('atendimentos').where({ id: req.params.id }).delete();
+    await knex('atendimentos')
+      .where({ id: req.params.id })
+      .update({
+        excluido_em: knex.fn.now(),
+        excluido_por: req.user.id,
+        motivo_exclusao: motivo_exclusao || 'Removido pela equipe gestora.',
+        atualizado_em: knex.fn.now(),
+      });
+
+    await registrarAuditoria(req, {
+      acao: 'atendimento_excluir',
+      entidade: 'atendimentos',
+      entidade_id: existente.id,
+      metadata: { paciente_id: existente.paciente_id, motivo_exclusao: motivo_exclusao || null },
+    });
+
     return res.json({ mensagem: 'Atendimento removido com sucesso.' });
   } catch (err) {
     console.error('[DELETE /gestor/atendimento/:id]', err);
@@ -669,7 +920,7 @@ router.post('/medicamento', async (req, res) => {
         instrucoes_retirada: instrucoes_retirada || null,
         atualizado_por:      req.user.id,
       })
-      .returning('*');
+      .returning(CAMPOS_MEDICAMENTO);
 
     return res.status(201).json(inserido);
   } catch (err) {
@@ -701,10 +952,16 @@ router.post('/paciente', async (req, res) => {
         email: email || null,
         ativo: true
       })
-      .returning('*');
+      .returning(CAMPOS_PACIENTE_RETORNO);
 
     // O CPF é aceito para cadastro, mas nunca retorna pela API do gestor.
-    delete paciente.cpf;
+    await registrarAuditoria(req, {
+      acao: 'paciente_criar',
+      entidade: 'pacientes',
+      entidade_id: paciente.id,
+      escopo_ubs_id: paciente.ubs_id,
+    });
+
     return res.status(201).json(paciente);
   } catch (err) {
     console.error('[POST /gestor/paciente]', err);
@@ -755,10 +1012,17 @@ router.put('/paciente/:id', async (req, res) => {
         observacoes_clinicas:       observacoes_clinicas !== undefined ? observacoes_clinicas : existente.observacoes_clinicas,
         atualizado_em:              knex.fn.now(),
       })
-      .returning('*');
+      .returning(CAMPOS_PACIENTE_RETORNO);
 
     // Mantém a resposta compatível com a regra de minimização de dados da LGPD.
-    delete atualizado.cpf;
+    await registrarAuditoria(req, {
+      acao: 'paciente_atualizar_matriz',
+      entidade: 'pacientes',
+      entidade_id: atualizado.id,
+      escopo_ubs_id: atualizado.ubs_id,
+      metadata: { origem: 'modo_matriz' },
+    });
+
     return res.json(atualizado);
   } catch (err) {
     console.error('[PUT /gestor/paciente/:id]', err);
@@ -806,7 +1070,7 @@ router.post('/paciente/:id/solicitacao', async (req, res) => {
           // Local onde o serviço será executado (NULL = própria UBS)
           local_executor:   local_executor || null,
         })
-        .returning('*');
+        .returning(CAMPOS_SOLICITACAO_GESTOR);
 
       await trx('historico_status').insert({
         solicitacao_id: novaSolicitacao.id,
@@ -818,6 +1082,14 @@ router.post('/paciente/:id/solicitacao', async (req, res) => {
       });
 
       return novaSolicitacao;
+    });
+
+    await registrarAuditoria(req, {
+      acao: 'solicitacao_criar',
+      entidade: 'solicitacoes',
+      entidade_id: solicitacao.id,
+      escopo_ubs_id: solicitacao.ubs_id,
+      metadata: { paciente_id: solicitacao.paciente_id, origem: 'modo_matriz' },
     });
 
     return res.status(201).json(solicitacao);
@@ -995,7 +1267,7 @@ router.get('/comunicados', async (req, res) => {
 // ─── POST /api/gestor/comunicado ──────────────────────────────────────────────
 // Épico 3: Cria um novo comunicado (geral para todos ou individual para um paciente).
 // Body: { titulo, mensagem, tipo, paciente_id, urgente }
-router.post('/comunicado', async (req, res) => {
+router.post('/comunicado', validateBody(comunicadoSchema), async (req, res) => {
   try {
     const { titulo, mensagem, tipo = 'geral', paciente_id, urgente = false } = req.body;
 
@@ -1004,13 +1276,11 @@ router.post('/comunicado', async (req, res) => {
       return res.status(400).json({ error: 'Título e mensagem são obrigatórios.' });
     }
 
-    // Se for individual, verifica se o paciente existe (modo matriz: sem filtro de UBS)
-    if (tipo === 'individual' && paciente_id) {
-      const paciente = await knex('pacientes')
-        .where({ id: paciente_id })
-        .first();
+    const pacienteIdNormalizado = normalizarId(paciente_id);
+    if (tipo === 'individual') {
+      const paciente = await validarPacienteDaUbs(pacienteIdNormalizado, req.user.ubs_id);
       if (!paciente) {
-        return res.status(404).json({ error: 'Paciente não encontrado.' });
+        return res.status(404).json({ error: 'Paciente nao encontrado nesta UBS.' });
       }
     }
 
@@ -1018,17 +1288,27 @@ router.post('/comunicado', async (req, res) => {
       .insert({
         ubs_id:     req.user.ubs_id,
         gestor_id:  req.user.id,
-        paciente_id: tipo === 'individual' ? (paciente_id || null) : null,
+        paciente_id: tipo === 'individual' ? pacienteIdNormalizado : null,
         titulo,
         mensagem,
         tipo,
         urgente: Boolean(urgente), // garante tipo booleano mesmo se vier como string do form
       })
-      .returning('*');
+      .returning(CAMPOS_COMUNICADO);
 
-    // Push para comunicado individual: notifica apenas o destinatário
-    if (tipo === 'individual' && paciente_id) {
-      pushService.enviar(paciente_id, 'paciente', {
+    if (tipo === 'individual' && pacienteIdNormalizado) {
+      await registrarAuditoria(req, {
+        acao: 'comunicado_individual_criar',
+        entidade: 'comunicados',
+        entidade_id: comunicado.id,
+        escopo_ubs_id: comunicado.ubs_id,
+        metadata: { paciente_id: pacienteIdNormalizado },
+      });
+    }
+
+    // Push para comunicado individual: notifica apenas o destinatario
+    if (tipo === 'individual' && pacienteIdNormalizado) {
+      pushService.enviar(pacienteIdNormalizado, 'paciente', {
         titulo: 'Nova mensagem da sua UBS',
         corpo:  titulo,
         url:    '/paciente/comunicados',
@@ -1119,7 +1399,7 @@ router.post('/agendamento', async (req, res) => {
         status:      'disponivel', // Sempre começa como disponível
         paciente_id: null,          // Nenhum paciente vinculado inicialmente
       })
-      .returning('*');
+      .returning(CAMPOS_AGENDAMENTO);
 
     return res.status(201).json(agendamento);
   } catch (err) {
@@ -1148,7 +1428,7 @@ router.put('/agendamento/:id', async (req, res) => {
     const [atualizado] = await knex('agendamentos_gestao')
       .where({ id: req.params.id })
       .update({ status, motivo: motivo || agendamento.motivo })
-      .returning('*');
+      .returning(CAMPOS_AGENDAMENTO);
 
     return res.json(atualizado);
   } catch (err) {
@@ -1198,7 +1478,7 @@ router.get('/encaminhamentos', async (req, res) => {
       .where('encaminhamentos.ubs_id', ubsId)
       .whereNot('encaminhamentos.status', 'CANCELADO')
       .select(
-        'encaminhamentos.*',
+        ...CAMPOS_ENCAMINHAMENTO.map((campo) => `encaminhamentos.${campo}`),
         'pacientes.nome as paciente_nome',
         // dias_na_fila calculado em SQL — só relevante enquanto aguarda vaga
         knex.raw(`
@@ -1235,7 +1515,7 @@ router.get('/encaminhamentos', async (req, res) => {
 //
 // Body: { paciente_id, destino, especialidade, prioridade, observacoes?, solicitacao_id? }
 // Prioridade: 'VERDE' | 'AMARELO' | 'VERMELHO'
-router.post('/encaminhamento', async (req, res) => {
+router.post('/encaminhamento', validateBody(encaminhamentoSchema), async (req, res) => {
   try {
     const { paciente_id, destino, especialidade, prioridade, observacoes, solicitacao_id } = req.body;
 
@@ -1246,6 +1526,11 @@ router.post('/encaminhamento', async (req, res) => {
     const PRIORIDADES_VALIDAS = ['VERDE', 'AMARELO', 'VERMELHO'];
     if (!PRIORIDADES_VALIDAS.includes(prioridade)) {
       return res.status(400).json({ error: 'Prioridade inválida. Use VERDE, AMARELO ou VERMELHO.' });
+    }
+
+    const pacienteLocal = await validarPacienteDaUbs(paciente_id, req.user.ubs_id);
+    if (!pacienteLocal) {
+      return res.status(404).json({ error: 'Paciente nao encontrado nesta UBS.' });
     }
 
     const resultado = await knex.transaction(async (trx) => {
@@ -1264,11 +1549,19 @@ router.post('/encaminhamento', async (req, res) => {
           data_solicitacao: trx.fn.now(),
           atualizado_em:  trx.fn.now(),
         })
-        .returning('*');
+        .returning(CAMPOS_ENCAMINHAMENTO);
 
       // 2. Se há solicitação vinculada, atualiza status para aguardando_regulacao
       if (solicitacao_id) {
-        const solicitacao = await trx('solicitacoes').where({ id: solicitacao_id }).first();
+        const solicitacao = await trx('solicitacoes')
+          .where({ id: solicitacao_id, paciente_id, ubs_id: req.user.ubs_id })
+          .first();
+        if (!solicitacao) {
+          const erro = new Error('Solicitacao nao encontrada para este paciente e UBS.');
+          erro.statusCode = 404;
+          throw erro;
+        }
+
         if (solicitacao) {
           await trx('solicitacoes')
             .where({ id: solicitacao_id })
@@ -1287,8 +1580,19 @@ router.post('/encaminhamento', async (req, res) => {
       return encaminhamento;
     });
 
+    await registrarAuditoria(req, {
+      acao: 'encaminhamento_criar',
+      entidade: 'encaminhamentos',
+      entidade_id: resultado.id,
+      escopo_ubs_id: resultado.ubs_id,
+      metadata: { paciente_id: resultado.paciente_id, solicitacao_id: resultado.solicitacao_id },
+    });
+
     return res.status(201).json(resultado);
   } catch (err) {
+    if (err.statusCode) {
+      return res.status(err.statusCode).json({ error: err.message });
+    }
     console.error('[POST /gestor/encaminhamento]', err);
     return res.status(500).json({ error: 'Erro ao criar encaminhamento.' });
   }
@@ -1361,7 +1665,7 @@ router.put('/encaminhamento/:id/status', async (req, res) => {
       .join('pacientes', 'encaminhamentos.paciente_id', 'pacientes.id')
       .where('encaminhamentos.id', req.params.id)
       .select(
-        'encaminhamentos.*',
+        ...CAMPOS_ENCAMINHAMENTO.map((campo) => `encaminhamentos.${campo}`),
         'pacientes.nome as paciente_nome',
         knex.raw(`
           CASE
@@ -1372,6 +1676,14 @@ router.put('/encaminhamento/:id/status', async (req, res) => {
         `)
       )
       .first();
+
+    await registrarAuditoria(req, {
+      acao: 'encaminhamento_status_atualizar',
+      entidade: 'encaminhamentos',
+      entidade_id: atualizado.id,
+      escopo_ubs_id: atualizado.ubs_id,
+      metadata: { status_novo },
+    });
 
     return res.json(atualizado);
   } catch (err) {
@@ -1386,14 +1698,18 @@ router.put('/encaminhamento/:id/status', async (req, res) => {
 
 // ─── GET /api/gestor/servico-social ─────────────────────────────────────────
 // Rota mantida apenas para compatibilidade de banco de dados. Módulo inativo no front.
-router.get('/servico-social', async (req, res) => {
+router.get('/servico-social', requirePerfil(['admin']), async (req, res) => {
   try {
     const casos = await knex('casos_sociais')
       .join('pacientes', 'casos_sociais.paciente_id', 'pacientes.id')
       .select(
-        'casos_sociais.*',
+        'casos_sociais.id',
+        'casos_sociais.paciente_id',
+        'casos_sociais.vulnerabilidade',
+        'casos_sociais.status',
+        'casos_sociais.data_identificacao',
+        'casos_sociais.assistente_responsavel',
         'pacientes.nome as paciente_nome',
-        'pacientes.cpf',
         'pacientes.telefone'
       )
       .orderBy('casos_sociais.data_identificacao', 'desc');
@@ -1407,12 +1723,20 @@ router.get('/servico-social', async (req, res) => {
 
 // ─── GET /api/gestor/transporte ─────────────────────────────────────────────
 // Rota mantida apenas para compatibilidade de banco de dados. Módulo inativo no front.
-router.get('/transporte', async (req, res) => {
+router.get('/transporte', requirePerfil(['admin']), async (req, res) => {
   try {
     const transportes = await knex('transporte_sanitario')
       .join('pacientes', 'transporte_sanitario.paciente_id', 'pacientes.id')
       .select(
-        'transporte_sanitario.*',
+        'transporte_sanitario.id',
+        'transporte_sanitario.paciente_id',
+        'transporte_sanitario.destino',
+        'transporte_sanitario.data_viagem',
+        'transporte_sanitario.horario_saida',
+        'transporte_sanitario.veiculo',
+        'transporte_sanitario.necessita_acompanhante',
+        'transporte_sanitario.cadeirante',
+        'transporte_sanitario.status',
         'pacientes.nome as paciente_nome',
         'pacientes.telefone'
       )
@@ -1440,7 +1764,7 @@ router.get('/vigilancia', async (req, res) => {
       .leftJoin('pacientes', 'notificacoes_vigilancia.paciente_id', 'pacientes.id')
       .where('notificacoes_vigilancia.ubs_id', req.user.ubs_id)
       .select(
-        'notificacoes_vigilancia.*',
+        ...CAMPOS_VIGILANCIA.map((campo) => `notificacoes_vigilancia.${campo}`),
         'pacientes.nome as paciente_nome'
       )
       .orderBy('notificacoes_vigilancia.data_notificacao', 'desc');
@@ -1461,7 +1785,7 @@ router.get('/vigilancia', async (req, res) => {
 //
 // Body: { agravo, bairro, cep?, paciente_id? }
 // paciente_id é opcional — surtos territoriais não precisam de paciente específico.
-router.post('/vigilancia', async (req, res) => {
+router.post('/vigilancia', validateBody(vigilanciaSchema), async (req, res) => {
   try {
     const { agravo, bairro, cep, paciente_id } = req.body;
 
@@ -1469,11 +1793,19 @@ router.post('/vigilancia', async (req, res) => {
       return res.status(400).json({ error: 'Agravo e bairro são obrigatórios.' });
     }
 
+    const pacienteIdNormalizado = normalizarId(paciente_id);
+    if (pacienteIdNormalizado) {
+      const paciente = await validarPacienteDaUbs(pacienteIdNormalizado, req.user.ubs_id);
+      if (!paciente) {
+        return res.status(404).json({ error: 'Paciente nao encontrado nesta UBS.' });
+      }
+    }
+
     const [notificacao] = await knex('notificacoes_vigilancia')
       .insert({
         ubs_id:              req.user.ubs_id,
         gestor_id:           req.user.id,
-        paciente_id:         paciente_id || null,
+        paciente_id:         pacienteIdNormalizado,
         agravo,
         bairro,
         cep:                 cep || null,
@@ -1481,7 +1813,15 @@ router.post('/vigilancia', async (req, res) => {
         data_notificacao:    knex.fn.now(),
         atualizado_em:       knex.fn.now(),
       })
-      .returning('*');
+      .returning(CAMPOS_VIGILANCIA);
+
+    await registrarAuditoria(req, {
+      acao: 'vigilancia_criar',
+      entidade: 'notificacoes_vigilancia',
+      entidade_id: notificacao.id,
+      escopo_ubs_id: notificacao.ubs_id,
+      metadata: { paciente_id: notificacao.paciente_id },
+    });
 
     return res.status(201).json(notificacao);
   } catch (err) {
@@ -1514,7 +1854,15 @@ router.put('/vigilancia/:id/status', async (req, res) => {
     const [atualizada] = await knex('notificacoes_vigilancia')
       .where({ id: req.params.id })
       .update({ status_investigacao, atualizado_em: knex.fn.now() })
-      .returning('*');
+      .returning(CAMPOS_VIGILANCIA);
+
+    await registrarAuditoria(req, {
+      acao: 'vigilancia_status_atualizar',
+      entidade: 'notificacoes_vigilancia',
+      entidade_id: atualizada.id,
+      escopo_ubs_id: atualizada.ubs_id,
+      metadata: { status_investigacao },
+    });
 
     return res.json(atualizada);
   } catch (err) {

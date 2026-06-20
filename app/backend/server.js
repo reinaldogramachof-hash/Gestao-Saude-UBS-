@@ -15,6 +15,8 @@
  */
 const express = require('express');
 const cors    = require('cors');
+const helmet  = require('helmet');
+const rateLimit = require('express-rate-limit');
 require('dotenv').config(); // Carrega as variáveis do .env (DATABASE_URL, JWT_SECRET, PORT)
 
 // ─── Importações de middleware e rotas ────────────────────────────────────────
@@ -26,17 +28,33 @@ const adminRouter     = require('./src/routes/admin');
 
 const app = express();
 
+// Helmet adiciona headers HTTP defensivos (ex: bloquear sniffing de MIME e
+// reduzir superficie de ataques de navegadores) sem alterar as rotas da API.
+app.use(helmet({
+  crossOriginResourcePolicy: false,
+}));
+
+// Limite global leve contra abuso de API. Login e cadastro continuam tendo
+// limitadores especificos mais restritivos dentro de routes/auth.js.
+const apiRateLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 300,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Muitas requisicoes. Aguarde alguns minutos e tente novamente.' },
+});
+
 // ─── CORS: define quais origens podem acessar a API ──────────────────────────
 // Em desenvolvimento: localhost do Vite (5173) e IP da rede local
-// Em produção: domínio da Vercel (qualquer subdomínio *.vercel.app ou domínio customizado)
+// Em produção: domínio oficial da Vercel e domínio customizado informado por env.
 const ORIGENS_PERMITIDAS = [
   // Desenvolvimento local
   'http://localhost:5173',
   'http://localhost:3000',
   // Rede local (smartphone na mesma rede Wi-Fi durante testes)
   /^http:\/\/192\.168\.\d{1,3}\.\d{1,3}(:\d+)?$/,
-  // Vercel: qualquer deploy do projeto (preview + produção)
-  /^https:\/\/.*\.vercel\.app$/,
+  // Deploy oficial de produção acadêmica
+  'https://gestao-saude-ubs.vercel.app',
 ];
 
 // Se existir um domínio customizado configurado via variável de ambiente, adiciona também
@@ -58,7 +76,8 @@ app.use(cors({
   credentials: true,
 }));
 
-app.use(express.json());   // Permite JSON no corpo das requisições (req.body)
+app.use('/api', apiRateLimiter);
+app.use(express.json({ limit: '100kb' }));   // Permite JSON no corpo sem aceitar payloads grandes demais
 
 // ─── Rota de verificação de saúde (health check) ─────────────────────────────
 // Útil para monitorar se a API está no ar sem precisar autenticar

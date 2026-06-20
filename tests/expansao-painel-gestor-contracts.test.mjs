@@ -32,13 +32,16 @@ test('historico valida UBS e retorna gestor em ordem cronologica', async () => {
   assert.match(source, /orderBy\(['"]historico_status\.alterado_em['"],\s*['"]asc['"]\)/);
 });
 
-test('cadastro e edicao de paciente removem CPF das respostas', async () => {
+test('cadastro e edicao de paciente usam retorno explicito sem CPF', async () => {
   const source = await read('app/backend/src/routes/gestor.js');
   const cadastro = source.match(/router\.post\('\/paciente'[\s\S]*?\n\}\);/)?.[0] || '';
   const edicao = source.match(/router\.put\('\/paciente\/:id'[\s\S]*?\n\}\);/)?.[0] || '';
 
-  assert.match(cadastro, /delete paciente\.cpf/);
-  assert.match(edicao, /delete atualizado\.cpf/);
+  assert.match(source, /const CAMPOS_PACIENTE_RETORNO = \[/);
+  assert.match(cadastro, /\.returning\(CAMPOS_PACIENTE_RETORNO\)/);
+  assert.match(edicao, /\.returning\(CAMPOS_PACIENTE_RETORNO\)/);
+  assert.doesNotMatch(cadastro, /\.returning\(['"]\*['"]\)/);
+  assert.doesNotMatch(edicao, /\.returning\(['"]\*['"]\)/);
 });
 
 test('medicamentos oferece cadastro edicao filtros contadores e retry', async () => {

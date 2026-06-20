@@ -1,101 +1,107 @@
 /**
- * ROTAS DE AUTENTICAÇÃO (routes/auth.js)
- * ─────────────────────────────────────────────────────────────────────────────
- * FUNÇÃO: Define as rotas públicas de login e auto-cadastro do sistema.
- *         Não exige autenticação (são as portas de entrada).
+ * ROTAS DE AUTENTICACAO (routes/auth.js)
+ * -----------------------------------------------------------------------------
+ * Define as portas publicas de entrada do sistema: login de gestor, login de
+ * paciente, listagem publica de UBS/bairros e auto-cadastro pendente.
  *
- * ROTAS:
- *   POST /api/auth/login-gestor        → e-mail + senha → JWT (perfil gestor)
- *   POST /api/auth/login-paciente      → CRA + data_nascimento → JWT (paciente)
- *   GET  /api/auth/ubs                 → lista UBSs ativas para auto-cadastro
- *   POST /api/auth/cadastro-paciente   → auto-cadastro de novo paciente
- *
- * AUTO-CADASTRO:
- *   O paciente escolhe a UBS pelo bairro, preenche seus dados e recebe um CRA
- *   gerado automaticamente. O cadastro fica com status "pendente" até a UBS
- *   ativá-lo — isso evita que qualquer pessoa acesse dados de saúde sem validação
- *   presencial. Na tela de login, o paciente vê a mensagem de aguardar aprovação.
- *
- * LGPD: CPF não é retornado em nenhuma rota deste arquivo.
- * ─────────────────────────────────────────────────────────────────────────────
+ * SEGURANCA:
+ * - Login usa rate limit para reduzir forca bruta.
+ * - JWT carrega token_version para permitir revogacao de sessoes antigas.
+ * - Eventos de sucesso e falha sao gravados em security_audit_logs sem senha.
  */
-const express   = require('express');
-const bcrypt    = require('bcrypt');
-const jwt       = require('jsonwebtoken');
-const rateLimit = require('express-rate-limit'); // Middleware para prevenir ataques de força bruta no login
-const knex      = require('../db/knex');
+const express = require('express');
+const bcrypt = require('bcrypt');
+const jwt = require('jsonwebtoken');
+const rateLimit = require('express-rate-limit');
+const knex = require('../db/knex');
+const validateBody = require('../middleware/validateBody');
+const { registrarAuditoria } = require('../services/auditService');
+const { loginGestorSchema, loginPacienteSchema } = require('../validators/securitySchemas');
 
 const router = express.Router();
 
-// ─────────────────────────────────────────────────────────────────────────────
-// MIDDLEWARE: loginRateLimiter
-// FUNÇÃO: Limita as tentativas de login a 10 requisições por IP a cada 15 minutos.
-//         Isso é crítico para segurança, pois o login do paciente usa dados de 
-//         baixa entropia (CRA + Data de Nascimento) fáceis de sofrer força bruta.
-// ─────────────────────────────────────────────────────────────────────────────
-const loginRateLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutos
-  max: 10, // limite de 10 tentativas por IP
-  message: {
-    error: 'Muitas tentativas de login a partir deste IP. Por favor, tente novamente após 15 minutos.'
-  },
-  standardHeaders: true, // Retorna os cabeçalhos de limite padrão (RateLimit-Limit, RateLimit-Remaining)
-  legacyHeaders: false, // Desativa os cabeçalhos antigos X-RateLimit-*
-});
+function gerarJwtSeguro(payload, options) {
+  if (process.env.NODE_ENV === 'production' && (!process.env.JWT_SECRET || process.env.JWT_SECRET.length < 64)) {
+    throw new Error('JWT_SECRET inseguro ou ausente em producao.');
+  }
+  return jwt.sign(payload, process.env.JWT_SECRET, options);
+}
 
-// ─────────────────────────────────────────────────────────────────────────────
-// MIDDLEWARE: cadastroRateLimiter
-// FUNÇÃO: Limita criação de cadastros a 20 por IP por hora.
-//         Protege contra flood de cadastros durante apresentações e em produção.
-// ─────────────────────────────────────────────────────────────────────────────
-const cadastroRateLimiter = rateLimit({
-  windowMs: 60 * 60 * 1000, // 1 hora
-  max: 20,
+const loginRateLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
   message: {
-    error: 'Muitos cadastros efetuados deste dispositivo. Tente novamente mais tarde.'
+    error: 'Muitas tentativas de login a partir deste IP. Por favor, tente novamente apos 15 minutos.',
   },
   standardHeaders: true,
   legacyHeaders: false,
 });
 
-// ─── POST /api/auth/login-gestor ─────────────────────────────────────────────
-// Autentica um membro da equipe gestora (recepcionista, gestor, admin) via
-// e-mail institucional + senha. Retorna JWT com 8h de validade.
-router.post('/login-gestor', loginRateLimiter, async (req, res) => {
+const cadastroRateLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 20,
+  message: {
+    error: 'Muitos cadastros efetuados deste dispositivo. Tente novamente mais tarde.',
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+router.post('/login-gestor', loginRateLimiter, validateBody(loginGestorSchema), async (req, res) => {
   try {
     const { email, senha } = req.body;
 
-    if (!email || !senha) {
-      return res.status(400).json({ error: 'E-mail e senha são obrigatórios.' });
-    }
-
-    // Contas desativadas não podem gerar novas sessões. O filtro fica na própria
-    // consulta para que uma conta inativa receba a mesma resposta de credencial inválida.
     const gestor = await knex('usuarios_gestores')
       .where({ email, ativo: true })
       .first();
 
-    // Não distinguimos "usuário não encontrado" de "senha errada" por segurança
     if (!gestor) {
-      return res.status(401).json({ error: 'Credenciais inválidas.' });
+      await registrarAuditoria(req, {
+        ator_tipo: 'gestor',
+        acao: 'login_gestor_falha',
+        entidade: 'usuarios_gestores',
+        metadata: { email },
+      });
+      return res.status(401).json({ error: 'Credenciais invalidas.' });
     }
 
-    // bcrypt.compare compara o texto puro com o hash armazenado com segurança
     const senhaValida = await bcrypt.compare(senha, gestor.senha_hash);
     if (!senhaValida) {
-      return res.status(401).json({ error: 'Credenciais inválidas.' });
+      await registrarAuditoria(req, {
+        ator_tipo: 'gestor',
+        ator_id: gestor.id,
+        ator_perfil: gestor.perfil,
+        ator_ubs_id: gestor.ubs_id,
+        acao: 'login_gestor_falha',
+        entidade: 'usuarios_gestores',
+        entidade_id: gestor.id,
+        escopo_ubs_id: gestor.ubs_id,
+        metadata: { email },
+      });
+      return res.status(401).json({ error: 'Credenciais invalidas.' });
     }
 
-    // Monta o payload do JWT com os dados mínimos necessários nas próximas requisições
     const payload = {
-      id:     gestor.id,
-      nome:   gestor.nome,
+      id: gestor.id,
+      nome: gestor.nome,
       ubs_id: gestor.ubs_id,
-      perfil: gestor.perfil,   // 'admin', 'gestor', 'recepcionista'
-      tipo:   'gestor',         // Distingue do token do paciente
+      perfil: gestor.perfil,
+      tipo: 'gestor',
+      token_version: gestor.token_version || 0,
     };
 
-    const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '8h' });
+    const token = gerarJwtSeguro(payload, { expiresIn: '8h' });
+
+    await registrarAuditoria(req, {
+      ator_tipo: 'gestor',
+      ator_id: gestor.id,
+      ator_perfil: gestor.perfil,
+      ator_ubs_id: gestor.ubs_id,
+      acao: 'login_gestor_sucesso',
+      entidade: 'usuarios_gestores',
+      entidade_id: gestor.id,
+      escopo_ubs_id: gestor.ubs_id,
+    });
 
     return res.json({ token, ...payload });
   } catch (err) {
@@ -104,37 +110,44 @@ router.post('/login-gestor', loginRateLimiter, async (req, res) => {
   }
 });
 
-// ─── POST /api/auth/login-paciente ───────────────────────────────────────────
-// Autentica um paciente via CRA (Cadastro de Regulação Ambulatorial) + data
-// de nascimento. Não usa senha para facilitar o acesso por pessoas idosas.
-// Retorna JWT com 12h de validade.
-router.post('/login-paciente', loginRateLimiter, async (req, res) => {
+router.post('/login-paciente', loginRateLimiter, validateBody(loginPacienteSchema), async (req, res) => {
   try {
     const { cra, data_nascimento } = req.body;
 
-    if (!cra || !data_nascimento) {
-      return res.status(400).json({ error: 'CRA e data de nascimento são obrigatórios.' });
-    }
-
-    // A combinação CRA + data_nascimento é o "par de chave" do paciente.
-    // O filtro de ativo impede acesso depois que a UBS desativa o cadastro.
     const paciente = await knex('pacientes')
       .where({ cra, ativo: true })
       .whereRaw('data_nascimento = ?', [data_nascimento])
       .first();
 
     if (!paciente) {
-      return res.status(401).json({ error: 'CRA ou data de nascimento não conferem.' });
+      await registrarAuditoria(req, {
+        ator_tipo: 'paciente',
+        acao: 'login_paciente_falha',
+        entidade: 'pacientes',
+        metadata: { cra },
+      });
+      return res.status(401).json({ error: 'CRA ou data de nascimento nao conferem.' });
     }
 
     const payload = {
-      id:     paciente.id,
-      nome:   paciente.nome,
+      id: paciente.id,
+      nome: paciente.nome,
       ubs_id: paciente.ubs_id,
-      tipo:   'paciente',
+      tipo: 'paciente',
+      token_version: paciente.token_version || 0,
     };
 
-    const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '12h' });
+    const token = gerarJwtSeguro(payload, { expiresIn: '12h' });
+
+    await registrarAuditoria(req, {
+      ator_tipo: 'paciente',
+      ator_id: paciente.id,
+      ator_ubs_id: paciente.ubs_id,
+      acao: 'login_paciente_sucesso',
+      entidade: 'pacientes',
+      entidade_id: paciente.id,
+      escopo_ubs_id: paciente.ubs_id,
+    });
 
     return res.json({ token, ...payload });
   } catch (err) {
@@ -143,10 +156,6 @@ router.post('/login-paciente', loginRateLimiter, async (req, res) => {
   }
 });
 
-// ─── GET /api/auth/ubs ───────────────────────────────────────────────────────
-// Rota pública: retorna todas as UBSs ativas para exibir no select do cadastro.
-// Ordenadas por bairro para facilitar a busca do munícipe.
-// Não retorna dados sensíveis — apenas id, nome, bairro, endereco, telefone.
 router.get('/ubs', async (req, res) => {
   try {
     const ubs = await knex('ubs')
@@ -157,112 +166,88 @@ router.get('/ubs', async (req, res) => {
     return res.json(ubs);
   } catch (err) {
     console.error('[GET /auth/ubs]', err);
-    return res.status(500).json({ error: 'Erro ao buscar unidades de saúde.' });
+    return res.status(500).json({ error: 'Erro ao buscar unidades de saude.' });
   }
 });
 
-
-// ─── POST /api/auth/cadastro-paciente ────────────────────────────────────────
-// Rota pública: permite que um munícipe se cadastre sem passar pelo gestor.
-//
-// FLUXO DE SEGURANÇA:
-//   O cadastro é criado com ativo: false (pendente de aprovação pela UBS).
-//   O paciente não consegue fazer login até a equipe da UBS ativar o cadastro.
-//   Isso evita acesso não autorizado a dados de saúde sem validação presencial.
-//
-// CRA GERADO AUTOMATICAMENTE:
-//   Formato: AAMMDD + 4 dígitos aleatórios (ex: 260611-4721)
-//   Exibido na confirmação para o paciente anotar e levar à UBS.
-//
-// Body: { nome*, data_nascimento*, ubs_id*, bairro*, telefone, email, cpf }
 router.post('/cadastro-paciente', cadastroRateLimiter, async (req, res) => {
   try {
     const { nome, data_nascimento, ubs_id, bairro, telefone, email, cpf } = req.body;
 
-    // Validação dos campos obrigatórios
     if (!nome || !data_nascimento || !ubs_id || !bairro) {
       return res.status(400).json({
-        error: 'Nome completo, data de nascimento, unidade de saúde e bairro são obrigatórios.',
+        error: 'Nome completo, data de nascimento, unidade de saude e bairro sao obrigatorios.',
       });
     }
 
-    // Verifica se a UBS escolhida existe e está ativa
     const ubs = await knex('ubs').where({ id: ubs_id, ativa: true }).first();
     if (!ubs) {
-      return res.status(404).json({ error: 'Unidade de saúde não encontrada ou inativa.' });
+      return res.status(404).json({ error: 'Unidade de saude nao encontrada ou inativa.' });
     }
 
-    // Verifica CPF duplicado se fornecido (campo único na tabela)
     let cpfLimpo = null;
     if (cpf) {
-      cpfLimpo = cpf.replace(/[^\d]/g, ''); // Remove pontos, traços e espaços
-    
-      if (cpfLimpo.length !== 11) {
-        return res.status(400).json({
-          error: 'CPF inválido. Informe os 11 dígitos numéricos.'
-        });
+      cpfLimpo = cpf.replace(/[^\d]/g, '');
+
+      if (cpfLimpo.length !== 11 || /^(\d)\1{10}$/.test(cpfLimpo)) {
+        return res.status(400).json({ error: 'CPF invalido.' });
       }
-    
-      // Rejeita sequências inválidas como 00000000000, 11111111111, etc.
-      if (/^(\d)\1{10}$/.test(cpfLimpo)) {
-        return res.status(400).json({ error: 'CPF inválido.' });
-      }
-    
+
       const cpfExiste = await knex('pacientes').where({ cpf: cpfLimpo }).first();
       if (cpfExiste) {
-        return res.status(409).json({ error: 'CPF já cadastrado no sistema.' });
+        return res.status(409).json({ error: 'CPF ja cadastrado no sistema.' });
       }
     }
 
-    // Gera o CRA automaticamente: AAMMDD + 4 dígitos aleatórios
-    // Exemplo: 2606114721 (26 de junho de 2026 + 4721 aleatório)
     const hoje = new Date();
     const aammdd = String(hoje.getFullYear()).slice(2)
       + String(hoje.getMonth() + 1).padStart(2, '0')
       + String(hoje.getDate()).padStart(2, '0');
-    const sufixo = String(Math.floor(Math.random() * 9000) + 1000); // 1000–9999
+    const sufixo = String(Math.floor(Math.random() * 9000) + 1000);
     const craNovo = `${aammdd}${sufixo}`;
 
-    // Garante que o CRA gerado não colide com algum já existente (improvável mas seguro)
     const craExiste = await knex('pacientes').where({ cra: craNovo }).first();
     if (craExiste) {
-      return res.status(500).json({
-        error: 'Erro ao gerar número de cadastro. Tente novamente.',
-      });
+      return res.status(500).json({ error: 'Erro ao gerar numero de cadastro. Tente novamente.' });
     }
 
-    // Insere o paciente com ativo: false — aguarda validação presencial da UBS
     const [paciente] = await knex('pacientes')
       .insert({
         ubs_id,
-        cra:            craNovo,
-        nome:           nome.trim(),
-        cpf:            cpfLimpo,
+        cra: craNovo,
+        nome: nome.trim(),
+        cpf: cpfLimpo,
         data_nascimento,
-        telefone:       telefone || null,
-        email:          email || null,
-        ativo:          false, // Pendente de aprovação — não pode fazer login ainda
+        telefone: telefone || null,
+        email: email || null,
+        ativo: false,
       })
       .returning(['id', 'cra', 'nome', 'ubs_id']);
 
+    await registrarAuditoria(req, {
+      ator_tipo: 'paciente',
+      acao: 'cadastro_paciente_solicitado',
+      entidade: 'pacientes',
+      entidade_id: paciente.id,
+      escopo_ubs_id: Number(ubs_id),
+      metadata: { cra: paciente.cra },
+    });
+
     return res.status(201).json({
-      mensagem: 'Cadastro realizado com sucesso! Aguarde a aprovação da sua UBS para acessar o portal.',
-      cra:      paciente.cra,   // O paciente deve anotar este número
-      nome:     paciente.nome,
-      ubs:      ubs.nome,
+      mensagem: 'Cadastro realizado com sucesso! Aguarde a aprovacao da sua UBS para acessar o portal.',
+      cra: paciente.cra,
+      nome: paciente.nome,
+      ubs: ubs.nome,
     });
   } catch (err) {
     console.error('[POST /auth/cadastro-paciente]', err.message);
-    // Constraint única violada (CRA ou CPF duplicado por race condition)
     if (err.code === '23505') {
-      return res.status(409).json({ error: 'Dados já cadastrados. Tente novamente.' });
+      return res.status(409).json({ error: 'Dados ja cadastrados. Tente novamente.' });
     }
     return res.status(500).json({ error: 'Erro ao realizar cadastro.' });
   }
 });
 
-
-// Função auxiliar para remover acentos, trim e lowercase
 function normalizar(str) {
   if (!str) return '';
   return str
@@ -272,13 +257,10 @@ function normalizar(str) {
     .trim();
 }
 
-// ─── GET /api/auth/buscar-bairro ───────────────────────────────────────────────
-// Rota pública: busca bairros para direcionar o paciente à UBS correta
-// no momento do auto-cadastro.
 router.get('/buscar-bairro', async (req, res) => {
   try {
     const { q } = req.query;
-    
+
     if (!q || q.length < 2) {
       return res.json([]);
     }
@@ -297,7 +279,7 @@ router.get('/buscar-bairro', async (req, res) => {
         'u.bairro as ubs_bairro',
         'u.telefone as ubs_telefone'
       )
-      .orderByRaw(`CASE WHEN b.bairro_busca = ? THEN 0 ELSE 1 END`, [normalizadoQ])
+      .orderByRaw('CASE WHEN b.bairro_busca = ? THEN 0 ELSE 1 END', [normalizadoQ])
       .orderBy('b.bairro', 'asc')
       .limit(8);
 
