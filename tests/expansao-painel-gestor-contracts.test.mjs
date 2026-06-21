@@ -84,6 +84,8 @@ test('agendamentos oferece resumo vinculo de paciente e repeticao sequencial', a
   assert.match(source, /useNavigate/);
   assert.match(source, /Ver paciente/);
   assert.match(source, /Repetir por/);
-  assert.match(source, /Criando \{progressoCriacao\.atual\}\/\{progressoCriacao\.total\}/);
+  assert.match(source, /api\.post\(['"]\/gestor\/agendamentos\/lote['"]/);
+  assert.match(source, /intervalo_minutos/);
+  assert.match(source, /pular_fins_de_semana/);
   assert.match(source, /Concluídos hoje/);
 });

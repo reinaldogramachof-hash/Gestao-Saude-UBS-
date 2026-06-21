@@ -41,8 +41,14 @@ export default function AgendamentosGestor() {
   const [filtroStatus, setFiltroStatus] = useState('todos');
   const [modalAberto, setModalAberto] = useState(false);
   const [enviando, setEnviando] = useState(false);
-  const [form, setForm] = useState({ data_hora: '', duracao_minutos: 30, repetir_dias: 1 });
-  const [progressoCriacao, setProgressoCriacao] = useState({ atual: 0, total: 0 });
+  const [form, setForm] = useState({
+    data_inicio:          '',
+    hora_inicio:          '08:00',
+    hora_fim:             '12:00',
+    intervalo_minutos:    30,
+    repetir_dias:         1,
+    pular_fins_de_semana: true,
+  });
 
   const carregarAgendamentos = () => {
     setLoading(true);
@@ -60,6 +66,16 @@ export default function AgendamentosGestor() {
     ? agendamentos
     : agendamentos.filter(a => a.status === filtroStatus);
 
+  // Agrupa agendamentos filtrados por data (YYYY-MM-DD)
+  const agrupados = agendamentosFiltrados.reduce((acc, ag) => {
+    const dia = ag.data_hora.slice(0, 10);
+    if (!acc[dia]) acc[dia] = [];
+    acc[dia].push(ag);
+    return acc;
+  }, {});
+
+  const diasOrdenados = Object.keys(agrupados).sort();
+
   // O resumo usa a lista completa para não mudar quando o gestor troca de aba.
   const hoje = new Date().toDateString();
   const resumo = {
@@ -70,34 +86,21 @@ export default function AgendamentosGestor() {
     ).length,
   };
 
+  // Criar nova grade de horários em lote
   const handleCriar = async (e) => {
     e.preventDefault();
     setEnviando(true);
-    const total = Number(form.repetir_dias);
-    let criados = 0;
-    setProgressoCriacao({ atual: 0, total });
     try {
-      // As chamadas são sequenciais para refletir o progresso real e evitar
-      // rajadas de escrita. Cada dia mantém a mesma hora informada no formulário.
-      for (let indice = 0; indice < total; indice += 1) {
-        const dataHora = new Date(form.data_hora);
-        dataHora.setDate(dataHora.getDate() + indice);
-        await api.post('/gestor/agendamento', {
-          data_hora: dataHora.toISOString(),
-          duracao_minutos: form.duracao_minutos,
-        });
-        criados = indice + 1;
-        setProgressoCriacao({ atual: criados, total });
-      }
-      toast.success(total === 1 ? 'Horário criado com sucesso!' : `${total} horários criados com sucesso!`);
+      const { data } = await api.post('/gestor/agendamentos/lote', form);
+      toast.success(`${data.criados} horário(s) criado(s) com sucesso!`);
       setModalAberto(false);
-      setForm({ data_hora: '', duracao_minutos: 30, repetir_dias: 1 });
+      setForm({ data_inicio: '', hora_inicio: '08:00', hora_fim: '12:00',
+                intervalo_minutos: 30, repetir_dias: 1, pular_fins_de_semana: true });
       carregarAgendamentos();
-    } catch {
-      toast.error(`Erro ao criar o horário ${criados + 1} de ${total}. ${criados} concluído(s).`);
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Erro ao criar grade de horários.');
     } finally {
       setEnviando(false);
-      setProgressoCriacao({ atual: 0, total: 0 });
     }
   };
 
@@ -181,51 +184,65 @@ export default function AgendamentosGestor() {
           <button onClick={carregarAgendamentos} className="mt-4 h-12 px-6 bg-primary text-white font-bold rounded-2xl">Tentar novamente</button>
         </div>
       ) : agendamentosFiltrados.length > 0 ? (
-        <div className="space-y-3 md:space-y-4">
-          {agendamentosFiltrados.map(ag => (
-            <div key={ag.id} className="bg-surface-container-lowest rounded-xl md:rounded-2xl border border-surface-variant p-4 md:p-6 flex flex-wrap justify-between items-center gap-3">
-              <div className="flex gap-3 md:gap-5 items-center">
-                <div className="w-12 h-12 bg-primary/10 rounded-xl md:rounded-2xl flex items-center justify-center text-primary flex-shrink-0">
-                  <span className="material-symbols-outlined">calendar_month</span>
-                </div>
-                <div>
-                  <p className="font-extrabold text-on-background">
-                    {new Date(ag.data_hora).toLocaleDateString('pt-BR')} às{' '}
-                    {new Date(ag.data_hora).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
-                  </p>
-                  <div className="flex items-center gap-2 mt-1 flex-wrap">
-                    <span className="text-xs text-on-surface-variant font-medium">{ag.duracao_minutos} min</span>
-                    <span className={`text-xs font-bold px-2.5 py-0.5 rounded-full ${STATUS_COLORS[ag.status] || 'bg-gray-100 text-gray-600'}`}>
-                      {STATUS_LABEL[ag.status] || ag.status}
-                    </span>
-                    {ag.paciente_nome && (
-                      <span className="text-xs font-semibold text-on-surface-variant">Paciente: {ag.paciente_nome}</span>
-                    )}
-                  </div>
-                  {ag.motivo && <p className="text-xs text-on-surface-variant italic mt-0.5">{ag.motivo}</p>}
-                  {ag.status === 'reservado' && ag.paciente_id && (
-                    <button onClick={() => navigate(`/gestor/paciente/${ag.paciente_id}`)} className="mt-2 text-xs font-bold text-primary hover:underline">
-                      → Ver paciente
-                    </button>
-                  )}
-                </div>
+        <div className="space-y-4 md:space-y-6">
+          {diasOrdenados.map(dia => (
+            <div key={dia}>
+              {/* Cabeçalho de Data Agrupada */}
+              <div className="sticky top-0 z-10 bg-surface-container-low px-2 py-2 border-b border-surface-variant mb-3 mt-4 first:mt-0">
+                <p className="text-xs font-bold text-on-surface-variant uppercase tracking-wider">
+                  {new Date(dia + 'T12:00:00').toLocaleDateString('pt-BR', {
+                    weekday: 'long', day: '2-digit', month: 'long'
+                  })}
+                </p>
               </div>
-              {/* Ações contextuais por status */}
-              <div className="flex gap-2">
-                {ag.status === 'disponivel' && (
-                  <button onClick={() => handleExcluir(ag.id)}
-                    className="w-9 h-9 rounded-xl hover:bg-red-50 hover:text-red-600 text-on-surface-variant flex items-center justify-center transition-colors">
-                    <span className="material-symbols-outlined text-xl">delete</span>
-                  </button>
-                )}
-                {ag.status === 'reservado' && (
-                  <>
-                    <button onClick={() => handleAtualizarStatus(ag.id, 'concluido')}
-                      className="px-3 py-1.5 bg-emerald-100 text-emerald-700 font-bold rounded-lg text-xs hover:bg-emerald-200 transition-colors">Concluir</button>
-                    <button onClick={() => handleAtualizarStatus(ag.id, 'cancelado')}
-                      className="px-3 py-1.5 bg-red-100 text-red-600 font-bold rounded-lg text-xs hover:bg-red-200 transition-colors">Cancelar</button>
-                  </>
-                )}
+              <div className="space-y-3 md:space-y-4">
+                {agrupados[dia].map(ag => (
+                  <div key={ag.id} className="bg-surface-container-lowest rounded-xl md:rounded-2xl border border-surface-variant p-4 md:p-6 flex flex-wrap justify-between items-center gap-3">
+                    <div className="flex gap-3 md:gap-5 items-center">
+                      <div className="w-12 h-12 bg-primary/10 rounded-xl md:rounded-2xl flex items-center justify-center text-primary flex-shrink-0">
+                        <span className="material-symbols-outlined">calendar_month</span>
+                      </div>
+                      <div>
+                        <p className="font-extrabold text-on-background">
+                          {new Date(ag.data_hora).toLocaleDateString('pt-BR')} às{' '}
+                          {new Date(ag.data_hora).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                        </p>
+                        <div className="flex items-center gap-2 mt-1 flex-wrap">
+                          <span className="text-xs text-on-surface-variant font-medium">{ag.duracao_minutos} min</span>
+                          <span className={`text-xs font-bold px-2.5 py-0.5 rounded-full ${STATUS_COLORS[ag.status] || 'bg-gray-100 text-gray-600'}`}>
+                            {STATUS_LABEL[ag.status] || ag.status}
+                          </span>
+                          {ag.paciente_nome && (
+                            <span className="text-xs font-semibold text-on-surface-variant">Paciente: {ag.paciente_nome}</span>
+                          )}
+                        </div>
+                        {ag.motivo && <p className="text-xs text-on-surface-variant italic mt-0.5">{ag.motivo}</p>}
+                        {ag.status === 'reservado' && ag.paciente_id && (
+                          <button onClick={() => navigate(`/gestor/paciente/${ag.paciente_id}`)} className="mt-2 text-xs font-bold text-primary hover:underline">
+                            → Ver paciente
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                    {/* Ações contextuais por status */}
+                    <div className="flex gap-2">
+                      {ag.status === 'disponivel' && (
+                        <button onClick={() => handleExcluir(ag.id)}
+                          className="w-9 h-9 rounded-xl hover:bg-red-50 hover:text-red-600 text-on-surface-variant flex items-center justify-center transition-colors">
+                          <span className="material-symbols-outlined text-xl">delete</span>
+                        </button>
+                      )}
+                      {ag.status === 'reservado' && (
+                        <>
+                          <button onClick={() => handleAtualizarStatus(ag.id, 'concluido')}
+                            className="px-3 py-1.5 bg-emerald-100 text-emerald-700 font-bold rounded-lg text-xs hover:bg-emerald-200 transition-colors">Concluir</button>
+                          <button onClick={() => handleAtualizarStatus(ag.id, 'cancelado')}
+                            className="px-3 py-1.5 bg-red-100 text-red-600 font-bold rounded-lg text-xs hover:bg-red-200 transition-colors">Cancelar</button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
           ))}
@@ -241,42 +258,92 @@ export default function AgendamentosGestor() {
       {modalAberto && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-on-surface/40 backdrop-blur-sm" onClick={() => setModalAberto(false)} />
-          <div className="relative w-full max-w-md bg-surface-container-lowest rounded-[2rem] shadow-2xl overflow-hidden">
-            <header className="p-6 md:p-8 border-b border-surface-variant flex justify-between items-center">
+          <div className="relative w-full max-w-md bg-surface-container-lowest rounded-[2rem] shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+            <header className="p-6 md:p-8 border-b border-surface-variant flex justify-between items-center shrink-0">
               <h3 className="text-xl font-extrabold">Novo Horário</h3>
               <button onClick={() => setModalAberto(false)} className="w-10 h-10 rounded-full hover:bg-surface-container-low flex items-center justify-center">
                 <span className="material-symbols-outlined">close</span>
               </button>
             </header>
-            <form onSubmit={handleCriar} className="p-6 md:p-8 space-y-5">
+            <form onSubmit={handleCriar} className="p-6 md:p-8 space-y-5 overflow-y-auto">
+              
+              {/* Data de início */}
               <div className="space-y-2">
-                <label className="text-sm font-bold text-on-surface-variant">Data e Hora*</label>
-                <input required type="datetime-local" value={form.data_hora} onChange={e => setForm(p => ({ ...p, data_hora: e.target.value }))}
+                <label className="text-sm font-bold text-on-surface-variant">Data de início*</label>
+                <input required type="date" value={form.data_inicio}
+                  onChange={e => setForm(p => ({ ...p, data_inicio: e.target.value }))}
                   className="w-full h-12 px-4 bg-surface-container-high border-none rounded-xl outline-none font-medium" />
               </div>
-              <div className="space-y-2">
-                <label className="text-sm font-bold text-on-surface-variant">Duração (minutos)</label>
-                <input type="number" min={15} step={15} value={form.duracao_minutos} onChange={e => setForm(p => ({ ...p, duracao_minutos: Number(e.target.value) }))}
-                  className="w-full h-12 px-4 bg-surface-container-high border-none rounded-xl outline-none font-medium" />
+
+              {/* Horário: início → fim */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <label className="text-sm font-bold text-on-surface-variant">Das*</label>
+                  <input type="time" value={form.hora_inicio}
+                    onChange={e => setForm(p => ({ ...p, hora_inicio: e.target.value }))}
+                    className="w-full h-12 px-4 bg-surface-container-high border-none rounded-xl outline-none font-medium" />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-bold text-on-surface-variant">Até*</label>
+                  <input type="time" value={form.hora_fim}
+                    onChange={e => setForm(p => ({ ...p, hora_fim: e.target.value }))}
+                    className="w-full h-12 px-4 bg-surface-container-high border-none rounded-xl outline-none font-medium" />
+                </div>
               </div>
+
+              {/* Intervalo */}
               <div className="space-y-2">
-                <label className="text-sm font-bold text-on-surface-variant">Repetir por X dias</label>
-                <select value={form.repetir_dias} onChange={e => setForm(p => ({ ...p, repetir_dias: Number(e.target.value) }))}
+                <label className="text-sm font-bold text-on-surface-variant">Intervalo entre consultas*</label>
+                <select value={form.intervalo_minutos}
+                  onChange={e => setForm(p => ({ ...p, intervalo_minutos: Number(e.target.value) }))}
                   className="w-full h-12 px-4 bg-surface-container-high border-none rounded-xl outline-none font-medium">
-                  {[1, 5, 10, 15, 20, 30].map((dias) => (
-                    <option key={dias} value={dias}>{dias} {dias === 1 ? 'dia' : 'dias'}</option>
-                  ))}
+                  <option value={15}>15 minutos</option>
+                  <option value={30}>30 minutos</option>
+                  <option value={45}>45 minutos</option>
+                  <option value={60}>1 hora</option>
                 </select>
               </div>
-              {enviando && progressoCriacao.total > 1 && (
-                <div className="p-3 rounded-xl bg-primary/10 text-primary font-bold text-center">
-                  Criando {progressoCriacao.atual}/{progressoCriacao.total}...
+
+              {/* Repetir por N dias + pular fins de semana */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <label className="text-sm font-bold text-on-surface-variant">Repetir por</label>
+                  <select value={form.repetir_dias}
+                    onChange={e => setForm(p => ({ ...p, repetir_dias: Number(e.target.value) }))}
+                    className="w-full h-12 px-4 bg-surface-container-high border-none rounded-xl outline-none font-medium">
+                    {[1,5,10,15,20,30].map(d => <option key={d} value={d}>{d} {d===1?'dia':'dias'}</option>)}
+                  </select>
                 </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-bold text-on-surface-variant">Fins de semana</label>
+                  <button type="button"
+                    onClick={() => setForm(p => ({ ...p, pular_fins_de_semana: !p.pular_fins_de_semana }))}
+                    className={`w-full h-12 rounded-xl border-2 font-bold text-sm transition-colors ${
+                      form.pular_fins_de_semana
+                        ? 'border-primary bg-primary/10 text-primary'
+                        : 'border-surface-variant bg-surface-container-high text-on-surface-variant'
+                    }`}>
+                    {form.pular_fins_de_semana ? 'Pular sáb/dom ✓' : 'Incluir todos'}
+                  </button>
+                </div>
+              </div>
+
+              {/* Preview: quantos slots serão criados */}
+              {form.data_inicio && form.hora_inicio < form.hora_fim && (
+                <p className="text-xs text-on-surface-variant bg-surface-container-high rounded-xl px-4 py-3">
+                  ℹ️ Serão criados aprox. <strong>
+                    {Math.floor(
+                      (Number(form.hora_fim.split(':')[0]) * 60 + Number(form.hora_fim.split(':')[1]) -
+                       Number(form.hora_inicio.split(':')[0]) * 60 - Number(form.hora_inicio.split(':')[1]))
+                      / form.intervalo_minutos
+                    ) * form.repetir_dias} slots</strong> (excluindo fins de semana se marcado).
+                </p>
               )}
+
               <div className="flex gap-3 pt-2">
                 <button type="button" onClick={() => setModalAberto(false)} className="flex-1 h-12 rounded-2xl border border-outline font-bold">Cancelar</button>
                 <button type="submit" disabled={enviando} className="flex-1 h-12 rounded-2xl bg-primary text-white font-bold disabled:opacity-50">
-                  {enviando ? 'Criando...' : 'Criar Horário'}
+                  {enviando ? 'Criando...' : 'Criar Horários'}
                 </button>
               </div>
             </form>

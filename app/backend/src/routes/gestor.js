@@ -44,6 +44,7 @@ const {
   statusSolicitacaoSchema,
   atendimentoSchema,
   comunicadoSchema,
+  agendamentoLoteSchema,
   encaminhamentoSchema,
   vigilanciaSchema,
 } = require('../validators/securitySchemas');
@@ -1383,6 +1384,73 @@ router.get('/agendamentos', async (req, res) => {
 // ─── POST /api/gestor/agendamento ─────────────────────────────────────────────
 // Épico 4: Cria um slot de horário disponível para agendamento de pacientes.
 // Body: { data_hora, duracao_minutos, gestor_responsavel_id }
+// â”€â”€â”€ POST /api/gestor/agendamentos/lote â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Cria uma grade de slots disponiveis em uma unica transacao. O gestor informa
+// o intervalo e a API deriva ubs_id/gestor_responsavel_id do token JWT.
+router.post('/agendamentos/lote', validateBody(agendamentoLoteSchema), async (req, res) => {
+  try {
+    const {
+      data_inicio,
+      hora_inicio,
+      hora_fim,
+      intervalo_minutos,
+      repetir_dias,
+      pular_fins_de_semana,
+    } = req.body;
+
+    const [hIni, mIni] = hora_inicio.split(':').map(Number);
+    const [hFim, mFim] = hora_fim.split(':').map(Number);
+    const inicioMin = hIni * 60 + mIni;
+    const fimMin = hFim * 60 + mFim;
+
+    // Garante que a janela tenha duracao positiva antes de gerar slots.
+    if (inicioMin >= fimMin) {
+      return res.status(400).json({ error: 'A hora inicial deve ser menor que a hora final.' });
+    }
+
+    const slots = [];
+
+    for (let d = 0; d < repetir_dias; d++) {
+      const dia = new Date(`${data_inicio}T${hora_inicio}:00`);
+      dia.setDate(dia.getDate() + d);
+
+      if (Number.isNaN(dia.getTime())) {
+        return res.status(400).json({ error: 'Data inicial invalida.' });
+      }
+
+      const diaSemana = dia.getDay(); // 0 = domingo, 6 = sabado
+      if (pular_fins_de_semana && (diaSemana === 0 || diaSemana === 6)) continue;
+
+      for (let min = inicioMin; min < fimMin; min += intervalo_minutos) {
+        const dataHora = new Date(dia);
+        dataHora.setHours(Math.floor(min / 60), min % 60, 0, 0);
+
+        slots.push({
+          ubs_id:                 req.user.ubs_id,
+          gestor_responsavel_id:  req.user.id,
+          data_hora:              dataHora.toISOString(),
+          duracao_minutos:        intervalo_minutos,
+          status:                 'disponivel',
+          paciente_id:            null,
+        });
+      }
+    }
+
+    if (slots.length === 0) {
+      return res.status(400).json({ error: 'Nenhum horario gerado. Verifique os parametros e o intervalo de datas.' });
+    }
+
+    const inseridos = await knex.transaction(async (trx) => trx('agendamentos_gestao')
+      .insert(slots)
+      .returning(['id', 'data_hora', 'duracao_minutos', 'status']));
+
+    return res.status(201).json({ criados: inseridos.length, slots: inseridos });
+  } catch (err) {
+    console.error('[POST /gestor/agendamentos/lote]', err);
+    return res.status(500).json({ error: 'Erro ao criar agendamentos em lote.' });
+  }
+});
+
 router.post('/agendamento', async (req, res) => {
   try {
     const { data_hora, duracao_minutos = 30, gestor_responsavel_id } = req.body;
