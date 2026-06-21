@@ -53,3 +53,5 @@ export function formatarDataBR(iso, opcoes) {
     year: 'numeric',
   });
 }
+
+// Vite HMR trigger: 1

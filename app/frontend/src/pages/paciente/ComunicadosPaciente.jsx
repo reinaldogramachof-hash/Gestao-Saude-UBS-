@@ -107,11 +107,15 @@ export default function ComunicadosPaciente() {
     <PacienteLayout>
       {/* ── Cabeçalho verde padrão do portal do paciente com ação em lote ── */}
       <header className="bg-primary pt-12 pb-4 px-6">
-        <div className="flex justify-between items-start">
+        <div className="flex flex-wrap justify-between items-center gap-3">
           <div>
-            <h1 className="text-on-primary text-2xl font-extrabold flex items-center gap-2">
-              Comunicados 
-              {unreadCount > 0 && <span className="text-sm bg-red-500 text-white px-2 py-0.5 rounded-full">({unreadCount} novos)</span>}
+            <h1 className="text-on-primary text-2xl font-extrabold flex flex-wrap items-center gap-2">
+              <span>Comunicados</span>
+              {unreadCount > 0 && (
+                <span className="text-sm bg-red-500 text-white px-2 py-0.5 rounded-full whitespace-nowrap">
+                  ({unreadCount} {unreadCount > 1 ? 'novos' : 'novo'})
+                </span>
+              )}
             </h1>
             <p className="text-white/70 text-sm mt-1">Avisos da sua unidade de saúde</p>
           </div>

@@ -72,7 +72,7 @@ export default function DetalheSolicitacao() {
 
       <main className="px-6 py-6 pb-10">
         {/* O detalhe usa apenas o texto preparado para o paciente. */}
-        <h2 className="text-2xl font-bold text-on-surface">{sol.descricao_paciente}</h2>
+        <h2 className="text-2xl font-bold text-on-surface break-words">{sol.descricao_paciente}</h2>
         {sol.observacao_paciente && (
           <p className="text-sm text-on-surface-variant mt-2">{sol.observacao_paciente}</p>
         )}
@@ -153,16 +153,19 @@ export default function DetalheSolicitacao() {
         )}
 
         {/* ── Timeline de histórico de status ── */}
-        <div className="relative border-l-2 border-surface-variant ml-3 space-y-8">
+        <div className="relative ml-2 space-y-8">
+          {/* Linha vertical centralizada em ml-2 (8px), dot com w-4 (16px) fica perfeitamente centrado */}
+          <div className="absolute top-2 bottom-0 left-[7px] w-[2px] bg-surface-variant"></div>
+
           {sol.historico?.length > 0 ? (
             sol.historico.map(h => (
-              <div key={h.id} className="relative pl-6">
+              <div key={h.id} className="relative pl-8">
                 {/* Marcador da timeline */}
-                <div className="absolute -left-[9px] top-1 w-4 h-4 rounded-full border-4 border-surface-container-lowest bg-primary"></div>
+                <div className="absolute left-0 top-1 w-4 h-4 rounded-full border-4 border-surface-container-lowest bg-primary z-10"></div>
                 <p className="text-xs font-bold text-primary mb-1">
                   {formatarDataBR(h.alterado_em)}
                 </p>
-                <div className={`p-4 rounded-xl rounded-tl-none ${STATUS_CORES[h.status_novo] || 'bg-surface-container-low text-on-surface'}`}>
+                <div className={`p-4 rounded-xl ${STATUS_CORES[h.status_novo] || 'bg-surface-container-low text-on-surface'}`}>
                   <h4 className="font-bold text-sm mb-1">
                     {STATUS_LABELS[h.status_novo] || 'Status em atualização'}
                   </h4>
@@ -173,8 +176,8 @@ export default function DetalheSolicitacao() {
               </div>
             ))
           ) : (
-            <div className="pl-6">
-              <div className="absolute -left-[9px] top-1 w-4 h-4 rounded-full border-4 border-surface-container-lowest bg-surface-variant"></div>
+            <div className="relative pl-8">
+              <div className="absolute left-0 top-1 w-4 h-4 rounded-full border-4 border-surface-container-lowest bg-surface-variant z-10"></div>
               <p className="text-sm text-on-surface-variant">Ainda não há histórico para esta solicitação.</p>
             </div>
           )}
