@@ -10,22 +10,36 @@
     <!-- ── PWA: Manifest e identidade nativa ─────────────────────────────── -->
     <link rel="manifest" href="/manifest.json" />
 
-    <!-- Cor da barra de status no Android (igual ao theme_color do manifest) -->
+    <!-- Cor da barra de status no Android Chrome (igual ao theme_color do manifest) -->
     <meta name="theme-color" content="#16a34a" />
 
-    <!-- iOS: permite adicionar à tela inicial como app nativo -->
+    <!-- ── iOS: Suporte a "Adicionar à Tela Inicial" ─────────────────────── -->
+    <!-- apple-mobile-web-app-capable habilita modo standalone no iOS (sem barra do Safari) -->
     <meta name="apple-mobile-web-app-capable" content="yes" />
-        <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <!-- default | black | black-translucent (barra de status transparente sobre o app) -->
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <!-- Nome exibido abaixo do ícone na tela inicial do iOS -->
     <meta name="apple-mobile-web-app-title" content="UBS+" />
-    <link rel="apple-touch-icon" href="/icon-192.svg" />
 
-    <!-- Windows/Edge: tile da tela inicial -->
+    <!-- iOS NÃO lê o manifest.json para ícones — exige apple-touch-icon em raster (WebP/PNG).
+         SVG é ignorado pelo Safari. Usamos icon-192.webp para todos os tamanhos iOS. -->
+    <link rel="apple-touch-icon" sizes="180x180" href="/icon-192.webp" />
+    <link rel="apple-touch-icon" sizes="167x167" href="/icon-192.webp" />
+    <link rel="apple-touch-icon" sizes="152x152" href="/icon-192.webp" />
+    <link rel="apple-touch-icon" sizes="120x120" href="/icon-192.webp" />
+    <!-- Fallback genérico para versões mais antigas do iOS -->
+    <link rel="apple-touch-icon" href="/icon-192.webp" />
+
+    <!-- ── Windows / Edge: tile da tela inicial ──────────────────────────── -->
     <meta name="msapplication-TileColor" content="#16a34a" />
-    <meta name="msapplication-TileImage" content="/icon-192.svg" />
+    <meta name="msapplication-TileImage" content="/icon-192.webp" />
 
-    <!-- Ícone padrão da aba do browser -->
+    <!-- ── Ícone da aba do browser (favicon) ─────────────────────────────── -->
+    <!-- SVG é ideal para browsers modernos (escalável, sem blur em alta DPI) -->
     <link rel="icon" type="image/svg+xml" href="/icon-72.svg" />
+    <!-- Fallback WebP para browsers que não suportam SVG favicon (ex: Safari ≤ 15) -->
+    <link rel="alternate icon" type="image/webp" href="/icon-72.webp" />
 
     <!-- Fontes do Google: Manrope (títulos) + Inter (corpo de texto) -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />

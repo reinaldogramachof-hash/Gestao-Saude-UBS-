@@ -44,7 +44,7 @@ export default function LoginGestor() {
         {/* ── Logo e título ── */}
         <div className="text-center mb-8">
           <div className="w-24 h-24 flex items-center justify-center mx-auto mb-5">
-            <img src="/logo.svg" alt="Logo" className="w-full h-full object-contain" />
+            <img src="/logo.webp" alt="Logo" className="w-full h-full object-contain" />
           </div>
           <h1 className="text-3xl font-extrabold tracking-tight text-on-background">Gestão Saúde</h1>
           <p className="text-on-surface-variant font-medium mt-1">Portal do Gestor</p>
