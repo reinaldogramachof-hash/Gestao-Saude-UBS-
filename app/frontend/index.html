@@ -2,54 +2,46 @@
 <html lang="pt-BR">
   <head>
     <meta charset="UTF-8" />
-    <!-- viewport: impede zoom acidental em inputs mobile, mantém layout intacto -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>Gestão Saúde UBS+</title>
     <meta name="description" content="Portal de saúde das Unidades Básicas de Saúde de São José dos Campos" />
 
-    <!-- ── PWA: Manifest e identidade nativa ─────────────────────────────── -->
+    <!-- ── PWA: Manifest ─────────────────────────────────────────────────── -->
     <link rel="manifest" href="/manifest.json" />
-
-    <!-- Cor da barra de status no Android Chrome (igual ao theme_color do manifest) -->
     <meta name="theme-color" content="#16a34a" />
 
-    <!-- ── iOS: Suporte a "Adicionar à Tela Inicial" ─────────────────────── -->
-    <!-- apple-mobile-web-app-capable habilita modo standalone no iOS (sem barra do Safari) -->
+    <!-- ── iOS: "Adicionar à Tela Inicial" ───────────────────────────────── -->
+    <!-- Habilita modo standalone (sem barra do Safari) -->
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="mobile-web-app-capable" content="yes" />
-    <!-- default | black | black-translucent (barra de status transparente sobre o app) -->
+    <!-- Barra de status transparente sobre o conteúdo do app -->
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <!-- Nome exibido abaixo do ícone na tela inicial do iOS -->
+    <!-- Nome exibido abaixo do ícone na tela inicial -->
     <meta name="apple-mobile-web-app-title" content="UBS+" />
 
-    <!-- iOS NÃO lê o manifest.json para ícones — exige apple-touch-icon em raster (WebP/PNG).
-         SVG é ignorado pelo Safari. Usamos logo.webp para todos os tamanhos iOS. -->
-    <link rel="apple-touch-icon" sizes="180x180" href="/logo.webp" />
-    <link rel="apple-touch-icon" sizes="167x167" href="/logo.webp" />
-    <link rel="apple-touch-icon" sizes="152x152" href="/logo.webp" />
-    <link rel="apple-touch-icon" sizes="120x120" href="/logo.webp" />
-    <!-- Fallback genérico para versões mais antigas do iOS -->
-    <link rel="apple-touch-icon" href="/logo.webp" />
+    <!-- iOS ignora o manifest.json para ícones — exige apple-touch-icon PNG/WebP.
+         apple-touch-icon.png tem fundo verde sólido (iOS aplica seus próprios cantos arredondados). -->
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+    <link rel="apple-touch-icon" sizes="167x167" href="/apple-touch-icon.png" />
+    <link rel="apple-touch-icon" sizes="152x152" href="/apple-touch-icon.png" />
+    <link rel="apple-touch-icon" sizes="120x120" href="/apple-touch-icon.png" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
 
-    <!-- ── Windows / Edge: tile da tela inicial ──────────────────────────── -->
+    <!-- ── Windows / Edge ────────────────────────────────────────────────── -->
     <meta name="msapplication-TileColor" content="#16a34a" />
-    <meta name="msapplication-TileImage" content="/logo.webp" />
+    <meta name="msapplication-TileImage" content="/icon-192.webp" />
 
-    <!-- ── Ícone da aba do browser (favicon) ─────────────────────────────── -->
-    <!-- SVG é ideal para browsers modernos (escalável, sem blur em alta DPI) mas vamos usar webp se svg foi deletado -->
-    <link rel="icon" type="image/webp" href="/logo.webp" />
-    <!-- Fallback WebP para browsers que não suportam SVG favicon (ex: Safari ≤ 15) -->
-    <link rel="alternate icon" type="image/webp" href="/logo.webp" />
+    <!-- ── Favicon (aba do browser) ──────────────────────────────────────── -->
+    <link rel="icon" type="image/svg+xml" href="/icon-72.svg" />
+    <link rel="alternate icon" type="image/webp" href="/icon-72.webp" />
 
-    <!-- Fontes do Google: Manrope (títulos) + Inter (corpo de texto) -->
+    <!-- Fontes -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
       href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap"
       rel="stylesheet"
     />
-
-    <!-- Material Symbols: ícones usados em todos os componentes -->
     <link
       href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200"
       rel="stylesheet"

@@ -6,7 +6,7 @@
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait-primary",
-  "background_color": "#f0fdf4",
+  "background_color": "#16a34a",
   "theme_color": "#16a34a",
   "lang": "pt-BR",
   "categories": ["health", "medical"],
@@ -30,7 +30,7 @@
       "purpose": "any"
     },
     {
-      "src": "/icon-512.webp",
+      "src": "/icon-512-maskable.webp",
       "sizes": "512x512",
       "type": "image/webp",
       "purpose": "maskable"

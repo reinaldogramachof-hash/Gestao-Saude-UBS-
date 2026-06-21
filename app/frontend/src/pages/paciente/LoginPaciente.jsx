@@ -67,7 +67,7 @@ export default function LoginPaciente() {
       {/* ── Logo e nome do sistema ── */}
       <div className="w-full max-w-md mb-8 text-center">
         <div className="w-24 h-24 flex items-center justify-center mx-auto mb-5">
-          <img src="/logo.webp" alt="Logo" className="w-full h-full object-contain invert" />
+          <img src="/logo.webp" alt="Logo" className="w-full h-full object-contain" />
         </div>
         <h1 className="text-3xl font-extrabold tracking-tight text-on-background mb-1">Gestão Saúde</h1>
         <p className="text-on-surface-variant font-medium">Portal do Paciente — São José dos Campos</p>
