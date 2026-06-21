@@ -172,7 +172,7 @@ export default function RegulacaoGestor() {
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8">
         <div>
           <h1 className="text-2xl md:text-3xl font-bold text-on-background">Regulação Externa</h1>
-          <p className="text-on-surface-variant mt-1">Gerencie os encaminhamentos para CAPS, AMEs e Hospitais.</p>
+          <p className="text-on-surface-variant mt-1">Gerencie os encaminhamentos para CAPS, AMEs, UPAs e Hospitais.</p>
         </div>
         <button
           onClick={() => setModalCriarAberto(true)}
@@ -395,6 +395,7 @@ export default function RegulacaoGestor() {
                   <option value="">Selecione</option>
                   <option value="AME">AME</option>
                   <option value="CAPS">CAPS</option>
+                  <option value="UPA">UPA</option>
                   <option value="HOSPITAL_MUNICIPAL">Hospital Municipal</option>
                   <option value="CENTRO_ESPECIALIDADES">Centro de Especialidades</option>
                   <option value="OUTROS">Outros</option>

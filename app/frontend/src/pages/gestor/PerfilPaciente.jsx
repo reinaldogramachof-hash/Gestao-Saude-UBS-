@@ -53,6 +53,7 @@ const TIPO_UNIDADE_LABEL = {
   ubs:                  'UBS',
   ame:                  'AME',
   caps:                 'CAPS',
+  upa:                  'UPA',
   centro_especialidades:'Centro de Especialidades',
   hospital:             'Hospital',
   pronto_socorro:       'Pronto-Socorro',
@@ -63,6 +64,7 @@ const TIPO_UNIDADE_ICON = {
   ubs:                  'home_health',
   ame:                  'medical_services',
   caps:                 'psychology',
+  upa:                  'local_hospital',
   centro_especialidades:'domain',
   hospital:             'local_hospital',
   pronto_socorro:       'emergency',
@@ -1144,6 +1146,7 @@ export default function PerfilPaciente() {
                     <option value="ubs">UBS</option>
                     <option value="ame">AME</option>
                     <option value="caps">CAPS</option>
+                    <option value="upa">UPA</option>
                     <option value="centro_especialidades">Centro de Especialidades</option>
                     <option value="hospital">Hospital</option>
                     <option value="pronto_socorro">Pronto-Socorro</option>
@@ -1156,7 +1159,7 @@ export default function PerfilPaciente() {
               <div className="space-y-2">
                 <label className="text-sm font-bold text-on-surface-variant">Nome da unidade*</label>
                 <input required
-                  placeholder="Ex: UBS Vila Industrial, AME Zona Leste, Hospital Municipal de SJC"
+                  placeholder="Ex: UBS Vila Industrial, UPA Norte, AME Zona Leste"
                   value={formAtendimento.unidade}
                   onChange={e => setFormAtendimento(p => ({ ...p, unidade: e.target.value }))}
                   className="w-full h-12 px-4 bg-surface-container-high border-none rounded-xl outline-none font-medium" />

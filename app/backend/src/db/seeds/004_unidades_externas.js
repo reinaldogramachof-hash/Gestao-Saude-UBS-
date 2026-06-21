@@ -38,6 +38,20 @@ exports.seed = async function seed(knex) {
       senha_hash,
       ativo: true,
     },
+    {
+      nome: 'UPA Norte SJC',
+      tipo: 'UPA',
+      email: 'upa.norte@sjc.sp.gov.br',
+      senha_hash,
+      ativo: true,
+    },
+    {
+      nome: 'UPA Sul SJC',
+      tipo: 'UPA',
+      email: 'upa.sul@sjc.sp.gov.br',
+      senha_hash,
+      ativo: true,
+    },
   ];
 
   await knex('unidades_externas')
