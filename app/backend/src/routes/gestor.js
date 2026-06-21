@@ -45,6 +45,7 @@ const {
   atendimentoSchema,
   comunicadoSchema,
   agendamentoLoteSchema,
+  solicitacaoSchema,
   encaminhamentoSchema,
   vigilanciaSchema,
 } = require('../validators/securitySchemas');
@@ -113,6 +114,8 @@ const CAMPOS_SOLICITACAO_GESTOR = [
   'observacao_gestor',
   'observacao_paciente',
   'local_executor',
+  'catalogo_id',
+  'unidade_externa_id',
   'resultado',
   'cid_10',
   'criado_em',
@@ -1035,9 +1038,57 @@ router.put('/paciente/:id', async (req, res) => {
 // ─── POST /api/gestor/paciente/:id/solicitacao ────────────────────────────────
 // Cria uma nova solicitação para um paciente específico.
 // Body: { tipo, descricao_interna, descricao_paciente, data_prevista }
-router.post('/paciente/:id/solicitacao', async (req, res) => {
+// â”€â”€â”€ GET /api/gestor/catalogo-procedimentos â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Lista procedimentos ativos para comboboxes. O filtro por tipo tambem inclui
+// itens sem tipo_unidade, pois eles podem ser usados em qualquer unidade.
+router.get('/catalogo-procedimentos', async (req, res) => {
   try {
-    const { tipo, descricao_interna, descricao_paciente, data_prevista, data_solicitacao, prioridade, local_executor } = req.body;
+    const { q, tipo_unidade } = req.query;
+
+    let query = knex('catalogo_procedimentos')
+      .where({ ativo: true })
+      .select('id', 'nome', 'especialidade', 'tipo_unidade');
+
+    if (tipo_unidade) {
+      query = query.where((builder) => {
+        builder.where('tipo_unidade', tipo_unidade).orWhereNull('tipo_unidade');
+      });
+    }
+
+    if (q && q.trim().length > 0) {
+      query = query.whereILike('nome', `%${q.trim()}%`);
+    }
+
+    const items = await query.orderBy('nome');
+    return res.json(items);
+  } catch (err) {
+    console.error('[GET /gestor/catalogo-procedimentos]', err);
+    return res.status(500).json({ error: 'Erro ao buscar catalogo de procedimentos.' });
+  }
+});
+
+
+// â”€â”€â”€ GET /api/gestor/unidades-externas â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Lista unidades externas ativas para dropdowns do gestor, sem retornar dados
+// sensiveis como email, senha_hash ou token_version.
+router.get('/unidades-externas', async (req, res) => {
+  try {
+    const unidades = await knex('unidades_externas')
+      .where({ ativo: true })
+      .select('id', 'nome', 'tipo')
+      .orderBy('nome');
+
+    return res.json(unidades);
+  } catch (err) {
+    console.error('[GET /gestor/unidades-externas]', err);
+    return res.status(500).json({ error: 'Erro ao buscar unidades externas.' });
+  }
+});
+
+
+router.post('/paciente/:id/solicitacao', validateBody(solicitacaoSchema), async (req, res) => {
+  try {
+    const { tipo, descricao_interna, descricao_paciente, data_prevista, data_solicitacao, prioridade, local_executor, catalogo_id, unidade_externa_id } = req.body;
 
     if (!tipo || !descricao_interna || !descricao_paciente) {
       return res.status(400).json({ error: 'Tipo, descrição interna e descrição para o paciente são obrigatórios.' });
@@ -1055,6 +1106,28 @@ router.post('/paciente/:id/solicitacao', async (req, res) => {
 
     // A solicitação e seu primeiro evento são uma única operação de negócio.
     // Se o histórico falhar, a transação desfaz também a solicitação.
+    // Valida vinculos opcionais antes da transacao para evitar gravar IDs
+    // inexistentes e para retornar erro claro ao frontend.
+    if (catalogo_id) {
+      const catalogo = await knex('catalogo_procedimentos')
+        .where({ id: catalogo_id, ativo: true })
+        .first('id');
+
+      if (!catalogo) {
+        return res.status(400).json({ error: 'Procedimento do catalogo nao encontrado.' });
+      }
+    }
+
+    if (unidade_externa_id) {
+      const unidadeExterna = await knex('unidades_externas')
+        .where({ id: unidade_externa_id, ativo: true })
+        .first('id');
+
+      if (!unidadeExterna) {
+        return res.status(400).json({ error: 'Unidade externa nao encontrada.' });
+      }
+    }
+
     const solicitacao = await knex.transaction(async (trx) => {
       const [novaSolicitacao] = await trx('solicitacoes')
         .insert({
@@ -1070,6 +1143,8 @@ router.post('/paciente/:id/solicitacao', async (req, res) => {
           data_prevista:    data_prevista || null,
           // Local onde o serviço será executado (NULL = própria UBS)
           local_executor:   local_executor || null,
+          catalogo_id:      catalogo_id || null,
+          unidade_externa_id: unidade_externa_id || null,
         })
         .returning(CAMPOS_SOLICITACAO_GESTOR);
 

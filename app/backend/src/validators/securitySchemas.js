@@ -68,6 +68,20 @@ const agendamentoLoteSchema = Joi.object({
   pular_fins_de_semana: Joi.boolean().default(true),
 });
 
+// Schema da solicitacao criada pelo gestor. Os novos vinculos sao opcionais
+// para preservar o fluxo antigo de texto livre durante a transicao ao catalogo.
+const solicitacaoSchema = Joi.object({
+  tipo: Joi.string().trim().max(50).required(),
+  descricao_interna: Joi.string().trim().max(200).required(),
+  descricao_paciente: Joi.string().trim().max(200).required(),
+  data_prevista: Joi.string().allow('', null).pattern(/^\d{4}-\d{2}-\d{2}$/),
+  data_solicitacao: Joi.string().allow('', null).pattern(/^\d{4}-\d{2}-\d{2}$/),
+  prioridade: Joi.string().valid('rotina', 'prioritario', 'urgente').default('rotina'),
+  local_executor: Joi.string().allow('', null).max(200),
+  catalogo_id: idNumerico.allow('', null),
+  unidade_externa_id: idNumerico.allow('', null),
+}).unknown(false);
+
 const encaminhamentoSchema = Joi.object({
   paciente_id: idNumerico.required(),
   destino: Joi.string().trim().max(200).required(),
@@ -92,6 +106,7 @@ module.exports = {
   atendimentoSchema,
   comunicadoSchema,
   agendamentoLoteSchema,
+  solicitacaoSchema,
   encaminhamentoSchema,
   vigilanciaSchema,
 };
