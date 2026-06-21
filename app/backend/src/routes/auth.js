@@ -16,7 +16,7 @@ const rateLimit = require('express-rate-limit');
 const knex = require('../db/knex');
 const validateBody = require('../middleware/validateBody');
 const { registrarAuditoria } = require('../services/auditService');
-const { loginGestorSchema, loginPacienteSchema } = require('../validators/securitySchemas');
+const { loginGestorSchema, loginPacienteSchema, loginExternaSchema } = require('../validators/securitySchemas');
 
 const router = express.Router();
 
@@ -152,6 +152,62 @@ router.post('/login-paciente', loginRateLimiter, validateBody(loginPacienteSchem
     return res.json({ token, ...payload });
   } catch (err) {
     console.error('[login-paciente]', err);
+    return res.status(500).json({ error: 'Erro interno do servidor.' });
+  }
+});
+
+router.post('/login-externa', loginRateLimiter, validateBody(loginExternaSchema), async (req, res) => {
+  try {
+    const { email, senha } = req.body;
+
+    const unidade = await knex('unidades_externas')
+      .where({ email, ativo: true })
+      .first();
+
+    if (!unidade) {
+      await registrarAuditoria(req, {
+        ator_tipo: 'externa',
+        acao: 'login_externa_falha',
+        entidade: 'unidades_externas',
+        metadata: { email },
+      });
+      return res.status(401).json({ error: 'Credenciais invalidas.' });
+    }
+
+    const senhaValida = await bcrypt.compare(senha, unidade.senha_hash);
+    if (!senhaValida) {
+      await registrarAuditoria(req, {
+        ator_tipo: 'externa',
+        ator_id: unidade.id,
+        acao: 'login_externa_falha',
+        entidade: 'unidades_externas',
+        entidade_id: unidade.id,
+        metadata: { email },
+      });
+      return res.status(401).json({ error: 'Credenciais invalidas.' });
+    }
+
+    const payload = {
+      id: unidade.id,
+      nome: unidade.nome,
+      tipo: 'externa',
+      tipo_unidade: unidade.tipo,
+      token_version: unidade.token_version || 0,
+    };
+
+    const token = gerarJwtSeguro(payload, { expiresIn: '12h' });
+
+    await registrarAuditoria(req, {
+      ator_tipo: 'externa',
+      ator_id: unidade.id,
+      acao: 'login_externa_sucesso',
+      entidade: 'unidades_externas',
+      entidade_id: unidade.id,
+    });
+
+    return res.json({ token, ...payload });
+  } catch (err) {
+    console.error('[login-externa]', err);
     return res.status(500).json({ error: 'Erro interno do servidor.' });
   }
 });

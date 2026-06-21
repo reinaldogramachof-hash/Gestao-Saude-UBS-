@@ -21,6 +21,7 @@
  */
 const express = require('express');
 const knex    = require('../db/knex');
+const { registrarAuditoria } = require('../services/auditService');
 
 const router = express.Router();
 
@@ -490,6 +491,60 @@ router.delete('/push-subscribe', async (req, res) => {
   } catch (err) {
     console.error('[DELETE /paciente/push-subscribe]', err);
     return res.status(500).json({ error: 'Erro ao remover subscription.' });
+  }
+});
+
+// ─── PUT /api/paciente/encaminhamento/:id/confirmar ──────────────────────────
+// Permite que o paciente confirme presença em procedimento agendado por unidade
+// externa. A busca filtra por paciente_id = req.user.id para impedir que um
+// paciente confirme encaminhamento de outra pessoa.
+router.put('/encaminhamento/:id/confirmar', async (req, res) => {
+  try {
+    const encaminhamento = await knex('encaminhamentos')
+      .where({ id: req.params.id, paciente_id: req.user.id })
+      .first();
+
+    if (!encaminhamento) {
+      return res.status(404).json({ error: 'Encaminhamento nao encontrado.' });
+    }
+
+    if (encaminhamento.status !== 'AGUARDANDO_CONFIRMACAO') {
+      return res.status(409).json({ error: 'Este encaminhamento nao esta aguardando confirmacao.' });
+    }
+
+    await knex.transaction(async (trx) => {
+      await trx('encaminhamentos')
+        .where({ id: encaminhamento.id })
+        .update({
+          status: 'CONFIRMADO_PACIENTE',
+          confirmado_paciente: true,
+          data_confirmacao_paciente: trx.fn.now(),
+          atualizado_em: trx.fn.now(),
+        });
+
+      if (encaminhamento.solicitacao_id) {
+        await trx('historico_status').insert({
+          solicitacao_id: encaminhamento.solicitacao_id,
+          gestor_id: null,
+          status_anterior: 'data_marcada',
+          status_novo: 'data_marcada',
+          observacao: 'Paciente confirmou presenca',
+        });
+      }
+    });
+
+    await registrarAuditoria(req, {
+      acao: 'paciente_confirmou_presenca',
+      entidade: 'encaminhamentos',
+      entidade_id: encaminhamento.id,
+      escopo_ubs_id: encaminhamento.ubs_id,
+      metadata: { unidade_externa_id: encaminhamento.unidade_externa_id },
+    });
+
+    return res.json({ ok: true, status: 'CONFIRMADO_PACIENTE' });
+  } catch (err) {
+    console.error('[PUT /paciente/encaminhamento/:id/confirmar]', err);
+    return res.status(500).json({ error: 'Erro ao confirmar presença.' });
   }
 });
 

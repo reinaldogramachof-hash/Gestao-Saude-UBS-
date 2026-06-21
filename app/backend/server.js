@@ -24,6 +24,7 @@ const authMiddleware  = require('./src/middleware/auth');
 const rotasAuth       = require('./src/routes/auth');
 const rotasGestor     = require('./src/routes/gestor');
 const rotasPaciente   = require('./src/routes/paciente');
+const rotasExterna    = require('./src/routes/externa');
 const adminRouter     = require('./src/routes/admin');
 
 const app = express();
@@ -92,6 +93,7 @@ app.use('/api/auth', rotasAuth);
 // O authMiddleware verifica o token antes de qualquer rota abaixo
 app.use('/api/gestor',   authMiddleware, rotasGestor);
 app.use('/api/paciente', authMiddleware, rotasPaciente);
+app.use('/api/externa', authMiddleware, rotasExterna);
 app.use('/api/admin', authMiddleware, adminRouter);
 
 // ─── Inicialização ────────────────────────────────────────────────────────────

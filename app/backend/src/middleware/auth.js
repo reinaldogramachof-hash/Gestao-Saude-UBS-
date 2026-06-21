@@ -8,7 +8,13 @@
 const jwt = require('jsonwebtoken');
 const knex = require('../db/knex');
 
-module.exports = async (req, res, next) => {
+const TABELAS_POR_TIPO = {
+  gestor: 'usuarios_gestores',
+  paciente: 'pacientes',
+  externa: 'unidades_externas',
+};
+
+async function authMiddleware(req, res, next) {
   const token = req.headers.authorization?.split(' ')[1];
 
   if (!token) {
@@ -18,11 +24,11 @@ module.exports = async (req, res, next) => {
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-    if (!['gestor', 'paciente'].includes(decoded.tipo)) {
+    if (!TABELAS_POR_TIPO[decoded.tipo]) {
       return res.status(401).json({ error: 'Token invalido!' });
     }
 
-    const tabela = decoded.tipo === 'gestor' ? 'usuarios_gestores' : 'pacientes';
+    const tabela = TABELAS_POR_TIPO[decoded.tipo];
     const usuarioAtual = await knex(tabela)
       .where({ id: decoded.id, ativo: true })
       .select('id', 'token_version')
@@ -38,4 +44,14 @@ module.exports = async (req, res, next) => {
   } catch (error) {
     return res.status(401).json({ error: 'Token invalido!' });
   }
+}
+
+const soExterna = (req, res, next) => {
+  if (req.user?.tipo !== 'externa') {
+    return res.status(403).json({ error: 'Acesso exclusivo para unidades externas.' });
+  }
+  next();
 };
+
+module.exports = authMiddleware;
+module.exports.soExterna = soExterna;

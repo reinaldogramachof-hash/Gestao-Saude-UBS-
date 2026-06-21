@@ -18,6 +18,11 @@ const loginPacienteSchema = Joi.object({
   data_nascimento: Joi.string().pattern(/^\d{4}-\d{2}-\d{2}$/).required(),
 });
 
+const loginExternaSchema = Joi.object({
+  email: Joi.string().email().required(),
+  senha: Joi.string().min(6).required(),
+});
+
 const statusSolicitacaoSchema = Joi.object({
   status_novo: Joi.string().valid(
     'em_analise',
@@ -71,6 +76,7 @@ const vigilanciaSchema = Joi.object({
 module.exports = {
   loginGestorSchema,
   loginPacienteSchema,
+  loginExternaSchema,
   statusSolicitacaoSchema,
   atendimentoSchema,
   comunicadoSchema,
