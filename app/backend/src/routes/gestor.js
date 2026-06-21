@@ -1250,6 +1250,7 @@ router.get('/comunicados', async (req, res) => {
         'comunicados.titulo',
         'comunicados.mensagem',
         'comunicados.tipo',
+        'comunicados.urgente',
         'comunicados.criado_em',
         'comunicados.paciente_id',
         'pacientes.nome as paciente_nome'
