@@ -207,7 +207,12 @@ export default function PerfilPaciente() {
   const [enviandoSolicitacao, setEnviandoSolicitacao] = useState(false);
   const [formSolicitacao, setFormSolicitacao] = useState({
     tipo: 'exame', descricao_interna: '', descricao_paciente: '', prioridade: 'rotina', data_prevista: '', local_executor: '',
+    catalogo_id: null, unidade_externa_id: null,
   });
+  const [catalogoSugestoes, setCatalogoSugestoes] = useState([]);
+  const [unidadesExternas, setUnidadesExternas] = useState([]);
+  const [buscaCatalogo, setBuscaCatalogo] = useState('');
+  const [mostrarSugestoes, setMostrarSugestoes] = useState(false);
   const [modalStatusAberto, setModalStatusAberto] = useState(false);
   const [solicitacaoSelecionada, setSolicitacaoSelecionada] = useState(null);
   const [enviandoStatus, setEnviandoStatus] = useState(false);
@@ -261,7 +266,10 @@ export default function PerfilPaciente() {
       .finally(() => setLoading(false));
   };
 
-  useEffect(() => { carregarPaciente(); }, [id]);
+  useEffect(() => {
+    carregarPaciente();
+    api.get('/gestor/unidades-externas').then(r => setUnidadesExternas(r.data)).catch(() => {});
+  }, [id]);
 
   const iniciarEdicaoDados = () => {
     // Pré-preenche dados pessoais E dados clínicos do estado atual do paciente
@@ -338,7 +346,8 @@ export default function PerfilPaciente() {
       });
       toast.success('Solicitação criada com sucesso!');
       setModalSolicitacaoAberto(false);
-      setFormSolicitacao({ tipo: 'exame', descricao_interna: '', descricao_paciente: '', prioridade: 'rotina', data_prevista: '', local_executor: '' });
+      setFormSolicitacao({ tipo: 'exame', descricao_interna: '', descricao_paciente: '', prioridade: 'rotina', data_prevista: '', local_executor: '', catalogo_id: null, unidade_externa_id: null });
+      setBuscaCatalogo('');
       carregarPaciente();
     } catch {
       toast.error('Erro ao criar solicitação.');
@@ -988,11 +997,65 @@ export default function PerfilPaciente() {
                   </select>
                 </div>
               </div>
-              <div className="space-y-2">
-                <label className="text-sm font-bold text-on-surface-variant">Nome técnico (uso interno)*</label>
-                <input required placeholder="Ex: Hemograma completo" value={formSolicitacao.descricao_interna}
-                  onChange={e => setFormSolicitacao(p => ({ ...p, descricao_interna: e.target.value }))}
-                  className="w-full h-12 px-4 bg-surface-container-high border-none rounded-xl outline-none font-medium" />
+              {/* Combobox com autocomplete do catálogo de procedimentos */}
+              <div className="space-y-2 relative">
+                <label className="text-sm font-bold text-on-surface-variant">
+                  Nome técnico (uso interno)*
+                </label>
+                <input
+                  required
+                  placeholder="Ex: Hemograma completo — busque ou escreva"
+                  value={buscaCatalogo}
+                  onChange={async (e) => {
+                    const val = e.target.value;
+                    setBuscaCatalogo(val);
+                    setFormSolicitacao(p => ({ ...p, descricao_interna: val, catalogo_id: null }));
+                    if (val.length >= 2) {
+                      try {
+                        const { data } = await api.get(`/gestor/catalogo-procedimentos?q=${encodeURIComponent(val)}`);
+                        setCatalogoSugestoes(data);
+                        setMostrarSugestoes(true);
+                      } catch { setCatalogoSugestoes([]); }
+                    } else {
+                      setMostrarSugestoes(false);
+                    }
+                  }}
+                  onBlur={() => setTimeout(() => setMostrarSugestoes(false), 150)}
+                  onFocus={() => { if (catalogoSugestoes.length > 0) setMostrarSugestoes(true); }}
+                  className="w-full h-12 px-4 bg-surface-container-high border-none rounded-xl outline-none font-medium"
+                />
+                {/* Dropdown de sugestões */}
+                {mostrarSugestoes && catalogoSugestoes.length > 0 && (
+                  <div className="absolute z-50 top-full left-0 right-0 bg-surface-container-lowest border border-surface-variant rounded-xl shadow-lg max-h-48 overflow-y-auto mt-1">
+                    {catalogoSugestoes.map(item => (
+                      <button
+                        key={item.id}
+                        type="button"
+                        onMouseDown={() => {
+                          setBuscaCatalogo(item.nome);
+                          setFormSolicitacao(p => ({
+                            ...p,
+                            descricao_interna: item.nome,
+                            catalogo_id: item.id,
+                            // Sugerir tipo de unidade se o item tiver
+                          }));
+                          setMostrarSugestoes(false);
+                        }}
+                        className="w-full text-left px-4 py-3 hover:bg-surface-container-low text-sm border-b border-surface-variant last:border-0"
+                      >
+                        <span className="font-bold text-on-background">{item.nome}</span>
+                        {item.especialidade && (
+                          <span className="text-xs text-on-surface-variant ml-2">— {item.especialidade}</span>
+                        )}
+                        {item.tipo_unidade && (
+                          <span className="text-xs font-bold text-primary ml-2 bg-primary/10 px-1.5 py-0.5 rounded">
+                            {item.tipo_unidade}
+                          </span>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
               <div className="space-y-2">
                 <label className="text-sm font-bold text-on-surface-variant">Explicação para o paciente*</label>
@@ -1005,17 +1068,32 @@ export default function PerfilPaciente() {
                 <input type="date" value={formSolicitacao.data_prevista} onChange={e => setFormSolicitacao(p => ({ ...p, data_prevista: e.target.value }))}
                   className="w-full h-12 px-4 bg-surface-container-high border-none rounded-xl outline-none font-medium" />
               </div>
-              {/* Local de execução: preenchido quando o serviço é realizado fora da UBS */}
+              {/* Local de atendimento: select de unidades externas */}
               <div className="space-y-2">
-                <label className="text-sm font-bold text-on-surface-variant">Local de atendimento (se fora da UBS)</label>
-                <input
-                  type="text"
-                  value={formSolicitacao.local_executor}
-                  onChange={e => setFormSolicitacao(p => ({ ...p, local_executor: e.target.value }))}
-                  placeholder="Ex: Hospital Municipal de SJC, Centro de Especialidades..."
-                  className="w-full h-12 px-4 bg-surface-container-high border-none rounded-xl outline-none font-medium placeholder-on-surface-variant/40"
-                />
-                <p className="text-xs text-on-surface-variant">Deixe em branco se o atendimento for na própria UBS.</p>
+                <label className="text-sm font-bold text-on-surface-variant">
+                  Local de atendimento (se fora da UBS)
+                </label>
+                <select
+                  value={formSolicitacao.unidade_externa_id ?? ''}
+                  onChange={e => {
+                    const id = e.target.value ? Number(e.target.value) : null;
+                    const unidade = unidadesExternas.find(u => u.id === id);
+                    setFormSolicitacao(p => ({
+                      ...p,
+                      unidade_externa_id: id,
+                      local_executor: unidade ? unidade.nome : '',
+                    }));
+                  }}
+                  className="w-full h-12 px-4 bg-surface-container-high border-none rounded-xl outline-none font-medium"
+                >
+                  <option value="">Na própria UBS</option>
+                  {unidadesExternas.map(u => (
+                    <option key={u.id} value={u.id}>{u.nome} ({u.tipo})</option>
+                  ))}
+                </select>
+                <p className="text-xs text-on-surface-variant">
+                  Selecione a unidade de destino do encaminhamento.
+                </p>
               </div>
               <div className="flex gap-3 pt-2">
                 <button type="button" onClick={() => setModalSolicitacaoAberto(false)} className="flex-1 h-12 rounded-2xl border border-outline font-bold">Cancelar</button>
