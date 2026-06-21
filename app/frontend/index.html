@@ -23,23 +23,23 @@
     <meta name="apple-mobile-web-app-title" content="UBS+" />
 
     <!-- iOS NÃO lê o manifest.json para ícones — exige apple-touch-icon em raster (WebP/PNG).
-         SVG é ignorado pelo Safari. Usamos icon-192.webp para todos os tamanhos iOS. -->
-    <link rel="apple-touch-icon" sizes="180x180" href="/icon-192.webp" />
-    <link rel="apple-touch-icon" sizes="167x167" href="/icon-192.webp" />
-    <link rel="apple-touch-icon" sizes="152x152" href="/icon-192.webp" />
-    <link rel="apple-touch-icon" sizes="120x120" href="/icon-192.webp" />
+         SVG é ignorado pelo Safari. Usamos logo.webp para todos os tamanhos iOS. -->
+    <link rel="apple-touch-icon" sizes="180x180" href="/logo.webp" />
+    <link rel="apple-touch-icon" sizes="167x167" href="/logo.webp" />
+    <link rel="apple-touch-icon" sizes="152x152" href="/logo.webp" />
+    <link rel="apple-touch-icon" sizes="120x120" href="/logo.webp" />
     <!-- Fallback genérico para versões mais antigas do iOS -->
-    <link rel="apple-touch-icon" href="/icon-192.webp" />
+    <link rel="apple-touch-icon" href="/logo.webp" />
 
     <!-- ── Windows / Edge: tile da tela inicial ──────────────────────────── -->
     <meta name="msapplication-TileColor" content="#16a34a" />
-    <meta name="msapplication-TileImage" content="/icon-192.webp" />
+    <meta name="msapplication-TileImage" content="/logo.webp" />
 
     <!-- ── Ícone da aba do browser (favicon) ─────────────────────────────── -->
-    <!-- SVG é ideal para browsers modernos (escalável, sem blur em alta DPI) -->
-    <link rel="icon" type="image/svg+xml" href="/icon-72.svg" />
+    <!-- SVG é ideal para browsers modernos (escalável, sem blur em alta DPI) mas vamos usar webp se svg foi deletado -->
+    <link rel="icon" type="image/webp" href="/logo.webp" />
     <!-- Fallback WebP para browsers que não suportam SVG favicon (ex: Safari ≤ 15) -->
-    <link rel="alternate icon" type="image/webp" href="/icon-72.webp" />
+    <link rel="alternate icon" type="image/webp" href="/logo.webp" />
 
     <!-- Fontes do Google: Manrope (títulos) + Inter (corpo de texto) -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
