@@ -241,7 +241,25 @@ router.get('/solicitacao/:id', async (req, res) => {
       .where({ solicitacao_id: req.params.id })
       .orderBy('alterado_em', 'asc');
 
-    return res.json({ ...solicitacao, historico });
+    // Busca encaminhamento vinculado, se existir (criado pelo gestor via Regulação).
+    // Retorna os campos necessários para o DetalheSolicitacao.jsx exibir a seção
+    // "Encaminhamento Externo" com status, data agendada e conduta pós-procedimento.
+    // feedback_conduta é retornado como "conduta" para simplificar o contrato de UI.
+    const encaminhamento = await knex('encaminhamentos')
+      .where({ solicitacao_id: req.params.id, paciente_id: req.user.id })
+      .select(
+        'id',
+        'destino',
+        'especialidade',
+        'status',
+        'data_procedimento_unidade',
+        'confirmado_paciente',
+        'feedback_tipo',
+        knex.raw("feedback_conduta AS conduta"),
+      )
+      .first() || null;
+
+    return res.json({ ...solicitacao, historico, encaminhamento });
   } catch (err) {
     console.error('[GET /paciente/solicitacao/:id]', err);
     return res.status(500).json({ error: 'Erro ao buscar detalhes da solicitação.' });
@@ -491,6 +509,45 @@ router.delete('/push-subscribe', async (req, res) => {
   } catch (err) {
     console.error('[DELETE /paciente/push-subscribe]', err);
     return res.status(500).json({ error: 'Erro ao remover subscription.' });
+  }
+});
+
+// ─── GET /api/paciente/encaminhamentos ───────────────────────────────────────
+// Lista encaminhamentos do paciente logado. Aceita query ?status= para filtrar
+// por um status específico (ex: ?status=AGUARDANDO_CONFIRMACAO).
+// Usado pelo DashboardPaciente.jsx para exibir o card de confirmação de presença.
+router.get('/encaminhamentos', async (req, res) => {
+  try {
+    const { status } = req.query;
+
+    const query = knex('encaminhamentos')
+      .where({ paciente_id: req.user.id })
+      .select(
+        'encaminhamentos.id',
+        'encaminhamentos.destino',
+        'encaminhamentos.especialidade',
+        'encaminhamentos.status',
+        'encaminhamentos.prioridade',
+        'encaminhamentos.data_solicitacao',
+        'encaminhamentos.data_procedimento_unidade',
+        'encaminhamentos.confirmado_paciente',
+        'encaminhamentos.feedback_tipo',
+        knex.raw("encaminhamentos.feedback_conduta AS conduta"),
+        'encaminhamentos.solicitacao_id',
+        'encaminhamentos.unidade_externa_id',
+      )
+      .orderBy('encaminhamentos.data_solicitacao', 'desc');
+
+    // Filtra por status específico se o parâmetro for informado
+    if (status) {
+      query.where('encaminhamentos.status', status);
+    }
+
+    const encaminhamentos = await query;
+    return res.json(encaminhamentos);
+  } catch (err) {
+    console.error('[GET /paciente/encaminhamentos]', err);
+    return res.status(500).json({ error: 'Erro ao buscar encaminhamentos.' });
   }
 });
 
