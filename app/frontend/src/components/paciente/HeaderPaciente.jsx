@@ -31,9 +31,8 @@ export default function HeaderPaciente({ onOpenDrawer, unreadCount = 0 }) {
         </button>
         
         {/* Logo UBS+ em verde */}
-        <div className="flex items-center gap-1.5 text-primary select-none">
-          <span className="material-symbols-outlined text-2xl font-bold">health_and_safety</span>
-          <span className="font-black text-base tracking-tight">UBS+</span>
+        <div className="flex items-center gap-1.5 select-none">
+          <img src="/logo.svg" alt="UBS+" className="h-8 w-auto object-contain" />
         </div>
       </div>
 

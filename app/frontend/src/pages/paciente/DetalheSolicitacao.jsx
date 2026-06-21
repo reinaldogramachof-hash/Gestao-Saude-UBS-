@@ -106,6 +106,52 @@ export default function DetalheSolicitacao() {
           )}
         </div>
 
+        {/* ── Seção de Encaminhamento Externo (se houver agendamento) ── */}
+        {sol.encaminhamento && (sol.encaminhamento.data_agendamento || sol.encaminhamento.data_procedimento_unidade) && (
+          <div className="mb-8 bg-surface-container-low border border-surface-variant rounded-2xl p-5 shadow-sm">
+            <h3 className="text-sm font-extrabold text-on-background uppercase tracking-wider mb-4 flex items-center gap-2">
+              <span className="material-symbols-outlined text-primary text-xl">share_location</span>
+              Encaminhamento Externo
+            </h3>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <p className="text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-1">Unidade Destino</p>
+                <p className="font-bold text-on-background">{sol.encaminhamento.destino}</p>
+              </div>
+              
+              <div>
+                <p className="text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-1">Data e Horário</p>
+                <p className="font-bold text-on-background">
+                  {formatarDataBR(sol.encaminhamento.data_agendamento || sol.encaminhamento.data_procedimento_unidade)}
+                </p>
+              </div>
+
+              <div className="md:col-span-2">
+                <p className="text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-1">Status</p>
+                <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold mt-1 ${
+                  sol.encaminhamento.status === 'AGUARDANDO_CONFIRMACAO' ? 'bg-blue-50 text-blue-700' :
+                  sol.encaminhamento.status === 'CONFIRMADO_PACIENTE' ? 'bg-emerald-50 text-emerald-700' :
+                  sol.encaminhamento.status === 'RETORNO_UBS' ? 'bg-gray-100 text-gray-700' :
+                  'bg-surface-container-high text-on-surface'
+                }`}>
+                  {sol.encaminhamento.status === 'AGUARDANDO_CONFIRMACAO' ? 'Aguardando sua confirmação' :
+                   sol.encaminhamento.status === 'CONFIRMADO_PACIENTE' ? 'Presença confirmada' :
+                   sol.encaminhamento.status === 'RETORNO_UBS' ? 'Procedimento concluído' :
+                   sol.encaminhamento.status}
+                </span>
+              </div>
+
+              {sol.encaminhamento.status === 'RETORNO_UBS' && sol.encaminhamento.conduta && (
+                <div className="md:col-span-2 mt-2 p-3 bg-white rounded-xl border border-surface-variant">
+                  <p className="text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-1">Resultado / Conduta</p>
+                  <p className="text-sm text-on-background font-medium">{sol.encaminhamento.conduta}</p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* ── Timeline de histórico de status ── */}
         <div className="relative border-l-2 border-surface-variant ml-3 space-y-8">
           {sol.historico?.length > 0 ? (

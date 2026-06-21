@@ -1,11 +1,9 @@
 /**
- * PÁGINA: LoginGestor.jsx + Responsividade
+ * PÁGINA: LoginExterna.jsx + Responsividade
  * ─────────────────────────────────────────────────────────────────────────────
- * FUNÇÃO: Tela de autenticação para gestores da UBS.
- *         Card de login centralizado no desktop e tela cheia no mobile.
- *         Design institucional com identidade visual da UBS+.
- *
- * API: POST /api/auth/login-gestor
+ * FUNÇÃO: Tela de autenticação para Unidades Externas (AME, CAPS, etc).
+ *         Estrutura similar ao login de gestores.
+ * API: POST /api/auth/login-externa
  * ─────────────────────────────────────────────────────────────────────────────
  */
 import { useState } from 'react';
@@ -13,7 +11,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import api from '../../services/api';
 
-export default function LoginGestor() {
+export default function LoginExterna() {
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
   const [error, setError] = useState('');
@@ -26,9 +24,9 @@ export default function LoginGestor() {
     setLoading(true);
     setError('');
     try {
-      const res = await api.post('/auth/login-gestor', { email, senha });
+      const res = await api.post('/auth/login-externa', { email, senha });
       login(res.data, res.data.token);
-      navigate('/gestor/dashboard');
+      navigate('/externa/dashboard');
     } catch {
       setError('Credenciais inválidas. Verifique e-mail e senha.');
     } finally {
@@ -37,7 +35,6 @@ export default function LoginGestor() {
   };
 
   return (
-    /* Wrapper: centraliza o card em telas maiores */
     <div className="min-h-screen bg-surface-container-low flex items-center justify-center p-6">
       <div className="w-full max-w-md">
 
@@ -47,7 +44,7 @@ export default function LoginGestor() {
             <img src="/logo.svg" alt="Logo" className="w-full h-full object-contain" />
           </div>
           <h1 className="text-3xl font-extrabold tracking-tight text-on-background">Gestão Saúde</h1>
-          <p className="text-on-surface-variant font-medium mt-1">Portal do Gestor</p>
+          <p className="text-on-surface-variant font-medium mt-1">Portal de Unidades Externas</p>
         </div>
 
         {/* ── Formulário de login ── */}
@@ -59,12 +56,12 @@ export default function LoginGestor() {
           )}
 
           <div className="space-y-2">
-            <label className="text-sm font-bold text-on-surface-variant">E-mail</label>
+            <label className="text-sm font-bold text-on-surface-variant">E-mail Corporativo</label>
             <input
               required
               type="email"
               autoComplete="off"
-              placeholder="gestor@gestaoubs.dev"
+              placeholder="contato@ame-sjc.sp.gov.br"
               value={email}
               onChange={e => setEmail(e.target.value)}
               className="w-full h-12 px-4 bg-surface-container-high border-none rounded-xl outline-none font-medium focus:ring-2 focus:ring-primary/20"
@@ -93,10 +90,11 @@ export default function LoginGestor() {
           </button>
         </form>
 
-        {/* ── Link para o portal do paciente ── */}
+        {/* ── Links auxiliares ── */}
         <p className="text-center text-on-surface-variant text-sm font-medium mt-6">
-          Paciente? {' '}
-          <a href="/login-paciente" className="text-primary font-bold hover:underline">Acesse o Portal do Paciente</a>
+          <a href="/login-gestor" className="text-primary font-bold hover:underline transition-colors">
+            Acesso para gestores UBS &rarr;
+          </a>
         </p>
       </div>
     </div>

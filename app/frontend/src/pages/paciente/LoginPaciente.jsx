@@ -66,10 +66,10 @@ export default function LoginPaciente() {
 
       {/* ── Logo e nome do sistema ── */}
       <div className="w-full max-w-md mb-8 text-center">
-        <div className="w-16 h-16 bg-primary rounded-2xl flex items-center justify-center shadow-lg shadow-primary/30 mx-auto mb-5">
-          <span className="material-symbols-outlined text-on-primary text-3xl">health_and_safety</span>
+        <div className="w-24 h-24 flex items-center justify-center mx-auto mb-5">
+          <img src="/logo.svg" alt="Logo" className="w-full h-full object-contain" />
         </div>
-        <h1 className="text-3xl font-extrabold tracking-tight text-on-background mb-1">Gestão Saúde UBS+</h1>
+        <h1 className="text-3xl font-extrabold tracking-tight text-on-background mb-1">Gestão Saúde</h1>
         <p className="text-on-surface-variant font-medium">Portal do Paciente — São José dos Campos</p>
       </div>
 

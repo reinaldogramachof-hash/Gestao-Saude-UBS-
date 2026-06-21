@@ -37,6 +37,11 @@ import VigilanciaGestor from './pages/gestor/VigilanciaGestor';     // Módulo 4
 import GestorUsuarios from './pages/gestor/GestorUsuarios';         // Administração da equipe
 import PainelMedico from './pages/gestor/PainelMedico';             // Painel clínico de consulta (read-only)
 
+// ── Portal de Unidades Externas ─────────────────────────────────────────────
+import LoginExterna from './pages/externa/LoginExterna';
+import DashboardExterna from './pages/externa/DashboardExterna';
+import EncaminhamentosExterna from './pages/externa/EncaminhamentosExterna';
+
 // ─── Componente de Rota Protegida ─────────────────────────────────────────
 // Impede acesso direto por URL sem autenticação e garante que o tipo de
 // usuário bate com a rota (gestor não acessa rotas de paciente e vice-versa).
@@ -44,7 +49,9 @@ const ProtectedRoute = ({ children, tipo }) => {
   const { isAuthenticated, user, loading } = useAuth();
   if (loading) return null; // Aguarda restauração da sessão do localStorage
   if (!isAuthenticated || user.tipo !== tipo) {
-    return <Navigate to={tipo === 'gestor' ? '/login-gestor' : '/login-paciente'} replace />;
+    if (tipo === 'gestor') return <Navigate to="/login-gestor" replace />;
+    if (tipo === 'externa') return <Navigate to="/login-externa" replace />;
+    return <Navigate to="/login-paciente" replace />;
   }
   return children;
 };
@@ -68,6 +75,7 @@ export default function App() {
           {/* ── Rotas públicas ── */}
           <Route path="/login-paciente"    element={<LoginPaciente />} />
           <Route path="/login-gestor"      element={<LoginGestor />} />
+          <Route path="/login-externa"     element={<LoginExterna />} />
           <Route path="/cadastro-paciente" element={<CadastroPaciente />} />
 
           {/* ── Portal do Paciente (autenticado) ── */}
@@ -90,6 +98,10 @@ export default function App() {
           <Route path="/gestor/vigilancia"    element={<ProtectedRoute tipo="gestor"><VigilanciaGestor /></ProtectedRoute>} />
           <Route path="/gestor/usuarios"       element={<ProtectedRoute tipo="gestor"><GestorUsuarios /></ProtectedRoute>} />
           <Route path="/gestor/medico"         element={<ProtectedRoute tipo="gestor"><PainelMedico /></ProtectedRoute>} />
+
+          {/* ── Portal de Unidades Externas (autenticado) ── */}
+          <Route path="/externa/dashboard"        element={<ProtectedRoute tipo="externa"><DashboardExterna /></ProtectedRoute>} />
+          <Route path="/externa/encaminhamentos"  element={<ProtectedRoute tipo="externa"><EncaminhamentosExterna /></ProtectedRoute>} />
         </Routes>
       </BrowserRouter>
     </AuthProvider>

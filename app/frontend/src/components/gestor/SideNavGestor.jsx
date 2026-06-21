@@ -93,12 +93,11 @@ export default function SideNavGestor({ onFechar, retraida, onToggle }) {
       {/* Cabeçalho */}
       <header className={`p-6 ${retraida ? 'lg:p-3 lg:justify-center' : ''} border-b border-surface-variant flex items-center justify-between min-h-[88px] lg:min-h-[72px] shrink-0`}>
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center shadow-lg shadow-primary/20 flex-shrink-0">
-            <span className="material-symbols-outlined text-on-primary text-xl">health_and_safety</span>
+          <div className="w-10 h-10 flex items-center justify-center flex-shrink-0">
+            <img src="/logo.svg" alt="Logo" className="w-full h-full object-contain" />
           </div>
           <div className={retraida ? 'lg:hidden' : ''}>
             <h1 className="text-base font-bold text-on-background leading-tight">Gestão Saúde</h1>
-            <p className="text-xs font-semibold text-primary uppercase tracking-wide">UBS+</p>
           </div>
         </div>
 

@@ -69,6 +69,8 @@ export default function DashboardPaciente() {
   const [paciente, setPaciente] = useState({});
   const [unreadComunicados, setUnreadComunicados] = useState(0);
   const [proximoAgendamento, setProximoAgendamento] = useState(null);
+  const [pendenciasConfirmacao, setPendenciasConfirmacao] = useState([]);
+  const [confirmandoId, setConfirmandoId] = useState(null);
   const [loading, setLoading] = useState(true);
   const [erro, setErro] = useState(false);
   const navigate = useNavigate();
@@ -82,11 +84,13 @@ export default function DashboardPaciente() {
       api.get('/paciente/minhas-solicitacoes'),
       api.get('/paciente/comunicados'),
       api.get('/paciente/agendamentos/meus'),
+      api.get('/paciente/encaminhamentos?status=AGUARDANDO_CONFIRMACAO')
     ])
-      .then(([rDados, rSols, rComuns, rAgendamentos]) => {
+      .then(([rDados, rSols, rComuns, rAgendamentos, rPendencias]) => {
         setPaciente(rDados.data);
         setSols(rSols.data);
         setUnreadComunicados(rComuns.data.filter(c => !c.lido).length);
+        setPendenciasConfirmacao(rPendencias.data || []);
 
         // Filtra agendamentos futuros e pega o mais próximo
         const agora = new Date();
@@ -100,6 +104,19 @@ export default function DashboardPaciente() {
   };
 
   useEffect(() => { fetchDados(); }, []);
+
+  const confirmarPresenca = async (id) => {
+    setConfirmandoId(id);
+    try {
+      await api.put(`/paciente/encaminhamento/${id}/confirmar`);
+      import('react-hot-toast').then(({ default: toast }) => toast.success('Presença confirmada! ✓'));
+      setPendenciasConfirmacao(prev => prev.filter(p => p.id !== id));
+    } catch (err) {
+      import('react-hot-toast').then(({ default: toast }) => toast.error('Erro ao confirmar presença.'));
+    } finally {
+      setConfirmandoId(null);
+    }
+  };
 
   // Exibe esqueleto animado enquanto os dados carregam
   if (loading) {
@@ -177,6 +194,38 @@ export default function DashboardPaciente() {
           </div>
         </div>
       </header>
+
+      {/* ── Pendências de Confirmação ── */}
+      {pendenciasConfirmacao.map(pend => (
+        <section key={pend.id} className="px-6 pt-4 max-w-5xl mx-auto w-full">
+          <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4 shadow-sm relative overflow-hidden">
+            <div className="flex gap-3 relative z-10">
+              <div className="w-10 h-10 bg-blue-100 text-blue-600 rounded-xl flex items-center justify-center flex-shrink-0">
+                <span className="material-symbols-outlined text-xl">event_available</span>
+              </div>
+              <div className="flex-1">
+                <h3 className="font-extrabold text-blue-900 text-sm mb-1">Confirmação pendente</h3>
+                <p className="text-xs text-blue-800 font-medium leading-relaxed">
+                  Procedimento: <strong>{pend.especialidade}</strong><br/>
+                  Data: <strong>{formatarProximoAg(pend.data_agendamento)}</strong><br/>
+                  Local: <strong>{pend.destino}</strong>
+                </p>
+                <button
+                  onClick={() => confirmarPresenca(pend.id)}
+                  disabled={confirmandoId === pend.id}
+                  className="mt-3 w-full bg-blue-600 text-white font-bold py-2.5 rounded-xl text-xs active:scale-95 transition-transform disabled:opacity-50 shadow-sm"
+                >
+                  {confirmandoId === pend.id ? 'Confirmando...' : 'Confirmar Presença'}
+                </button>
+              </div>
+            </div>
+            {/* Decoração de fundo */}
+            <span className="material-symbols-outlined absolute -right-4 -bottom-4 text-[100px] text-blue-500/10 pointer-events-none select-none">
+              schedule
+            </span>
+          </div>
+        </section>
+      ))}
 
       {/* ── Grid de acesso rápido aos módulos ── */}
       <section className="px-6 pt-4 pb-2 max-w-5xl mx-auto w-full">

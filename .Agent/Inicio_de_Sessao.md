@@ -34,7 +34,7 @@
 **Testes E2E:** ❌ Módulos Regulação e Vigilância nunca testados em produção
 **Migrations:** ✅ 018, 019, 020 aplicadas no Supabase e confirmadas
 **Deploy:** ✅ Atualizado — commit `fe500f4` em produção (Railway + Vercel)
-**Último commit:** `fe500f4` — feat(security): hardening HTTP, token_version, auditoria LGPD e RLS — TASK_24
+**Último commit:** `d95c222` — fix(regulacao): substitui window.prompt por input inline de data — TASK_25
 
 ---
 
@@ -88,19 +88,17 @@
 
 ## Próximas Ações Imediatas (Ordem Obrigatória)
 
-### 🟡 TESTE FUNCIONAL (nunca testado em produção)
+### 🟡 TESTE FUNCIONAL
 
-1. **Reinaldo** — Testar fluxo completo de **Regulação**:
-   - Gestor seleciona paciente → vê solicitações ativas → cria encaminhamento
-   - Status da solicitação muda para `aguardando_regulacao` no portal do paciente
-   - Marcar como Agendado (`window.prompt()` para data) → Realizado → solicitação fecha como `concluido`
+1. **Regulação** ✅ Validado em produção (TASK_25 — 20/06)
+   - Input de data inline implementado (window.prompt removido)
+   - Fluxo completo: criação → agendamento → conclusão → reflexo no paciente
+   - Bug multi-tenant corrigido: `centro@gestaoubs.dev` alinhado para `ubs_id: 4`
 
-2. **Reinaldo** — Testar fluxo completo de **Vigilância**:
-   - Criar notificação de surto (sem paciente — surto territorial)
-   - Confirmar → clicar "Gerar Alerta" → Comunicados abre pré-preenchido
-   - Publicar comunicado → verificar no portal do paciente
-
-3. **Antigravity** — Validar `window.prompt()` no mobile (Chrome Android/iOS). Se não funcionar, implementar input `type="date"` inline no modal como alternativa.
+2. **Vigilância** ❌ Pendente — Fluxo B não foi testado
+   - Criar surto → Confirmar → Gerar Alerta → publicar Comunicado urgente
+   - Verificar reflexo no portal do paciente
+   - **Primeira tarefa da próxima sessão**
 
 ### 🟡 DADOS DE DEMO PARA A BANCA
 

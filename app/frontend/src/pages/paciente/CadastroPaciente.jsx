@@ -154,10 +154,10 @@ export default function CadastroPaciente() {
 
       {/* ── Logo ── */}
       <div className="w-full max-w-lg mb-6 text-center">
-        <div className="w-14 h-14 bg-primary rounded-2xl flex items-center justify-center shadow-lg shadow-primary/30 mx-auto mb-4">
-          <span className="material-symbols-outlined text-on-primary text-2xl">health_and_safety</span>
+        <div className="w-20 h-20 flex items-center justify-center mx-auto mb-4">
+          <img src="/logo.svg" alt="Logo" className="w-full h-full object-contain" />
         </div>
-        <h1 className="text-2xl font-extrabold tracking-tight text-on-background">Gestão Saúde UBS+</h1>
+        <h1 className="text-2xl font-extrabold tracking-tight text-on-background">Gestão Saúde</h1>
         <p className="text-on-surface-variant text-sm font-medium">Cadastro de Paciente — São José dos Campos</p>
       </div>
 
