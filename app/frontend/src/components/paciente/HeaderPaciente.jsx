@@ -32,7 +32,7 @@ export default function HeaderPaciente({ onOpenDrawer, unreadCount = 0 }) {
         
         {/* Logo UBS+ em verde */}
         <div className="flex items-center gap-1.5 select-none">
-          <img src="/logo.webp" alt="UBS+" className="h-8 w-auto object-contain" />
+          <img src="/logo.webp" alt="UBS+" className="h-8 w-auto object-contain invert" />
         </div>
       </div>
 
