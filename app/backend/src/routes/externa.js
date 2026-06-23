@@ -22,13 +22,21 @@ const CAMPOS_ENCAMINHAMENTO_EXTERNA = [
   'pacientes.cra as paciente_cra',
   'ubs.nome as ubs_nome',
   'encaminhamentos.especialidade',
+  'catalogo_procedimentos.nome as catalogo_nome',
   'encaminhamentos.prioridade',
   'encaminhamentos.status',
   'encaminhamentos.data_solicitacao',
   'encaminhamentos.data_procedimento_unidade',
   'encaminhamentos.confirmado_paciente',
   'encaminhamentos.feedback_tipo',
+  // feedback_conduta e feedback_data_retorno são necessários para o dashboard calcular
+  // concluídos hoje e para o frontend exibir a conduta no card de retorno
+  'encaminhamentos.feedback_conduta',
+  'encaminhamentos.feedback_data_retorno',
   'encaminhamentos.observacoes',
+  'encaminhamentos.solicitacao_id',
+  // Necessário para ordenar "Últimos encaminhamentos" no dashboard por data de criação
+  'encaminhamentos.atualizado_em',
 ];
 
 const agendamentoSchema = Joi.object({
@@ -98,7 +106,10 @@ router.get('/encaminhamentos', async (req, res) => {
     const encaminhamentos = await knex('encaminhamentos')
       .join('pacientes', 'encaminhamentos.paciente_id', 'pacientes.id')
       .leftJoin('ubs', 'encaminhamentos.ubs_id', 'ubs.id')
-      .where({ unidade_externa_id: req.user.id })
+      .leftJoin('solicitacoes', 'encaminhamentos.solicitacao_id', 'solicitacoes.id')
+      .leftJoin('catalogo_procedimentos', 'solicitacoes.catalogo_id', 'catalogo_procedimentos.id')
+      // Qualifica a coluna para evitar ambiguidade — solicitacoes também tem unidade_externa_id
+      .where('encaminhamentos.unidade_externa_id', req.user.id)
       .select(CAMPOS_ENCAMINHAMENTO_EXTERNA)
       .orderByRaw(`
         CASE encaminhamentos.status

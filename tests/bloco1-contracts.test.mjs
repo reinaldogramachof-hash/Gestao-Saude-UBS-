@@ -71,9 +71,12 @@ test('dashboard do paciente retorna somente status ativos por prioridade', async
 test('interceptor 401 preserva o portal correto antes de limpar a sessao', async () => {
   const source = await read('app/frontend/src/services/api.js');
 
-  assert.match(source, /JSON\.parse\(localStorage\.getItem\('@UBS_User'\)\s*\|\|\s*'\{\}'\)/);
+  assert.match(source, /const userKey = getUserKey\(\)/);
+  assert.match(source, /JSON\.parse\(localStorage\.getItem\(userKey\)\s*\|\|\s*'\{\}'\)/);
   assert.match(source, /usuario\.tipo\s*===\s*'gestor'/);
+  assert.match(source, /usuario\.tipo\s*===\s*'externa'/);
   assert.match(source, /window\.location\.href\s*=\s*['"]\/login-gestor['"]/);
+  assert.match(source, /window\.location\.href\s*=\s*['"]\/externa\/login['"]/);
   assert.match(source, /window\.location\.href\s*=\s*['"]\/login-paciente['"]/);
 });
 

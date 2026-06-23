@@ -20,6 +20,32 @@
  */
 import axios from 'axios';
 
+// Chaves por portal — evita conflito quando o mesmo browser usa dois portais
+export const TOKEN_KEYS = {
+  gestor:   '@UBS_Token_Gestor',
+  paciente: '@UBS_Token_Paciente',
+  externa:  '@UBS_Token_Externa',
+};
+export const USER_KEYS = {
+  gestor:   '@UBS_User_Gestor',
+  paciente: '@UBS_User_Paciente',
+  externa:  '@UBS_User_Externa',
+};
+
+export function getTokenKey() {
+  const path = window.location.pathname;
+  if (path.startsWith('/gestor')) return '@UBS_Token_Gestor';
+  if (path.startsWith('/externa')) return '@UBS_Token_Externa';
+  return '@UBS_Token_Paciente';
+}
+
+export function getUserKey() {
+  const path = window.location.pathname;
+  if (path.startsWith('/gestor')) return '@UBS_User_Gestor';
+  if (path.startsWith('/externa')) return '@UBS_User_Externa';
+  return '@UBS_User_Paciente';
+}
+
 const api = axios.create({
   // VITE_API_URL vem do arquivo app/frontend/.env
   // Em desenvolvimento: http://localhost:3001
@@ -31,7 +57,7 @@ const api = axios.create({
 // Antes de cada requisição, lê o token do localStorage e o adiciona ao header.
 // Isso evita ter que passar o token manualmente em cada chamada da API.
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('@UBS_Token');
+  const token = localStorage.getItem(getTokenKey());
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
@@ -47,20 +73,25 @@ api.interceptors.response.use(
     if (error.response?.status === 401) {
       // O portal precisa ser identificado antes da limpeza. Depois que o
       // storage é apagado, não seria mais possível distinguir gestor e paciente.
+      const userKey = getUserKey();
+      const tokenKey = getTokenKey();
+
       let usuario = {};
       try {
-        usuario = JSON.parse(localStorage.getItem('@UBS_User') || '{}');
+        usuario = JSON.parse(localStorage.getItem(userKey) || '{}');
       } catch {
         // JSON corrompido é tratado como sessão de paciente por segurança.
         usuario = {};
       }
 
-      localStorage.removeItem('@UBS_Token');
-      localStorage.removeItem('@UBS_User');
+      localStorage.removeItem(tokenKey);
+      localStorage.removeItem(userKey);
 
       // Redireciona para o login sem usar react-router (evita dependência circular)
       if (usuario.tipo === 'gestor') {
         window.location.href = '/login-gestor';
+      } else if (usuario.tipo === 'externa') {
+        window.location.href = '/externa/login';
       } else {
         window.location.href = '/login-paciente';
       }

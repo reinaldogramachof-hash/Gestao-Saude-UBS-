@@ -17,7 +17,7 @@
  * ─────────────────────────────────────────────────────────────────────────────
  */
 import React, { createContext, useState, useEffect, useContext } from 'react';
-import api from '../services/api';
+import api, { getTokenKey, getUserKey } from '../services/api';
 
 export const AuthContext = createContext({});
 
@@ -33,8 +33,21 @@ export const AuthProvider = ({ children }) => {
   // Roda uma vez na montagem do componente. Lê o token salvo no localStorage
   // e restaura o usuário sem precisar fazer login novamente.
   useEffect(() => {
-    const tokenSalvo   = localStorage.getItem('@UBS_Token');
-    const usuarioSalvo = localStorage.getItem('@UBS_User');
+    const legacyToken = localStorage.getItem('@UBS_Token');
+    const legacyUser = localStorage.getItem('@UBS_User');
+    const tokenKey = getTokenKey();
+    const userKey = getUserKey();
+
+    // Fallback/Migração legada
+    if (legacyToken && legacyUser) {
+      localStorage.setItem(tokenKey, legacyToken);
+      localStorage.setItem(userKey, legacyUser);
+      localStorage.removeItem('@UBS_Token');
+      localStorage.removeItem('@UBS_User');
+    }
+
+    const tokenSalvo   = localStorage.getItem(tokenKey);
+    const usuarioSalvo = localStorage.getItem(userKey);
 
     if (tokenSalvo && usuarioSalvo) {
       try {
@@ -42,8 +55,8 @@ export const AuthProvider = ({ children }) => {
         setUser(JSON.parse(usuarioSalvo));
       } catch {
         // Se o JSON do usuário estiver corrompido, limpa tudo
-        localStorage.removeItem('@UBS_Token');
-        localStorage.removeItem('@UBS_User');
+        localStorage.removeItem(tokenKey);
+        localStorage.removeItem(userKey);
       }
     }
 
@@ -59,8 +72,8 @@ export const AuthProvider = ({ children }) => {
     const { token: _ignorado, ...dadosUsuario } = userData;
     setUser(dadosUsuario);
     setToken(tokenRecebido);
-    localStorage.setItem('@UBS_Token', tokenRecebido);
-    localStorage.setItem('@UBS_User', JSON.stringify(dadosUsuario));
+    localStorage.setItem(getTokenKey(), tokenRecebido);
+    localStorage.setItem(getUserKey(), JSON.stringify(dadosUsuario));
 
     // Ativa push notifications automaticamente para pacientes após login
     if (dadosUsuario.tipo === 'paciente') {
@@ -116,8 +129,8 @@ export const AuthProvider = ({ children }) => {
   const logout = () => {
     setUser(null);
     setToken(null);
-    localStorage.removeItem('@UBS_Token');
-    localStorage.removeItem('@UBS_User');
+    localStorage.removeItem(getTokenKey());
+    localStorage.removeItem(getUserKey());
   };
 
   // isAuthenticated: verdadeiro se existe um usuário e um token na sessão

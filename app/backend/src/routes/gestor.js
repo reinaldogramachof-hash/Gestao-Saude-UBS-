@@ -1108,20 +1108,22 @@ router.post('/paciente/:id/solicitacao', validateBody(solicitacaoSchema), async 
     // Se o histórico falhar, a transação desfaz também a solicitação.
     // Valida vinculos opcionais antes da transacao para evitar gravar IDs
     // inexistentes e para retornar erro claro ao frontend.
+    let catalogo = null;
     if (catalogo_id) {
-      const catalogo = await knex('catalogo_procedimentos')
+      catalogo = await knex('catalogo_procedimentos')
         .where({ id: catalogo_id, ativo: true })
-        .first('id');
+        .first('id', 'nome', 'especialidade');
 
       if (!catalogo) {
         return res.status(400).json({ error: 'Procedimento do catalogo nao encontrado.' });
       }
     }
 
+    let unidadeExterna = null;
     if (unidade_externa_id) {
-      const unidadeExterna = await knex('unidades_externas')
+      unidadeExterna = await knex('unidades_externas')
         .where({ id: unidade_externa_id, ativo: true })
-        .first('id');
+        .first('id', 'nome', 'tipo');
 
       if (!unidadeExterna) {
         return res.status(400).json({ error: 'Unidade externa nao encontrada.' });
@@ -1131,7 +1133,7 @@ router.post('/paciente/:id/solicitacao', validateBody(solicitacaoSchema), async 
     const solicitacao = await knex.transaction(async (trx) => {
       const [novaSolicitacao] = await trx('solicitacoes')
         .insert({
-          paciente_id:      req.params.id,
+          paciente_id:      paciente.id,
           ubs_id:           paciente.ubs_id, // usa UBS de origem do paciente
           tipo,
           descricao:        descricao_interna,
@@ -1157,8 +1159,48 @@ router.post('/paciente/:id/solicitacao', validateBody(solicitacaoSchema), async 
         alterado_em: trx.fn.now(),
       });
 
+      // Bridge solicitacao -> encaminhamento: quando o gestor escolhe uma
+      // unidade externa, criamos o registro que o portal externo realmente le.
+      if (unidade_externa_id) {
+        const prioridadeEncaminhamento = {
+          urgente: 'VERMELHO',
+          prioritario: 'AMARELO',
+          rotina: 'VERDE',
+        }[prioridade || 'rotina'] || 'VERDE';
+
+        await trx('encaminhamentos').insert({
+          paciente_id: paciente.id,
+          ubs_id: paciente.ubs_id,
+          gestor_id: req.user.id,
+          unidade_externa_id: unidade_externa_id,
+          solicitacao_id: novaSolicitacao.id,
+          destino: unidadeExterna?.tipo || 'OUTRO',
+          especialidade: catalogo?.especialidade || descricao_interna || 'Nao especificada',
+          prioridade: prioridadeEncaminhamento,
+          status: 'AGUARDANDO_VAGA',
+          data_solicitacao: novaSolicitacao.data_solicitacao || new Date().toISOString().split('T')[0],
+          observacoes: local_executor || null,
+        });
+      }
+
       return novaSolicitacao;
     });
+
+    // Notifica o paciente apos a transacao: falha de push nao desfaz o registro.
+    pushService.enviar(paciente.id, 'paciente', {
+      titulo: 'Nova solicitacao registrada',
+      corpo: `${descricao_paciente} foi registrada pela sua UBS. Acompanhe o status no aplicativo.`,
+      url: '/paciente/solicitacoes',
+    }).catch(err => console.warn('[push paciente nova solicitacao ignorado]', err.message));
+
+    // Notifica a unidade externa quando houver bridge para encaminhamento.
+    if (unidade_externa_id) {
+      pushService.enviar(unidade_externa_id, 'externa', {
+        titulo: 'Novo encaminhamento recebido',
+        corpo: `A UBS encaminhou um paciente para ${catalogo?.nome || descricao_interna || local_executor || 'atendimento'}.`,
+        url: '/externa/encaminhamentos',
+      }).catch(err => console.warn('[push externa ignorado]', err.message));
+    }
 
     await registrarAuditoria(req, {
       acao: 'solicitacao_criar',

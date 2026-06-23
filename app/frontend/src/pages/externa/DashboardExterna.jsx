@@ -37,16 +37,19 @@ export default function DashboardExterna() {
   // Processar cards de resumo
   const pendentesReceber = encaminhamentos.filter(e => e.status === 'AGUARDANDO_VAGA').length;
   const aguardandoConfirmacao = encaminhamentos.filter(e => e.status === 'AGUARDANDO_CONFIRMACAO').length;
-  const agendados = encaminhamentos.filter(e => ['AGENDADO', 'CONFIRMADO_PACIENTE'].includes(e.status)).length;
+  const agendados = encaminhamentos.filter(e => e.status === 'AGENDADO').length;
+  
+  // Ação necessária: aguardando vaga ou recebido (precisa agendar)
+  const acaoNecessaria = encaminhamentos.filter(e => ['AGUARDANDO_VAGA', 'RECEBIDO'].includes(e.status)).length;
   
   const hojeISO = new Date().toISOString().slice(0, 10);
-  const concluidosHoje = encaminhamentos.filter(e => {
-    if (e.status !== 'RETORNO_UBS') return false;
-    const dataRetorno = e.feedback_data_retorno ? e.feedback_data_retorno.slice(0, 10) : '';
-    return dataRetorno === hojeISO;
-  }).length;
+  const concluidosHoje = encaminhamentos.filter(e =>
+    e.status === 'RETORNO_UBS' &&
+    e.feedback_data_retorno?.slice(0, 10) === hojeISO
+  ).length;
 
-  const ultimos = [...encaminhamentos].sort((a, b) => new Date(b.criado_em) - new Date(a.criado_em)).slice(0, 5);
+  // Ordena por atualizado_em (disponível no SELECT) — criado_em não vem na resposta
+  const ultimos = [...encaminhamentos].sort((a, b) => new Date(b.atualizado_em || b.data_solicitacao) - new Date(a.atualizado_em || a.data_solicitacao)).slice(0, 5);
 
   const CardResumo = ({ title, value, icon, bgCor, textCor, onClick }) => (
     <div
@@ -82,9 +85,26 @@ export default function DashboardExterna() {
       ) : (
         <>
           {/* Cards Resumo */}
+          {acaoNecessaria > 0 && (
+            <div
+              onClick={() => navigate('/externa/encaminhamentos')}
+              className="bg-orange-100 border border-orange-300 p-4 rounded-2xl mb-4 flex items-center gap-4 cursor-pointer hover:bg-orange-200 transition-colors"
+            >
+              <div className="w-12 h-12 rounded-xl flex items-center justify-center bg-orange-500 text-white">
+                <span className="material-symbols-outlined text-2xl">warning</span>
+              </div>
+              <div>
+                <p className="text-xs font-bold text-orange-900 uppercase tracking-wider">Ação Necessária</p>
+                <p className="text-2xl font-extrabold text-orange-950 leading-tight">
+                  {acaoNecessaria} <span className="text-sm font-medium">pendências</span>
+                </p>
+              </div>
+            </div>
+          )}
+
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
             <CardResumo
-              title="Receber"
+              title="Aguardando recebimento"
               value={pendentesReceber}
               icon="inbox"
               bgCor="bg-orange-50"
@@ -92,7 +112,7 @@ export default function DashboardExterna() {
               onClick={() => navigate('/externa/encaminhamentos')}
             />
             <CardResumo
-              title="Aguardando Conf."
+              title="Aguardando paciente"
               value={aguardandoConfirmacao}
               icon="schedule"
               bgCor="bg-blue-50"
@@ -103,16 +123,16 @@ export default function DashboardExterna() {
               title="Agendados"
               value={agendados}
               icon="event"
-              bgCor="bg-emerald-50"
-              textCor="text-emerald-600"
+              bgCor="bg-purple-50"
+              textCor="text-purple-600"
               onClick={() => navigate('/externa/encaminhamentos')}
             />
             <CardResumo
-              title="Concluídos Hoje"
+              title="Concluídos hoje"
               value={concluidosHoje}
               icon="task_alt"
-              bgCor="bg-gray-100"
-              textCor="text-gray-600"
+              bgCor="bg-green-50"
+              textCor="text-green-600"
               onClick={() => navigate('/externa/encaminhamentos')}
             />
           </div>
@@ -135,8 +155,21 @@ export default function DashboardExterna() {
                 ultimos.map(enc => (
                   <div key={enc.id} className="p-4 flex items-center justify-between hover:bg-surface-container-low transition-colors">
                     <div>
-                      <h3 className="font-bold text-on-background text-sm">{enc.paciente_nome}</h3>
-                      <p className="text-xs text-on-surface-variant mt-0.5">{enc.especialidade} • {enc.ubs_origem || 'UBS'}</p>
+                      <h3 className="font-bold text-on-background text-sm flex items-center gap-2">
+                        {/* Ponto de prioridade */}
+                        {enc.prioridade && (
+                          <span
+                            className={`w-2.5 h-2.5 rounded-full block flex-shrink-0 ${
+                              enc.prioridade === 'VERMELHO' ? 'bg-red-500' :
+                              enc.prioridade === 'AMARELO' ? 'bg-yellow-400' :
+                              'bg-green-500'
+                            }`}
+                            title={`Prioridade: ${enc.prioridade}`}
+                          ></span>
+                        )}
+                        {enc.paciente_nome}
+                      </h3>
+                      <p className="text-xs text-on-surface-variant mt-0.5">{enc.catalogo_nome || enc.especialidade} • {enc.ubs_nome || enc.ubs_origem || 'UBS'}</p>
                     </div>
                     <span className="text-[10px] font-bold px-2 py-1 bg-surface-container-high rounded text-on-surface-variant">
                       {enc.status}
