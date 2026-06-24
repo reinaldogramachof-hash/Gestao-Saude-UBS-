@@ -11,6 +11,7 @@ import api from '../../services/api';
 // formatarDataBR: corrige bug de fuso horário em strings de data sem horário (UTC-3)
 import { formatarDataBR } from '../../utils/statusHelper';
 import GestorLayout from '../../components/gestor/GestorLayout';
+import { useAuth } from '../../hooks/useAuth';
 
 // Dicionário de tradução de tipos de unidade do SUS para linguagem simples
 const TIPO_UNIDADE_LABEL = {
@@ -79,13 +80,15 @@ const STATUS_LABEL = {
   urgente_escalado:     'Escalado para Urgente',
 };
 
+const STATUS_VALIDOS = ['em_analise', 'aguardando_regulacao', 'autorizado', 'data_marcada', 'aguardando_resultado', 'concluido', 'cancelado'];
+
 // ─────────────────────────────────────────────────────────────────────────────
 // COMPONENTE: CardSolicitacaoMedico
 // FUNÇÃO: Renderiza o card de solicitação clínica no painel médico.
 //         Exibe o status com indicador de bolinha sólido, laudo médico e histórico
 //         detalhado de forma somente leitura, impedindo modificações por médicos.
 // ─────────────────────────────────────────────────────────────────────────────
-function CardSolicitacaoMedico({ sol, alternarHistorico, historicosAbertos, historicos, carregarHistorico }) {
+function CardSolicitacaoMedico({ sol, alternarHistorico, historicosAbertos, historicos, carregarHistorico, abrirModalStatus }) {
   return (
     <div className={`bg-surface-container-lowest rounded-2xl border border-surface-variant p-5 shadow-sm hover:shadow-md transition-all duration-300 relative overflow-hidden group/card-sol-med ${
       sol.prioridade === 'urgente' ? 'border-l-4 border-l-red-500' : ''
@@ -159,6 +162,20 @@ function CardSolicitacaoMedico({ sol, alternarHistorico, historicosAbertos, hist
               )}
             </div>
           )}
+          
+          {/* Botão de Lançar Laudo / Status */}
+          {sol.status !== 'concluido' && sol.status !== 'cancelado' && (
+            <div className="mt-3.5 pt-3.5 border-t border-surface-variant/30 flex justify-end select-none">
+              <button
+                type="button"
+                onClick={() => abrirModalStatus(sol)}
+                className="inline-flex items-center gap-1.5 px-4 py-2 bg-primary/10 hover:bg-primary/20 text-primary text-xs font-black rounded-xl transition-all duration-200"
+              >
+                <span className="material-symbols-outlined text-[16px]">clinical_notes</span>
+                Lançar Laudo / Status
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
@@ -223,6 +240,8 @@ function CardSolicitacaoMedico({ sol, alternarHistorico, historicosAbertos, hist
 // COMPONENTE PRINCIPAL: PainelMedico
 // ─────────────────────────────────────────────────────────────────────────────
 export default function PainelMedico() {
+  const { user } = useAuth();
+  
   const [busca, setBusca] = useState('');
   const [buscando, setBuscando] = useState(false);
   const [buscaRealizada, setBuscaRealizada] = useState(false);
@@ -234,9 +253,196 @@ export default function PainelMedico() {
   const [atendimentos, setAtendimentos] = useState([]);
   const [loadingAtendimentos, setLoadingAtendimentos] = useState(false);
 
+  // Estados para Evolução Clínica (Atendimentos)
+  const [modalAtendimentoAberto, setModalAtendimentoAberto] = useState(false);
+  const [enviandoAtendimento, setEnviandoAtendimento] = useState(false);
+  const [atendimentoEditando, setAtendimentoEditando] = useState(null);
+  const [deletandoAtendimento, setDeletandoAtendimento] = useState(null);
+  const [formAtendimento, setFormAtendimento] = useState({
+    data_atendimento: '', unidade: '', tipo_unidade: '',
+    especialidade: '', profissional: '',
+    cid_10_principal: '', cid_10_secundario: '',
+    conduta: '', observacoes: '',
+  });
+
+  // Estados para Parâmetros Clínicos (Anamnese)
+  const [modalDadosAberto, setModalDadosAberto] = useState(false);
+  const [salvandoDados, setSalvandoDados] = useState(false);
+  const [formDados, setFormDados] = useState({
+    tipo_sanguineo: '', peso_kg: '', altura_cm: '',
+    alergias: '', comorbidades: '', medicamentos_uso_continuo: '',
+    observacoes_clinicas: '',
+  });
+
+  // Estados para Laudo / Status de Solicitação
+  const [modalStatusAberto, setModalStatusAberto] = useState(false);
+  const [enviandoStatus, setEnviandoStatus] = useState(false);
+  const [solicitacaoSelecionada, setSolicitacaoSelecionada] = useState(null);
+  const [formStatus, setFormStatus] = useState({
+    status_novo: '', observacao: '', resultado: '', cid_10: '',
+  });
+ 
   // Controle de aba de visualização ativa do prontuário do paciente carregado
   // Opções: 'dados' (dados clínicos), 'solicitacoes' (pedidos de exames), 'linha_do_tempo' (evolução)
   const [abaAtiva, setAbaAtiva] = useState('dados');
+
+  // ── Funções Clínicas: Evolução (Atendimentos) ──
+  const resetFormAtendimento = () => {
+    setFormAtendimento({
+      data_atendimento: '', unidade: '', tipo_unidade: '',
+      especialidade: '', profissional: '',
+      cid_10_principal: '', cid_10_secundario: '',
+      conduta: '', observacoes: '',
+    });
+  };
+
+  const abrirModalNovoAtendimento = () => {
+    setAtendimentoEditando(null);
+    setFormAtendimento({
+      data_atendimento: new Date().toISOString().split('T')[0],
+      unidade: '', tipo_unidade: 'ubs',
+      especialidade: '', profissional: user?.nome || '', // pré-preenche médico logado
+      cid_10_principal: '', cid_10_secundario: '',
+      conduta: '', observacoes: '',
+    });
+    setModalAtendimentoAberto(true);
+  };
+
+  const abrirModalEditarAtendimento = (at) => {
+    setAtendimentoEditando(at);
+    setFormAtendimento({
+      data_atendimento: at.data_atendimento?.split('T')[0] || '',
+      unidade:           at.unidade || '',
+      tipo_unidade:      at.tipo_unidade || '',
+      especialidade:     at.especialidade || '',
+      profissional:      at.profissional || '',
+      cid_10_principal:  at.cid_10_principal || '',
+      cid_10_secundario: at.cid_10_secundario || '',
+      conduta:           at.conduta || '',
+      observacoes:       at.observacoes || '',
+    });
+    setModalAtendimentoAberto(true);
+  };
+
+  const handleSalvarAtendimento = async (e) => {
+    e.preventDefault();
+    setEnviandoAtendimento(true);
+    try {
+      if (atendimentoEditando) {
+        await api.put(`/gestor/atendimento/${atendimentoEditando.id}`, formAtendimento);
+        toast.success('Evolução clínica atualizada!');
+      } else {
+        await api.post(`/gestor/paciente/${pacienteAtivo.id}/atendimento`, formAtendimento);
+        toast.success('Evolução clínica registrada!');
+      }
+      setModalAtendimentoAberto(false);
+      setAtendimentoEditando(null);
+      resetFormAtendimento();
+      // Recarrega os atendimentos
+      const resAt = await api.get(`/gestor/paciente/${pacienteAtivo.id}/atendimentos`);
+      setAtendimentos(resAt.data);
+    } catch (err) {
+      console.error('[PainelMedico] Erro ao salvar evolução:', err);
+      toast.error('Erro ao salvar evolução clínica.');
+    } finally {
+      setEnviandoAtendimento(false);
+    }
+  };
+
+  const handleDeletarAtendimento = async (atendimentoId) => {
+    if (!window.confirm('Tem certeza de que deseja remover permanentemente esta evolução clínica?')) return;
+    setDeletandoAtendimento(atendimentoId);
+    try {
+      await api.delete(`/gestor/atendimento/${atendimentoId}`);
+      toast.success('Evolução clínica removida.');
+      const resAt = await api.get(`/gestor/paciente/${pacienteAtivo.id}/atendimentos`);
+      setAtendimentos(resAt.data);
+    } catch (err) {
+      console.error('[PainelMedico] Erro ao remover evolução:', err);
+      toast.error('Erro ao remover evolução clínica.');
+    } finally {
+      setDeletandoAtendimento(null);
+    }
+  };
+
+  // ── Funções Clínicas: Parâmetros Clínicos (Anamnese) ──
+  const iniciarEdicaoDados = () => {
+    setFormDados({
+      tipo_sanguineo:            pacienteAtivo?.tipo_sanguineo || '',
+      peso_kg:                   pacienteAtivo?.peso_kg || '',
+      altura_cm:                 pacienteAtivo?.altura_cm || '',
+      alergias:                  pacienteAtivo?.alergias || '',
+      comorbidades:              pacienteAtivo?.comorbidades || '',
+      medicamentos_uso_continuo: pacienteAtivo?.medicamentos_uso_continuo || '',
+      observacoes_clinicas:      pacienteAtivo?.observacoes_clinicas || '',
+    });
+    setModalDadosAberto(true);
+  };
+
+  const handleSalvarDados = async (e) => {
+    e.preventDefault();
+    setSalvandoDados(true);
+    try {
+      const payload = {
+        nome:                      pacienteAtivo.nome,
+        telefone:                  pacienteAtivo.telefone,
+        email:                     pacienteAtivo.email,
+        bairro:                    pacienteAtivo.bairro,
+        ativo:                     pacienteAtivo.ativo,
+        ...formDados
+      };
+      await api.put(`/gestor/paciente/${pacienteAtivo.id}`, payload);
+      toast.success('Prontuário clínico atualizado!');
+      setModalDadosAberto(false);
+      carregarPerfil(pacienteAtivo.id);
+    } catch (err) {
+      console.error('[PainelMedico] Erro ao salvar prontuário:', err);
+      toast.error('Erro ao atualizar prontuário clínico.');
+    } finally {
+      setSalvandoDados(false);
+    }
+  };
+
+  // ── Funções Clínicas: Laudo e Status de Solicitação ──
+  const abrirModalStatus = (sol) => {
+    setSolicitacaoSelecionada(sol);
+    setFormStatus({
+      status_novo: sol.status,
+      observacao: '',
+      resultado: sol.resultado || '',
+      cid_10: sol.cid_10 || '',
+    });
+    setModalStatusAberto(true);
+  };
+
+  const handleAtualizarStatus = async (e) => {
+    e.preventDefault();
+    setEnviandoStatus(true);
+    try {
+      // 1. Atualiza status
+      await api.put(`/gestor/solicitacao/${solicitacaoSelecionada.id}/status`, {
+        status_novo: formStatus.status_novo,
+        observacao: formStatus.observacao,
+      });
+
+      // 2. Registra resultado e CID-10
+      if (formStatus.resultado || formStatus.cid_10) {
+        await api.patch(`/gestor/solicitacao/${solicitacaoSelecionada.id}/resultado`, {
+          resultado: formStatus.resultado || undefined,
+          cid_10: formStatus.cid_10 || undefined,
+        });
+      }
+
+      toast.success('Laudo e status atualizados com sucesso!');
+      setModalStatusAberto(false);
+      carregarPerfil(pacienteAtivo.id);
+    } catch (err) {
+      console.error('[PainelMedico] Erro ao laudar exame:', err);
+      toast.error('Erro ao atualizar laudo e status.');
+    } finally {
+      setEnviandoStatus(false);
+    }
+  };
 
   // Trata a busca de pacientes por CRA ou Nome
   const handleBusca = async (e) => {
@@ -539,9 +745,19 @@ export default function PainelMedico() {
 
               {/* Informações de Evolução Clínica e Patologias */}
               <div className="bg-surface-container-lowest rounded-3xl border border-surface-variant p-5 md:p-8">
-                <h3 className="text-sm font-extrabold text-on-surface-variant uppercase tracking-wider mb-5 select-none">
-                  Dados e Anamnese Clínica
-                </h3>
+                <div className="flex items-center justify-between gap-4 mb-5 select-none">
+                  <h3 className="text-sm font-extrabold text-on-surface-variant uppercase tracking-wider">
+                    Dados e Anamnese Clínica
+                  </h3>
+                  <button
+                    type="button"
+                    onClick={iniciarEdicaoDados}
+                    className="px-4 py-2 border border-outline hover:bg-surface-container-high rounded-xl font-bold text-sm flex items-center gap-1.5 transition-colors"
+                  >
+                    <span className="material-symbols-outlined text-base">edit_note</span>
+                    Editar Parâmetros Clínicos
+                  </button>
+                </div>
 
                 {/* Cards de Métricas Vitais */}
                 {(pacienteAtivo.tipo_sanguineo || pacienteAtivo.peso_kg || pacienteAtivo.altura_cm) && (
@@ -634,6 +850,7 @@ export default function PainelMedico() {
                         historicosAbertos={historicosAbertos}
                         historicos={historicos}
                         carregarHistorico={carregarHistorico}
+                        abrirModalStatus={abrirModalStatus}
                       />
                     ))}
                   </div>
@@ -661,6 +878,7 @@ export default function PainelMedico() {
                         historicosAbertos={historicosAbertos}
                         historicos={historicos}
                         carregarHistorico={carregarHistorico}
+                        abrirModalStatus={abrirModalStatus}
                       />
                     ))}
                   </div>
@@ -670,14 +888,24 @@ export default function PainelMedico() {
           )}
 
           {/* ════════════════════════════════════════════════════════════════
-              ABA: LINHA DO TEMPO (EVOLUÇÃO CLÍNICA - READ-ONLY)
+              ABA: LINHA DO TEMPO (EVOLUÇÃO CLÍNICA)
               ════════════════════════════════════════════════════════════════ */}
           {abaAtiva === 'linha_do_tempo' && (
             <div className="bg-surface-container-lowest rounded-3xl border border-surface-variant p-5 md:p-8">
-              <h3 className="text-sm font-extrabold text-on-surface-variant uppercase tracking-wider mb-6 flex items-center gap-2 select-none">
-                <span className="material-symbols-outlined text-base">timeline</span>
-                Evolução Clínica do Cidadão no SUS
-              </h3>
+              <div className="flex items-center justify-between gap-4 mb-6 select-none">
+                <h3 className="text-sm font-extrabold text-on-surface-variant uppercase tracking-wider flex items-center gap-2">
+                  <span className="material-symbols-outlined text-base">timeline</span>
+                  Evolução Clínica do Cidadão no SUS
+                </h3>
+                <button
+                  type="button"
+                  onClick={abrirModalNovoAtendimento}
+                  className="h-10 px-4 md:h-12 md:px-6 bg-primary text-white font-bold rounded-xl md:rounded-2xl shadow-md shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all flex items-center gap-2 text-sm"
+                >
+                  <span className="material-symbols-outlined text-lg">add</span>
+                  Registrar Evolução
+                </button>
+              </div>
 
               {loadingAtendimentos ? (
                 <div className="space-y-3 animate-pulse select-none">
@@ -697,18 +925,44 @@ export default function PainelMedico() {
                       </span>
 
                       <div className="p-5 rounded-2xl bg-surface-container-low/40 hover:bg-surface-container-low/70 border border-surface-variant/60 hover:border-primary/20 transition-all duration-300 shadow-sm hover:shadow-md">
-                        <div className="flex items-center gap-2 flex-wrap mb-1.5">
-                          <span className="text-xs font-extrabold text-primary uppercase tracking-wider">
-                            {formatarDataBR(at.data_atendimento)}
-                          </span>
-                          {at.tipo_unidade && (
-                            <span className="text-[10px] font-extrabold px-2 py-0.5 bg-blue-500/10 text-blue-800 border border-blue-500/20 rounded-full uppercase tracking-wider">
-                              {TIPO_UNIDADE_LABEL[at.tipo_unidade] || at.tipo_unidade}
-                            </span>
-                          )}
+                        <div className="flex items-start justify-between gap-4 mb-2 select-none">
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap mb-1.5">
+                              <span className="text-xs font-extrabold text-primary uppercase tracking-wider">
+                                {formatarDataBR(at.data_atendimento)}
+                              </span>
+                              {at.tipo_unidade && (
+                                <span className="text-[10px] px-2.5 py-0.5 bg-surface-container-high rounded-full font-extrabold text-on-surface-variant uppercase tracking-wider border border-outline-variant">
+                                  {TIPO_UNIDADE_LABEL[at.tipo_unidade] || at.tipo_unidade}
+                                </span>
+                              )}
+                            </div>
+                            <h4 className="font-black text-on-background text-base">{at.unidade}</h4>
+                          </div>
+
+                          {/* Ações da evolução clínica */}
+                          <div className="flex gap-1.5 flex-shrink-0">
+                            <button
+                              type="button"
+                              onClick={() => abrirModalEditarAtendimento(at)}
+                              className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-surface-container-high border border-transparent hover:border-surface-variant/40 transition-all text-on-surface-variant"
+                              title="Editar evolução"
+                            >
+                              <span className="material-symbols-outlined text-[17px]">edit</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleDeletarAtendimento(at.id)}
+                              disabled={deletandoAtendimento === at.id}
+                              className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-red-50 text-red-600 border border-transparent hover:border-red-200 disabled:opacity-50 transition-all"
+                              title="Remover evolução"
+                            >
+                              <span className="material-symbols-outlined text-[17px]">
+                                {deletandoAtendimento === at.id ? 'hourglass_empty' : 'delete'}
+                              </span>
+                            </button>
+                          </div>
                         </div>
-                        
-                        <h4 className="font-black text-on-background text-base">{at.unidade}</h4>
                         
                         {at.especialidade && (
                           <p className="text-xs text-on-surface-variant font-bold mt-0.5">
@@ -745,6 +999,12 @@ export default function PainelMedico() {
                             Anotações: "{at.observacoes}"
                           </p>
                         )}
+
+                        {at.registrado_por_nome && (
+                          <p className="text-[10px] text-on-surface-variant/80 font-bold uppercase tracking-wider mt-4 pt-3 border-t border-surface-variant/50 select-none">
+                            Registrado por: {at.registrado_por_nome}
+                          </p>
+                        )}
                       </div>
                     </li>
                   ))}
@@ -757,6 +1017,277 @@ export default function PainelMedico() {
               )}
             </div>
           )}
+        </div>
+      )}
+
+      {/* ── Modal: Registrar / Editar Evolução Clínica (Atendimento) ── */}
+      {modalAtendimentoAberto && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fade-in">
+          <div className="absolute inset-0 bg-on-surface/40 backdrop-blur-sm" onClick={() => setModalAtendimentoAberto(false)} />
+          <div className="relative w-full max-w-2xl bg-surface-container-lowest rounded-[2rem] shadow-2xl overflow-hidden max-h-[90vh] flex flex-col z-10">
+            <header className="p-6 md:p-8 border-b border-surface-variant flex justify-between items-center flex-shrink-0">
+              <h3 className="text-xl font-extrabold">
+                {atendimentoEditando ? 'Editar Evolução Clínica' : 'Registrar Evolução Clínica'}
+              </h3>
+              <button onClick={() => setModalAtendimentoAberto(false)}
+                className="w-10 h-10 rounded-full hover:bg-surface-container-low flex items-center justify-center">
+                <span className="material-symbols-outlined">close</span>
+              </button>
+            </header>
+
+            <form onSubmit={handleSalvarAtendimento} className="p-6 md:p-8 space-y-4 overflow-y-auto">
+              {/* Linha 1: Data + Tipo de Unidade */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-bold text-on-surface-variant">Data do atendimento*</label>
+                  <input required type="date"
+                    value={formAtendimento.data_atendimento}
+                    onChange={e => setFormAtendimento(p => ({ ...p, data_atendimento: e.target.value }))}
+                    className="w-full h-12 px-4 bg-surface-container-high border-none rounded-xl outline-none font-medium" />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-bold text-on-surface-variant">Tipo de unidade</label>
+                  <select
+                    value={formAtendimento.tipo_unidade}
+                    onChange={e => setFormAtendimento(p => ({ ...p, tipo_unidade: e.target.value }))}
+                    className="w-full h-12 px-4 bg-surface-container-high border-none rounded-xl outline-none font-medium">
+                    <option value="">Selecione...</option>
+                    <option value="ubs">UBS</option>
+                    <option value="ame">AME</option>
+                    <option value="caps">CAPS</option>
+                    <option value="upa">UPA</option>
+                    <option value="centro_especialidades">Centro de Especialidades</option>
+                    <option value="hospital">Hospital</option>
+                    <option value="pronto_socorro">Pronto-Socorro</option>
+                    <option value="outro">Outro</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Unidade (nome livre) */}
+              <div className="space-y-2">
+                <label className="text-sm font-bold text-on-surface-variant">Nome da unidade*</label>
+                <input required
+                  placeholder="Ex: UBS Vila Industrial, UPA Norte, AME Zona Leste"
+                  value={formAtendimento.unidade}
+                  onChange={e => setFormAtendimento(p => ({ ...p, unidade: e.target.value }))}
+                  className="w-full h-12 px-4 bg-surface-container-high border-none rounded-xl outline-none font-medium" />
+              </div>
+
+              {/* Especialidade + Profissional */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-bold text-on-surface-variant">Especialidade</label>
+                  <input
+                    placeholder="Ex: Cardiologia, Ortopedia"
+                    value={formAtendimento.especialidade}
+                    onChange={e => setFormAtendimento(p => ({ ...p, especialidade: e.target.value }))}
+                    className="w-full h-12 px-4 bg-surface-container-high border-none rounded-xl outline-none font-medium" />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-bold text-on-surface-variant">Profissional</label>
+                  <input
+                    placeholder="Ex: Dr(a). Nome do médico"
+                    value={formAtendimento.profissional}
+                    onChange={e => setFormAtendimento(p => ({ ...p, profesional: e.target.value }))}
+                    className="w-full h-12 px-4 bg-surface-container-high border-none rounded-xl outline-none font-medium" />
+                </div>
+              </div>
+
+              {/* CID-10 principal + secundário */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-bold text-on-surface-variant">CID-10 Principal</label>
+                  <input
+                    maxLength={10}
+                    placeholder="Ex: I10, E11, J45.0"
+                    value={formAtendimento.cid_10_principal}
+                    onChange={e => setFormAtendimento(p => ({ ...p, cid_10_principal: e.target.value.toUpperCase() }))}
+                    className="w-full h-12 px-4 bg-surface-container-high border-none rounded-xl outline-none font-medium" />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-bold text-on-surface-variant">CID-10 Secundário</label>
+                  <input
+                    maxLength={10}
+                    placeholder="Ex: Z87.0"
+                    value={formAtendimento.cid_10_secundario}
+                    onChange={e => setFormAtendimento(p => ({ ...p, cid_10_secundario: e.target.value.toUpperCase() }))}
+                    className="w-full h-12 px-4 bg-surface-container-high border-none rounded-xl outline-none font-medium" />
+                </div>
+              </div>
+
+              {/* Conduta */}
+              <div className="space-y-2">
+                <label className="text-sm font-bold text-on-surface-variant">Conduta Clínica</label>
+                <textarea rows={3}
+                  placeholder="O que foi prescrito, encaminhado ou decidido neste atendimento"
+                  value={formAtendimento.conduta}
+                  onChange={e => setFormAtendimento(p => ({ ...p, conduta: e.target.value }))}
+                  className="w-full px-4 py-3 bg-surface-container-high border-none rounded-xl outline-none font-medium resize-none" />
+              </div>
+
+              {/* Observações */}
+              <div className="space-y-2">
+                <label className="text-sm font-bold text-on-surface-variant">Observações</label>
+                <textarea rows={2}
+                  placeholder="Notas adicionais sobre o atendimento"
+                  value={formAtendimento.observacoes}
+                  onChange={e => setFormAtendimento(p => ({ ...p, observacoes: e.target.value }))}
+                  className="w-full px-4 py-3 bg-surface-container-high border-none rounded-xl outline-none font-medium resize-none" />
+              </div>
+
+              {/* Botões */}
+              <div className="flex gap-3 pt-2">
+                <button type="button" onClick={() => setModalAtendimentoAberto(false)}
+                  className="flex-1 h-12 rounded-2xl border border-outline font-bold">
+                  Cancelar
+                </button>
+                <button type="submit" disabled={enviandoAtendimento}
+                  className="flex-1 h-12 rounded-2xl bg-primary text-white font-bold disabled:opacity-50">
+                  {enviandoAtendimento ? 'Salvando...' : (atendimentoEditando ? 'Salvar Alterações' : 'Registrar')}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ── Modal: Editar Parâmetros Clínicos (Anamnese) ── */}
+      {modalDadosAberto && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fade-in">
+          <div className="absolute inset-0 bg-on-surface/40 backdrop-blur-sm" onClick={() => setModalDadosAberto(false)} />
+          <div className="relative w-full max-w-2xl bg-surface-container-lowest rounded-[2rem] shadow-2xl overflow-hidden max-h-[90vh] flex flex-col z-10">
+            <header className="p-6 md:p-8 border-b border-surface-variant flex justify-between items-center flex-shrink-0">
+              <h3 className="text-xl font-extrabold">Editar Parâmetros Clínicos</h3>
+              <button onClick={() => setModalDadosAberto(false)} className="w-10 h-10 rounded-full hover:bg-surface-container-low flex items-center justify-center">
+                <span className="material-symbols-outlined">close</span>
+              </button>
+            </header>
+            <form onSubmit={handleSalvarDados} className="p-6 md:p-8 space-y-5 overflow-y-auto">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <label className="space-y-2">
+                  <span className="text-sm font-bold text-on-surface-variant">Tipo Sanguíneo</span>
+                  <select value={formDados.tipo_sanguineo}
+                    onChange={e => setFormDados(p => ({ ...p, tipo_sanguineo: e.target.value }))}
+                    className="w-full h-12 px-4 bg-surface-container-high border-none rounded-xl outline-none font-medium">
+                    <option value="">Não informado</option>
+                    {['A+','A-','B+','B-','AB+','AB-','O+','O-'].map(t => (
+                      <option key={t} value={t}>{t}</option>
+                    ))}
+                  </select>
+                </label>
+                <label className="space-y-2">
+                  <span className="text-sm font-bold text-on-surface-variant">Peso (kg)</span>
+                  <input type="number" step="0.1" min="1" max="300"
+                    placeholder="Ex: 72.5"
+                    value={formDados.peso_kg}
+                    onChange={e => setFormDados(p => ({ ...p, peso_kg: e.target.value }))}
+                    className="w-full h-12 px-4 bg-surface-container-high border-none rounded-xl outline-none font-medium" />
+                </label>
+                <label className="space-y-2">
+                  <span className="text-sm font-bold text-on-surface-variant">Altura (cm)</span>
+                  <input type="number" min="50" max="250"
+                    placeholder="Ex: 175"
+                    value={formDados.altura_cm}
+                    onChange={e => setFormDados(p => ({ ...p, altura_cm: e.target.value }))}
+                    className="w-full h-12 px-4 bg-surface-container-high border-none rounded-xl outline-none font-medium" />
+                </label>
+              </div>
+
+              <div className="space-y-4">
+                <label className="block space-y-2">
+                  <span className="text-sm font-bold text-on-surface-variant">Alergias</span>
+                  <textarea rows={2}
+                    placeholder="Ex: Penicilina, Dipirona, látex"
+                    value={formDados.alergias}
+                    onChange={e => setFormDados(p => ({ ...p, alergias: e.target.value }))}
+                    className="w-full px-4 py-3 bg-surface-container-high border-none rounded-xl outline-none font-medium resize-none" />
+                </label>
+                <label className="block space-y-2">
+                  <span className="text-sm font-bold text-on-surface-variant">Comorbidades</span>
+                  <textarea rows={2}
+                    placeholder="Ex: Diabetes tipo 2, Hipertensão arterial"
+                    value={formDados.comorbidades}
+                    onChange={e => setFormDados(p => ({ ...p, comorbidades: e.target.value }))}
+                    className="w-full px-4 py-3 bg-surface-container-high border-none rounded-xl outline-none font-medium resize-none" />
+                </label>
+                <label className="block space-y-2">
+                  <span className="text-sm font-bold text-on-surface-variant">Medicamentos de uso contínuo</span>
+                  <textarea rows={2}
+                    placeholder="Ex: Metformina 500mg 2x/dia, Losartana 50mg"
+                    value={formDados.medicamentos_uso_continuo}
+                    onChange={e => setFormDados(p => ({ ...p, medicamentos_uso_continuo: e.target.value }))}
+                    className="w-full px-4 py-3 bg-surface-container-high border-none rounded-xl outline-none font-medium resize-none" />
+                </label>
+                <label className="block space-y-2">
+                  <span className="text-sm font-bold text-on-surface-variant">Observações Clínicas</span>
+                  <textarea rows={3}
+                    placeholder="Anotações sobre a saúde geral do paciente"
+                    value={formDados.observacoes_clinicas}
+                    onChange={e => setFormDados(p => ({ ...p, observacoes_clinicas: e.target.value }))}
+                    className="w-full px-4 py-3 bg-surface-container-high border-none rounded-xl outline-none font-medium resize-none" />
+                </label>
+              </div>
+
+              <div className="flex justify-end gap-3 pt-2">
+                <button type="button" onClick={() => setModalDadosAberto(false)} className="h-12 px-5 rounded-2xl border border-outline font-bold">Cancelar</button>
+                <button type="submit" disabled={salvandoDados} className="h-12 px-6 rounded-2xl bg-primary text-white font-bold disabled:opacity-50">
+                  {salvandoDados ? 'Salvando...' : 'Salvar'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ── Modal: Lançar Laudo / Atualizar Status de Solicitação ── */}
+      {modalStatusAberto && solicitacaoSelecionada && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fade-in">
+          <div className="absolute inset-0 bg-on-surface/40 backdrop-blur-sm" onClick={() => setModalStatusAberto(false)} />
+          <div className="relative w-full max-w-xl bg-surface-container-lowest rounded-[2rem] shadow-2xl overflow-hidden z-10">
+            <header className="p-6 md:p-8 border-b border-surface-variant flex justify-between items-center">
+              <h3 className="text-xl font-extrabold">Lançar Laudo e Status</h3>
+              <button onClick={() => setModalStatusAberto(false)} className="w-10 h-10 rounded-full hover:bg-surface-container-low flex items-center justify-center">
+                <span className="material-symbols-outlined">close</span>
+              </button>
+            </header>
+            <form onSubmit={handleAtualizarStatus} className="p-6 md:p-8 space-y-5">
+              <p className="text-sm text-on-surface-variant font-medium">
+                Solicitação: <span className="text-on-surface font-bold">{solicitacaoSelecionada.descricao_paciente}</span>
+              </p>
+              <div className="space-y-2">
+                <label className="text-sm font-bold text-on-surface-variant">Atualizar status*</label>
+                <select required value={formStatus.status_novo} onChange={e => setFormStatus(p => ({ ...p, status_novo: e.target.value }))}
+                  className="w-full h-12 px-4 bg-surface-container-high border-none rounded-xl outline-none font-medium">
+                  {STATUS_VALIDOS.map(s => <option key={s} value={s}>{STATUS_LABEL[s]}</option>)}
+                </select>
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-bold text-on-surface-variant">Observação do Status (opcional)</label>
+                <textarea rows={2} placeholder="Ex: Resultado homologado pelo médico..." value={formStatus.observacao}
+                  onChange={e => setFormStatus(p => ({ ...p, observacao: e.target.value }))}
+                  className="w-full px-4 py-3 bg-surface-container-high border-none rounded-xl outline-none font-medium resize-none" />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-bold text-on-surface-variant">Resultado Clínico / Laudo*</label>
+                <textarea required rows={4} placeholder="Digite o laudo detalhado do exame..." value={formStatus.resultado}
+                  onChange={e => setFormStatus(p => ({ ...p, resultado: e.target.value }))}
+                  className="w-full px-4 py-3 bg-surface-container-high border-none rounded-xl outline-none font-medium resize-none" />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-bold text-on-surface-variant">Código CID-10 Diagnosticado (opcional)</label>
+                <input type="text" maxLength={10} placeholder="Ex: E11.9, J45" value={formStatus.cid_10}
+                  onChange={e => setFormStatus(p => ({ ...p, cid_10: e.target.value.toUpperCase() }))}
+                  className="w-full h-12 px-4 bg-surface-container-high border-none rounded-xl outline-none font-medium" />
+              </div>
+              <div className="flex gap-3 pt-2">
+                <button type="button" onClick={() => setModalStatusAberto(false)} className="flex-1 h-12 rounded-2xl border border-outline font-bold">Cancelar</button>
+                <button type="submit" disabled={enviandoStatus} className="flex-1 h-12 rounded-2xl bg-primary text-white font-bold disabled:opacity-50">
+                  {enviandoStatus ? 'Salvando...' : 'Confirmar e Salvar'}
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
     </GestorLayout>

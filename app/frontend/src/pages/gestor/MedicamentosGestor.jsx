@@ -12,6 +12,7 @@ import { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 import api from '../../services/api';
 import GestorLayout from '../../components/gestor/GestorLayout';
+import { useAuth } from '../../hooks/useAuth';
 
 // Estado inicial para novos cadastros
 const FORM_INICIAL = {
@@ -30,6 +31,9 @@ const FILTROS = [
 ];
 
 export default function MedicamentosGestor() {
+  const { user } = useAuth();
+  const isMedico = user?.perfil === 'medico';
+
   const [meds, setMeds] = useState([]);
   const [loading, setLoading] = useState(true);
   const [erro, setErro] = useState('');
@@ -141,13 +145,15 @@ export default function MedicamentosGestor() {
             Controle e atualização do catálogo de medicamentos disponíveis para os pacientes.
           </p>
         </div>
-        <button
-          onClick={() => setModalCadastroAberto(true)}
-          className="h-12 px-6 text-sm md:h-14 md:px-8 md:text-base bg-primary text-white font-bold rounded-2xl shadow-lg shadow-primary/20 hover:shadow-primary/35 hover:-translate-y-0.5 active:translate-y-0 active:scale-95 transition-all flex items-center gap-2 self-start md:self-auto flex-shrink-0"
-        >
-          <span className="material-symbols-outlined text-xl">add</span>
-          Novo Medicamento
-        </button>
+        {!isMedico && (
+          <button
+            onClick={() => setModalCadastroAberto(true)}
+            className="h-12 px-6 text-sm md:h-14 md:px-8 md:text-base bg-primary text-white font-bold rounded-2xl shadow-lg shadow-primary/20 hover:shadow-primary/35 hover:-translate-y-0.5 active:translate-y-0 active:scale-95 transition-all flex items-center gap-2 self-start md:self-auto flex-shrink-0"
+          >
+            <span className="material-symbols-outlined text-xl">add</span>
+            Novo Medicamento
+          </button>
+        )}
       </div>
 
       {/* ── CONTADORES ESTATÍSTICOS HSL GLASSMORPHIC ── */}
@@ -217,14 +223,16 @@ export default function MedicamentosGestor() {
                   <th className="px-6 py-4.5 text-xs font-bold text-on-surface-variant uppercase tracking-wider">Status</th>
                   <th className="px-6 py-4.5 text-xs font-bold text-on-surface-variant uppercase tracking-wider">Observação</th>
                   <th className="px-6 py-4.5 text-xs font-bold text-on-surface-variant uppercase tracking-wider">Atualizado em</th>
-                  <th className="px-6 py-4.5 text-xs font-bold text-on-surface-variant uppercase tracking-wider text-right">Ações</th>
+                  {!isMedico && (
+                    <th className="px-6 py-4.5 text-xs font-bold text-on-surface-variant uppercase tracking-wider text-right font-black">Ações</th>
+                  )}
                 </tr>
               </thead>
               <tbody className="divide-y divide-surface-variant/30">
                 {loading ? (
                   Array.from({ length: 5 }, (_, index) => (
                     <tr key={index} className="animate-pulse">
-                      <td colSpan="6" className="px-6 py-5">
+                      <td colSpan={isMedico ? 5 : 6} className="px-6 py-5">
                         <div className="h-6 bg-surface-container-high rounded-lg w-full" />
                       </td>
                     </tr>
@@ -234,12 +242,17 @@ export default function MedicamentosGestor() {
                     <tr key={med.id} className="hover:bg-surface-container-low/40 transition-colors">
                       {/* Nome do Medicamento com atalho de clique */}
                       <td className="px-6 py-5 font-bold text-on-background">
-                        <button
-                          onClick={() => abrirEdicao(med)}
-                          className="text-left font-bold text-on-background hover:text-primary hover:underline decoration-primary/30 transition-all decoration-2 underline-offset-2"
-                        >
-                          {med.nome}
-                        </button>
+                        {isMedico ? (
+                          <span className="font-bold text-on-background">{med.nome}</span>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => abrirEdicao(med)}
+                            className="text-left font-bold text-on-background hover:text-primary hover:underline decoration-primary/30 transition-all decoration-2 underline-offset-2"
+                          >
+                            {med.nome}
+                          </button>
+                        )}
                       </td>
 
                       {/* Princípio Ativo */}
@@ -285,31 +298,35 @@ export default function MedicamentosGestor() {
                       </td>
 
                       {/* Botões de Ação Inline */}
-                      <td className="px-6 py-5 text-right">
-                        <div className="flex items-center justify-end gap-2">
-                          <button
-                            onClick={() => abrirEdicao(med)}
-                            className="h-9 px-4 border border-surface-variant hover:bg-surface-container-high text-on-background font-bold text-xs rounded-xl transition-all"
-                          >
-                            Editar
-                          </button>
-                          <button
-                            onClick={() => toggle(med)}
-                            className={`h-9 px-4 border text-xs font-bold rounded-xl transition-all ${
-                              med.disponivel
-                                ? 'border-red-500/20 hover:bg-red-500/5 text-red-700'
-                                : 'border-emerald-500/20 hover:bg-emerald-500/5 text-emerald-700'
-                            }`}
-                          >
-                            Alternar
-                          </button>
-                        </div>
-                      </td>
+                      {!isMedico && (
+                        <td className="px-6 py-5 text-right">
+                          <div className="flex items-center justify-end gap-2">
+                            <button
+                              type="button"
+                              onClick={() => abrirEdicao(med)}
+                              className="h-9 px-4 border border-surface-variant hover:bg-surface-container-high text-on-background font-bold text-xs rounded-xl transition-all"
+                            >
+                              Editar
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => toggle(med)}
+                              className={`h-9 px-4 border text-xs font-bold rounded-xl transition-all ${
+                                med.disponivel
+                                  ? 'border-red-500/20 hover:bg-red-500/5 text-red-700'
+                                  : 'border-emerald-500/20 hover:bg-emerald-500/5 text-emerald-700'
+                              }`}
+                            >
+                              Alternar
+                            </button>
+                          </div>
+                        </td>
+                      )}
                     </tr>
                   ))
                 ) : (
                   <tr>
-                    <td colSpan="6" className="px-6 py-16 text-center text-on-surface-variant font-semibold text-sm">
+                    <td colSpan={isMedico ? 5 : 6} className="px-6 py-16 text-center text-on-surface-variant font-semibold text-sm">
                       Nenhum medicamento encontrado no filtro selecionado.
                     </td>
                   </tr>

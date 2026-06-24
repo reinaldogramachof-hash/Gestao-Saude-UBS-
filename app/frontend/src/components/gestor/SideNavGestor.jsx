@@ -28,7 +28,7 @@ const PERFIS_ACESSO = {
   agendamentos:      ['recepcionista', 'gestor', 'admin'],
   regulacao:         ['gestor', 'admin'],
   vigilancia:        ['gestor', 'admin'],
-  medicamentos:      ['recepcionista', 'gestor', 'admin'],
+  medicamentos:      ['recepcionista', 'gestor', 'admin', 'medico'],
   comunicados:       ['recepcionista', 'gestor', 'admin'],
   relatorios:        ['gestor', 'admin'],
 };
