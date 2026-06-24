@@ -118,6 +118,10 @@ export default function DashboardPaciente() {
     }
   };
 
+  // Resumo derivado dos dados ja carregados no dashboard. Nao cria chamada nova
+  // de API e evita repetir o mesmo filter em varios chips de status.
+  const solicitacoesAtivas = sols.filter(s => !['concluido', 'cancelado'].includes(s.status));
+
   // Exibe esqueleto animado enquanto os dados carregam
   if (loading) {
     return (
@@ -182,7 +186,7 @@ export default function DashboardPaciente() {
   return (
     <PacienteLayout>
       {/* ── Cabeçalho verde com nome e UBS ── */}
-      <header className="bg-primary pt-4 pb-8 px-6 rounded-b-[1.5rem] md:pt-6 md:pb-10 md:rounded-b-none relative overflow-hidden flex justify-center">
+      <header className="bg-primary pt-3 pb-5 px-6 rounded-b-[1.5rem] md:pt-5 md:pb-7 md:rounded-b-none relative overflow-hidden flex justify-center">
         <div className="relative z-10 w-full max-w-5xl flex justify-between items-start">
           <div>
             <p className="text-white/80 text-[11px] font-bold tracking-wider uppercase mb-0.5">Bem-vindo(a)</p>
@@ -194,6 +198,40 @@ export default function DashboardPaciente() {
           </div>
         </div>
       </header>
+
+      {/* ── Card Hero: Proximo Agendamento ── */}
+      {/* Exibido apenas quando ha um agendamento futuro reservado para destacar a proxima consulta sem scroll. */}
+      {proximoAgendamento && (
+        <section className="px-6 pt-4 max-w-5xl mx-auto w-full">
+          <div
+            onClick={() => navigate('/paciente/agendamentos')}
+            className="bg-primary rounded-2xl p-4 shadow-md cursor-pointer active:scale-[0.98] transition-all"
+          >
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-white/70 text-[10px] font-bold uppercase tracking-widest mb-1">
+                  Próxima consulta
+                </p>
+                <p className="text-white text-xl font-extrabold leading-tight">
+                  {formatarProximoAg(proximoAgendamento.data_hora)}
+                </p>
+                {proximoAgendamento.ubs_nome && (
+                  <p className="text-white/80 text-xs font-medium mt-1">
+                    {proximoAgendamento.ubs_nome}
+                  </p>
+                )}
+              </div>
+              <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center flex-shrink-0">
+                <span className="material-symbols-outlined text-white text-2xl">event</span>
+              </div>
+            </div>
+            <div className="mt-3 pt-3 border-t border-white/20 flex items-center justify-between">
+              <span className="text-white/80 text-xs font-medium">Toque para ver detalhes</span>
+              <span className="material-symbols-outlined text-white/80 text-base">chevron_right</span>
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* ── Pendências de Confirmação ── */}
       {pendenciasConfirmacao.map(pend => (
@@ -242,8 +280,8 @@ export default function DashboardPaciente() {
           />
           <QuickAccessCard
             icon="calendar_month"
-            titulo="Próximo Agendamento"
-            valor={proximoAgendamento ? formatarProximoAg(proximoAgendamento.data_hora) : 'Sem agendamentos'}
+            titulo="Agendamentos"
+            valor={"Ver agenda"}
             cor="text-emerald-600"
             bg="bg-emerald-50"
             rota="/paciente/agendamentos"
@@ -276,7 +314,32 @@ export default function DashboardPaciente() {
       </section>
 
       {/* ── Conteúdo principal ── */}
-      <main className="px-6 mt-2 md:pb-12 relative z-20 space-y-6 pb-28 max-w-5xl mx-auto w-full">
+      {/* ── Barra resumo rapido ── */}
+      {/* Chips compactos para o paciente entender pendencias importantes sem abrir outros menus. */}
+      <section className="px-6 max-w-5xl mx-auto w-full">
+        <div className="flex gap-2 flex-wrap">
+          {solicitacoesAtivas.length > 0 && (
+            <span className="text-xs font-bold bg-primary/10 text-primary px-3 py-1.5 rounded-full">
+              {solicitacoesAtivas.length} solicitação{solicitacoesAtivas.length > 1 ? 'ões' : ''} ativa{solicitacoesAtivas.length > 1 ? 's' : ''}
+            </span>
+          )}
+          {unreadComunicados > 0 && (
+            <span
+              onClick={() => navigate('/paciente/comunicados')}
+              className="text-xs font-bold bg-red-100 text-red-700 px-3 py-1.5 rounded-full cursor-pointer"
+            >
+              {unreadComunicados} aviso{unreadComunicados > 1 ? 's' : ''} não lido{unreadComunicados > 1 ? 's' : ''}
+            </span>
+          )}
+          {pendenciasConfirmacao.length > 0 && (
+            <span className="text-xs font-bold bg-blue-100 text-blue-700 px-3 py-1.5 rounded-full">
+              {pendenciasConfirmacao.length} confirmação pendente
+            </span>
+          )}
+        </div>
+      </section>
+
+      <main className="px-6 mt-1 md:pb-12 relative z-20 space-y-3 pb-28 max-w-5xl mx-auto w-full">
         {/* Linha de título com atalho para histórico completo */}
         <div className="flex justify-between items-center mb-2">
           <h2 className="text-lg font-extrabold text-on-surface leading-tight">Minhas Solicitações Ativas</h2>
@@ -293,7 +356,7 @@ export default function DashboardPaciente() {
             <button
               key={sol.id}
               onClick={() => navigate(`/paciente/solicitacao/${sol.id}`)}
-              className={`w-full text-left bg-surface-container-lowest p-4 rounded-2xl shadow-sm border-y border-r transition-all hover:scale-[1.01] hover:shadow-md active:scale-[0.99] duration-200 ${
+              className={`w-full text-left bg-surface-container-lowest p-3 rounded-2xl shadow-sm border-y border-r transition-all hover:scale-[1.01] hover:shadow-md active:scale-[0.99] duration-200 ${
                 sol.prioridade === 'urgente'
                   ? 'border-l-4 border-l-red-500 border-red-300'
                   : 'border-l-4 border-l-primary border-surface-variant'
@@ -326,7 +389,7 @@ export default function DashboardPaciente() {
                 </div>
               </div>
               {/* O status técnico nunca é exibido diretamente ao paciente. */}
-              <div className={`rounded-xl p-3 ${STATUS_CORES[sol.status] || 'bg-surface-container-low text-on-surface'}`}>
+              <div className={`rounded-xl px-3 py-2 ${STATUS_CORES[sol.status] || 'bg-surface-container-low text-on-surface'}`}>
                 <p className="text-sm font-semibold">
                   {STATUS_LABELS[sol.status] || 'Status em atualização'}
                 </p>

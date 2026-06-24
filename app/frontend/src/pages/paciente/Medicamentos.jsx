@@ -121,21 +121,34 @@ export default function Medicamentos() {
             {/* Barra lateral: verde = disponível, vermelha = em falta */}
             <div className={`absolute top-0 left-0 w-1.5 h-full ${m.disponivel ? 'bg-primary' : 'bg-red-500'}`} />
             <div className="pl-4">
-              <h3 className="font-bold text-on-surface text-base leading-tight">{m.nome}</h3>
+              {/* Nome e dosagem aparecem juntos para facilitar leitura na farmacia da UBS. */}
+              <h3 className="font-bold text-on-surface text-base leading-tight">
+                {m.nome}
+                {m.dosagem && <span className="font-normal text-on-surface-variant text-sm"> {m.dosagem}</span>}
+              </h3>
               {m.principio_ativo && (
-                <p className="text-on-surface-variant text-xs mb-3">{m.principio_ativo}</p>
+                <p className="text-on-surface-variant text-xs mt-0.5">{m.principio_ativo}</p>
               )}
-              <div className="flex items-center justify-between flex-wrap gap-2">
+              <div className="flex items-center justify-between flex-wrap gap-2 mt-3">
                 <span className={`text-xs font-bold px-2.5 py-1 rounded-lg ${m.disponivel ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-600'}`}>
-                  {m.disponivel ? '✓ Disponível' : '✗ Falta temporária'}
+                  {m.disponivel ? 'Disponível' : 'Indisponível'}
                 </span>
                 {/* Data da última atualização do estoque — ajuda o paciente a confiar na informação */}
                 {m.atualizado_em && (
-                  <span className="text-xs text-on-surface-variant">
+                  <span className="text-[10px] text-on-surface-variant">
                     Atualizado em {formatarData(m.atualizado_em)}
                   </span>
                 )}
               </div>
+
+              {/* Previsao exibida apenas quando esta indisponivel, em linguagem simples. */}
+              {!m.disponivel && (
+                <p className="text-xs text-on-surface-variant mt-2 italic">
+                  {m.previsao_disponibilidade
+                    ? `Previsão de chegada: ${formatarData(m.previsao_disponibilidade)}`
+                    : 'Procure a equipe da UBS para mais informações sobre disponibilidade.'}
+                </p>
+              )}
               
               {m.observacao && (
                 <p className="text-xs text-on-surface-variant mt-2.5 italic leading-relaxed">{m.observacao}</p>

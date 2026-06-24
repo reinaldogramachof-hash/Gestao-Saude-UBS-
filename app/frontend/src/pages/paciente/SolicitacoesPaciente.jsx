@@ -17,6 +17,16 @@ import api from '../../services/api';
 import PacienteLayout from '../../components/paciente/PacienteLayout';
 import { STATUS_LABELS, STATUS_CORES, formatarDataBR } from '../../utils/statusHelper';
 
+// Ordem linear dos status exibidos no mini-stepper. Fica fora do componente
+// para evitar recriacao a cada render e manter o fluxo facil de auditar.
+const FLUXO = [
+  'em_analise',
+  'aguardando_regulacao',
+  'autorizado',
+  'data_marcada',
+  'concluido',
+];
+
 // ─────────────────────────────────────────────────────────────────────────────
 // COMPONENTE: CardSolicitacao
 // FUNÇÃO: Card individual de uma solicitação — reutilizado nas seções
@@ -63,6 +73,32 @@ function CardSolicitacao({ sol, navigate }) {
           <span className="text-[11px] font-extrabold text-on-surface-variant/80">{formatarDataBR(sol.atualizado_em || sol.criado_em)}</span>
         </div>
       </div>
+      {/* Mini-stepper de progresso da solicitacao */}
+      {(() => {
+        const idx = FLUXO.indexOf(sol.status);
+        if (sol.status === 'cancelado') return null;
+        return (
+          <div className="flex items-center gap-1 mb-2">
+            {FLUXO.map((etapa, i) => (
+              <div key={etapa} className="flex items-center gap-1 flex-1">
+                <div
+                  className={`w-2.5 h-2.5 rounded-full flex-shrink-0 transition-colors ${
+                    i < idx
+                      ? 'bg-primary'
+                      : i === idx
+                      ? 'bg-primary ring-2 ring-primary/30'
+                      : 'bg-surface-container-high'
+                  }`}
+                />
+                {i < FLUXO.length - 1 && (
+                  <div className={`h-0.5 flex-1 ${i < idx ? 'bg-primary' : 'bg-surface-container-high'}`} />
+                )}
+              </div>
+            ))}
+          </div>
+        );
+      })()}
+
       <div className={`rounded-xl px-3 py-2 ${STATUS_CORES[sol.status] || 'bg-surface-container-low text-on-surface'}`}>
         <p className="text-sm font-semibold">{STATUS_LABELS[sol.status] || 'Status em atualização'}</p>
         {sol.data_prevista && (
