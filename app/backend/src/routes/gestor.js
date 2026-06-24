@@ -163,6 +163,28 @@ const CAMPOS_AGENDAMENTO = [
   'criado_em',
 ];
 
+// Funcionamento padrao da UBS para criacao de agenda no MVP.
+// Futuramente estes valores devem vir do modulo de configuracao da UBS.
+const AGENDA_HORA_ABERTURA_MIN = 7 * 60;
+const AGENDA_HORA_FECHAMENTO_MIN = 18 * 60;
+
+function minutosDoHorario(valor) {
+  if (typeof valor === 'string') {
+    const match = valor.match(/T(\d{2}):(\d{2})/);
+    if (match) {
+      return Number(match[1]) * 60 + Number(match[2]);
+    }
+  }
+
+  const data = new Date(valor);
+  if (Number.isNaN(data.getTime())) return null;
+  return data.getHours() * 60 + data.getMinutes();
+}
+
+function validarHorarioFuncionamento(minutos) {
+  return minutos >= AGENDA_HORA_ABERTURA_MIN && minutos < AGENDA_HORA_FECHAMENTO_MIN;
+}
+
 const CAMPOS_COMUNICADO = [
   'id',
   'ubs_id',
@@ -1527,6 +1549,12 @@ router.post('/agendamentos/lote', validateBody(agendamentoLoteSchema), async (re
       return res.status(400).json({ error: 'A hora inicial deve ser menor que a hora final.' });
     }
 
+    // Defesa em profundidade: mesmo com inputs type="time" no frontend, a API
+    // rejeita grades fora do funcionamento padrao da UBS.
+    if (!validarHorarioFuncionamento(inicioMin) || !validarHorarioFuncionamento(fimMin - 1)) {
+      return res.status(400).json({ error: 'Horário fora do período de funcionamento (07h-18h).' });
+    }
+
     const slots = [];
 
     for (let d = 0; d < repetir_dias; d++) {
@@ -1561,6 +1589,8 @@ router.post('/agendamentos/lote', validateBody(agendamentoLoteSchema), async (re
 
     const inseridos = await knex.transaction(async (trx) => trx('agendamentos_gestao')
       .insert(slots)
+      .onConflict(['ubs_id', 'data_hora'])
+      .ignore()
       .returning(['id', 'data_hora', 'duracao_minutos', 'status']));
 
     return res.status(201).json({ criados: inseridos.length, slots: inseridos });
@@ -1576,6 +1606,16 @@ router.post('/agendamento', async (req, res) => {
 
     if (!data_hora) {
       return res.status(400).json({ error: 'A data e hora são obrigatórias.' });
+    }
+
+    const dataHora = new Date(data_hora);
+    if (Number.isNaN(dataHora.getTime())) {
+      return res.status(400).json({ error: 'Data e hora invalidas.' });
+    }
+
+    const minutosSlot = minutosDoHorario(dataHora);
+    if (!validarHorarioFuncionamento(minutosSlot)) {
+      return res.status(400).json({ error: 'Horário fora do período de funcionamento (07h-18h).' });
     }
 
     const [agendamento] = await knex('agendamentos_gestao')
@@ -1629,6 +1669,48 @@ router.put('/agendamento/:id', async (req, res) => {
 // ─── DELETE /api/gestor/agendamento/:id ───────────────────────────────────────
 // Épico 4: Remove um slot de agendamento. Só permite se status = 'disponivel'.
 // Impede exclusão de consultas já reservadas ou concluídas.
+// ─── DELETE /api/gestor/agendamentos/em-massa ────────────────────────────────
+// Remove varios slots livres de uma vez. Slots reservados, concluidos,
+// cancelados ou de outra UBS sao ignorados e reportados no retorno.
+router.delete('/agendamentos/em-massa', async (req, res) => {
+  try {
+    const { ids } = req.body;
+
+    if (!Array.isArray(ids) || ids.length === 0) {
+      return res.status(400).json({ error: 'Informe ao menos um horario para excluir.' });
+    }
+
+    const idsUnicos = [...new Set(ids.map(Number).filter(Number.isInteger))];
+    if (idsUnicos.length === 0) {
+      return res.status(400).json({ error: 'Lista de horarios invalida.' });
+    }
+
+    const slots = await knex('agendamentos_gestao')
+      .where({ ubs_id: req.user.ubs_id })
+      .whereIn('id', idsUnicos)
+      .select('id', 'status', 'paciente_id');
+
+    const excluiveis = slots
+      .filter((slot) => slot.status === 'disponivel' && !slot.paciente_id)
+      .map((slot) => slot.id);
+
+    if (excluiveis.length > 0) {
+      await knex('agendamentos_gestao')
+        .where({ ubs_id: req.user.ubs_id })
+        .whereIn('id', excluiveis)
+        .del();
+    }
+
+    return res.json({
+      excluidos: excluiveis.length,
+      ignorados: idsUnicos.length - excluiveis.length,
+    });
+  } catch (err) {
+    console.error('[DELETE /gestor/agendamentos/em-massa]', err);
+    return res.status(500).json({ error: 'Erro ao excluir agendamentos em massa.' });
+  }
+});
+
 router.delete('/agendamento/:id', async (req, res) => {
   try {
     const agendamento = await knex('agendamentos_gestao')
@@ -1977,15 +2059,15 @@ router.post('/vigilancia', validateBody(vigilanciaSchema), async (req, res) => {
   try {
     const { agravo, bairro, cep, paciente_id } = req.body;
 
-    if (!agravo || !bairro) {
-      return res.status(400).json({ error: 'Agravo e bairro são obrigatórios.' });
-    }
 
-    const pacienteIdNormalizado = normalizarId(paciente_id);
+    // Valida paciente_id se fornecido — deve pertencer à mesma UBS
+    const pacienteIdNormalizado = paciente_id || null;
     if (pacienteIdNormalizado) {
-      const paciente = await validarPacienteDaUbs(pacienteIdNormalizado, req.user.ubs_id);
+      const paciente = await knex('pacientes')
+        .where({ id: pacienteIdNormalizado, ubs_id: req.user.ubs_id, ativo: true })
+        .first();
       if (!paciente) {
-        return res.status(404).json({ error: 'Paciente nao encontrado nesta UBS.' });
+        return res.status(404).json({ error: 'Paciente não encontrado nesta UBS.' });
       }
     }
 
@@ -2030,7 +2112,7 @@ router.put('/vigilancia/:id/status', async (req, res) => {
       return res.status(400).json({ error: 'Status inválido. Use SUSPEITO, CONFIRMADO ou DESCARTADO.' });
     }
 
-    // Garante isolamento por UBS
+    // Garante isolamento por UBS — gestor só altera notificações da sua unidade
     const notificacao = await knex('notificacoes_vigilancia')
       .where({ id: req.params.id, ubs_id: req.user.ubs_id })
       .first();
@@ -2056,6 +2138,72 @@ router.put('/vigilancia/:id/status', async (req, res) => {
   } catch (err) {
     console.error('[PUT /gestor/vigilancia/:id/status]', err);
     return res.status(500).json({ error: 'Erro ao atualizar status da notificação.' });
+  }
+});
+
+// ─── GET /api/gestor/relatorios ──────────────────────────────────────────────
+// Gera métricas simples de atividade para a UBS do gestor logado (RF-G09),
+// incluindo solicitações abertas, distribuição por status e alertas de urgências
+// ociosas (prioridade urgente sem atualização há mais de 7 dias).
+router.get('/relatorios', async (req, res) => {
+  try {
+    const ubsId = req.user.ubs_id;
+
+    // 1. Total de solicitações abertas (excluindo concluídas e canceladas)
+    const abertasCount = await knex('solicitacoes')
+      .where({ ubs_id: ubsId })
+      .whereNotIn('status', ['concluido', 'cancelado'])
+      .count('id as total')
+      .first();
+
+    // 2. Distribuição por status das solicitações ativas
+    const distribuicao = await knex('solicitacoes')
+      .where({ ubs_id: ubsId })
+      .whereNotIn('status', ['concluido', 'cancelado'])
+      .select('status')
+      .count('id as total')
+      .groupBy('status');
+
+    // 3. Urgências ociosas: prioridade 'urgente', status ativo, sem atualização há > 7 dias
+    const seteDiasAtras = new Date();
+    seteDiasAtras.setDate(seteDiasAtras.getDate() - 7);
+
+    const urgentesParadas = await knex('solicitacoes')
+      .join('pacientes', 'solicitacoes.paciente_id', 'pacientes.id')
+      .where('solicitacoes.ubs_id', ubsId)
+      .where('solicitacoes.prioridade', 'urgente')
+      .whereNotIn('solicitacoes.status', ['concluido', 'cancelado'])
+      .where('solicitacoes.atualizado_em', '<', seteDiasAtras)
+      .select(
+        'solicitacoes.id',
+        'solicitacoes.tipo',
+        'solicitacoes.descricao',
+        'solicitacoes.status',
+        'solicitacoes.atualizado_em',
+        'pacientes.nome as paciente_nome',
+        'pacientes.cra as paciente_cra',
+        'pacientes.id as paciente_id'
+      )
+      .orderBy('solicitacoes.atualizado_em', 'asc');
+
+    await registrarAuditoria(req, {
+      acao: 'relatorio_atividade_gerado',
+      entidade: 'solicitacoes',
+      entidade_id: null,
+      escopo_ubs_id: ubsId,
+    });
+
+    return res.json({
+      total_abertas: Number(abertasCount.total || 0),
+      distribuicao_status: distribuicao.map(d => ({
+        status: d.status,
+        total: Number(d.total || 0)
+      })),
+      urgentes_paradas: urgentesParadas
+    });
+  } catch (err) {
+    console.error('[GET /gestor/relatorios]', err);
+    return res.status(500).json({ error: 'Erro ao gerar relatorio de atividade.' });
   }
 });
 

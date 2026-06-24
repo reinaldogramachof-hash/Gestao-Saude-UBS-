@@ -63,7 +63,7 @@ const agendamentoLoteSchema = Joi.object({
   data_inicio:          Joi.string().pattern(/^\d{4}-\d{2}-\d{2}$/).required(),
   hora_inicio:          Joi.string().pattern(/^\d{2}:\d{2}$/).required(),
   hora_fim:             Joi.string().pattern(/^\d{2}:\d{2}$/).required(),
-  intervalo_minutos:    Joi.number().valid(15, 30, 45, 60).required(),
+  intervalo_minutos:    Joi.number().valid(15, 20, 30, 60).required(),
   repetir_dias:         Joi.number().integer().min(1).max(30).default(1),
   pular_fins_de_semana: Joi.boolean().default(true),
 });

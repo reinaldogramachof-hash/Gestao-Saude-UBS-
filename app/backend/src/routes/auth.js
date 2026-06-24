@@ -30,7 +30,8 @@ function gerarJwtSeguro(payload, options) {
 
 const loginRateLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 10,
+  // Limite dinâmico: 10 em produção real, 1000 em desenvolvimento e testes locais
+  max: process.env.NODE_ENV === 'production' ? 10 : 1000,
   message: {
     error: 'Muitas tentativas de login a partir deste IP. Por favor, tente novamente apos 15 minutos.',
   },
@@ -40,7 +41,8 @@ const loginRateLimiter = rateLimit({
 
 const cadastroRateLimiter = rateLimit({
   windowMs: 60 * 60 * 1000,
-  max: 20,
+  // Limite dinâmico: 20 em produção real, 1000 em desenvolvimento e testes locais
+  max: process.env.NODE_ENV === 'production' ? 20 : 1000,
   message: {
     error: 'Muitos cadastros efetuados deste dispositivo. Tente novamente mais tarde.',
   },

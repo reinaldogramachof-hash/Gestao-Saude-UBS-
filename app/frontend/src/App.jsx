@@ -36,6 +36,7 @@ import RegulacaoGestor from './pages/gestor/RegulacaoGestor';       // Módulo 1
 import VigilanciaGestor from './pages/gestor/VigilanciaGestor';     // Módulo 4
 import GestorUsuarios from './pages/gestor/GestorUsuarios';         // Administração da equipe
 import PainelMedico from './pages/gestor/PainelMedico';             // Painel clínico de consulta (read-only)
+import RelatoriosGestor from './pages/gestor/RelatoriosGestor';     // Relatório Simples de Atividade (RF-G09)
 
 // ── Portal de Unidades Externas ─────────────────────────────────────────────
 import LoginExterna from './pages/externa/LoginExterna';
@@ -98,6 +99,7 @@ export default function App() {
           <Route path="/gestor/vigilancia"    element={<ProtectedRoute tipo="gestor"><VigilanciaGestor /></ProtectedRoute>} />
           <Route path="/gestor/usuarios"       element={<ProtectedRoute tipo="gestor"><GestorUsuarios /></ProtectedRoute>} />
           <Route path="/gestor/medico"         element={<ProtectedRoute tipo="gestor"><PainelMedico /></ProtectedRoute>} />
+          <Route path="/gestor/relatorios"     element={<ProtectedRoute tipo="gestor"><RelatoriosGestor /></ProtectedRoute>} />
 
           {/* ── Portal de Unidades Externas (autenticado) ── */}
           <Route path="/externa/dashboard"        element={<ProtectedRoute tipo="externa"><DashboardExterna /></ProtectedRoute>} />

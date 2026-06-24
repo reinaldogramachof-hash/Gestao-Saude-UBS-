@@ -74,14 +74,14 @@ export default function DetalheSolicitacao() {
         {/* O detalhe usa apenas o texto preparado para o paciente. */}
         <h2 className="text-2xl font-bold text-on-surface break-words">{sol.descricao_paciente}</h2>
         {sol.observacao_paciente && (
-          <p className="text-sm text-on-surface-variant mt-2">{sol.observacao_paciente}</p>
+          <p className="text-sm text-on-surface-variant mt-2 break-words">{sol.observacao_paciente}</p>
         )}
 
         {/* Local de execução — exibido quando o serviço é fora da UBS do paciente */}
         {sol.local_executor && (
-          <div className="flex items-center gap-2 mt-3 bg-blue-50 border border-blue-200 rounded-xl px-4 py-3">
-            <span className="material-symbols-outlined text-blue-500 text-lg">location_on</span>
-            <p className="text-sm text-blue-700 font-medium">
+          <div className="flex items-start gap-2.5 mt-3 bg-blue-50 border border-blue-200 rounded-xl px-4 py-3">
+            <span className="material-symbols-outlined text-blue-500 text-lg flex-shrink-0 mt-0.5">location_on</span>
+            <p className="text-sm text-blue-700 font-medium flex-1 break-words">
               Este atendimento será realizado em: <strong>{sol.local_executor}</strong>
             </p>
           </div>
@@ -170,7 +170,7 @@ export default function DetalheSolicitacao() {
                     {STATUS_LABELS[h.status_novo] || 'Status em atualização'}
                   </h4>
                   {h.observacao && (
-                    <p className="text-xs opacity-80 leading-relaxed">{h.observacao}</p>
+                    <p className="text-xs opacity-80 leading-relaxed break-words">{h.observacao}</p>
                   )}
                 </div>
               </div>

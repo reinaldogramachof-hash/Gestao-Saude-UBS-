@@ -11,6 +11,8 @@ const knex = require('../db/knex');
 const validateBody = require('../middleware/validateBody');
 const { soExterna } = require('../middleware/auth');
 const { registrarAuditoria } = require('../services/auditService');
+// Push notifications: notifica o paciente quando a unidade externa agenda ou conclui
+const pushService = require('../services/pushService');
 
 const router = express.Router();
 
@@ -18,6 +20,7 @@ router.use(soExterna);
 
 const CAMPOS_ENCAMINHAMENTO_EXTERNA = [
   'encaminhamentos.id',
+  'encaminhamentos.paciente_id as paciente_id',
   'pacientes.nome as paciente_nome',
   'pacientes.cra as paciente_cra',
   'ubs.nome as ubs_nome',
@@ -216,6 +219,14 @@ router.put('/encaminhamento/:id/agendar', validateBody(agendamentoSchema), async
       metadata: { data_procedimento_unidade: req.body.data_procedimento_unidade },
     });
 
+    // Notifica o paciente: data do procedimento foi confirmada pela unidade externa.
+    // Feito fora da transação — falha no push não desfaz o agendamento.
+    pushService.enviar(encaminhamento.paciente_id, 'paciente', {
+      titulo: 'Data agendada para seu encaminhamento',
+      corpo:  `Seu atendimento foi agendado para ${req.body.data_procedimento_unidade}. Confira os detalhes no app.`,
+      url:    `/paciente/solicitacao/${encaminhamento.solicitacao_id}`,
+    }).catch(() => {});
+
     return res.json({ ok: true, status: 'AGUARDANDO_CONFIRMACAO' });
   } catch (err) {
     console.error('[PUT /externa/encaminhamento/:id/agendar]', err);
@@ -273,6 +284,14 @@ router.put('/encaminhamento/:id/concluir', validateBody(feedbackSchema), async (
       escopo_ubs_id: encaminhamento.ubs_id,
       metadata: { feedback_tipo: req.body.feedback_tipo },
     });
+
+    // Notifica o paciente: procedimento concluído e conduta enviada para a UBS.
+    // Feito fora da transação — falha no push não desfaz a conclusão.
+    pushService.enviar(encaminhamento.paciente_id, 'paciente', {
+      titulo: 'Atendimento externo concluído',
+      corpo:  'Seu procedimento foi realizado. A conduta foi enviada à sua UBS. Confira os detalhes no app.',
+      url:    `/paciente/solicitacao/${encaminhamento.solicitacao_id}`,
+    }).catch(() => {});
 
     return res.json({ ok: true, status: 'RETORNO_UBS' });
   } catch (err) {

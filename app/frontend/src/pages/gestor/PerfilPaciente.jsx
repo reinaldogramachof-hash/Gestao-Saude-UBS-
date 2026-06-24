@@ -22,14 +22,38 @@ import api from '../../services/api';
 import { formatarDataBR } from '../../utils/statusHelper';
 import GestorLayout from '../../components/gestor/GestorLayout';
 
-const STATUS_BADGE = {
-  em_analise:           'bg-gray-100 text-gray-600',
-  aguardando_regulacao: 'bg-amber-100 text-amber-700',
-  autorizado:           'bg-blue-100 text-blue-700',
-  data_marcada:         'bg-teal-100 text-teal-700',
-  aguardando_resultado: 'bg-purple-100 text-purple-700',
-  concluido:            'bg-emerald-100 text-emerald-700',
-  cancelado:            'bg-red-100 text-red-600',
+// Mapa de cores e classes de estilo de alta fidelidade para cada status de solicitação.
+// Cada chave mapeia um objeto contendo a classe do contêiner (translúcida e com borda fina)
+// e a classe da bolinha indicadora sólida para simular status ativos.
+const STATUS_ESTILO = {
+  em_analise: {
+    badge: 'bg-gray-500/10 text-gray-700 border-gray-500/20',
+    dot: 'bg-gray-500',
+  },
+  aguardando_regulacao: {
+    badge: 'bg-amber-500/10 text-amber-800 border-amber-500/20',
+    dot: 'bg-amber-500',
+  },
+  autorizado: {
+    badge: 'bg-blue-500/10 text-blue-850 border-blue-500/20',
+    dot: 'bg-blue-500',
+  },
+  data_marcada: {
+    badge: 'bg-teal-500/10 text-teal-800 border-teal-500/20',
+    dot: 'bg-teal-500',
+  },
+  aguardando_resultado: {
+    badge: 'bg-purple-500/10 text-purple-800 border-purple-500/20',
+    dot: 'bg-purple-500',
+  },
+  concluido: {
+    badge: 'bg-emerald-500/10 text-emerald-800 border-emerald-500/20',
+    dot: 'bg-emerald-500',
+  },
+  cancelado: {
+    badge: 'bg-red-500/10 text-red-800 border-red-500/20',
+    dot: 'bg-red-500',
+  },
 };
 
 const STATUS_LABEL = {
@@ -88,6 +112,12 @@ const TIPO_UNIDADE_ICON = {
 //   - historicos: object — mapa {[id]: {loading, erro, itens}} com os dados
 //   - carregarHistorico: fn — dispara o fetch do histórico de uma solicitação
 // ─────────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// COMPONENTE: CardSolicitacao
+// FUNÇÃO: Renderiza o card de uma solicitação no perfil do paciente (gestor).
+//         Exibe status em alta definição com bolinha pulsante, previsão, botões 
+//         de ação com micro-interações e histórico diagramado.
+// ─────────────────────────────────────────────────────────────────────────────
 function CardSolicitacao({
   sol,
   abrirModalEscalar,
@@ -98,98 +128,150 @@ function CardSolicitacao({
   carregarHistorico,
 }) {
   return (
-    <div className="bg-surface-container-lowest rounded-xl md:rounded-2xl border border-surface-variant p-4 md:p-6">
-      <div className="flex flex-wrap justify-between items-start gap-3">
+    <div className={`bg-surface-container-lowest rounded-2xl border border-surface-variant p-5 shadow-sm hover:shadow-md transition-all duration-300 relative overflow-hidden group/card-sol ${
+      sol.prioridade === 'urgente' ? 'border-l-4 border-l-red-500' : ''
+    }`}>
+      {/* Indicador visual discreto de urgência no topo do card se aplicável */}
+      {sol.prioridade === 'urgente' && (
+        <div className="absolute top-0 right-0 bg-red-600 text-white text-[9px] font-black uppercase tracking-widest px-2.5 py-0.5 rounded-bl-lg shadow-sm animate-pulse select-none">
+          Urgente
+        </div>
+      )}
+
+      <div className="flex flex-wrap justify-between items-start gap-4">
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 flex-wrap mb-2">
-            <h3 className="font-bold text-on-background truncate">{sol.descricao_paciente}</h3>
-            <span className="text-xs font-bold px-2 py-0.5 bg-surface-container-high rounded text-on-surface-variant flex-shrink-0">{sol.tipo}</span>
-            <span className={`text-xs font-bold px-3 py-1 rounded-full flex-shrink-0 ${STATUS_BADGE[sol.status] || 'bg-gray-100 text-gray-600'}`}>
+          <div className="flex items-center gap-2 flex-wrap mb-2.5">
+            <h3 className="font-extrabold text-on-background text-base tracking-tight truncate">
+              {sol.descricao_paciente}
+            </h3>
+            <span className="text-[10px] font-extrabold px-2 py-0.5 bg-surface-container-high rounded font-bold text-on-surface-variant/90 uppercase tracking-wider flex-shrink-0 select-none">
+              {sol.tipo}
+            </span>
+            {/* Badge de status com visual translúcido e indicador sólido em formato de bolinha */}
+            <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold border flex-shrink-0 select-none ${
+              STATUS_ESTILO[sol.status]?.badge || 'bg-gray-500/10 text-gray-750 border-gray-500/20'
+            }`}>
+              <span className={`w-1.5 h-1.5 rounded-full ${
+                STATUS_ESTILO[sol.status]?.dot || 'bg-gray-500'
+              } ${sol.status === 'aguardando_regulacao' || sol.status === 'em_analise' ? 'animate-pulse' : ''}`} />
               {STATUS_LABEL[sol.status] || sol.status}
             </span>
           </div>
-          {sol.data_prevista && (
-            <p className="text-xs text-on-surface-variant">Previsão: {formatarDataBR(sol.data_prevista)}</p>
-          )}
+          
+          <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs font-semibold text-on-surface-variant/80">
+            {sol.data_prevista && (
+              <p className="flex items-center gap-1">
+                <span className="material-symbols-outlined text-[14px]">calendar_today</span>
+                Previsão de Atendimento: <strong className="text-on-surface">{formatarDataBR(sol.data_prevista)}</strong>
+              </p>
+            )}
+            {sol.local_executor && (
+              <p className="flex items-center gap-1">
+                <span className="material-symbols-outlined text-[14px]">location_on</span>
+                Local: <strong className="text-on-surface">{sol.local_executor}</strong>
+              </p>
+            )}
+          </div>
+
           {sol.observacao_paciente && (
-            <p className="text-xs text-on-surface-variant italic mt-1">{sol.observacao_paciente}</p>
+            <p className="text-xs text-on-surface-variant/80 italic mt-2 bg-surface-container-low/40 p-2.5 rounded-xl border border-surface-variant/30">
+              {sol.observacao_paciente}
+            </p>
           )}
-          {/* Resultado clínico — exibido quando a solicitação já tem resultado registrado */}
+
+          {/* Resultado clínico/Laudo estilizado de forma a simular um laudo oficial do laboratório */}
           {(sol.resultado || sol.cid_10) && (
-            <div className="mt-2 p-3 bg-emerald-50 border border-emerald-200 rounded-xl space-y-1">
+            <div className="mt-3.5 p-4 bg-emerald-500/5 border border-emerald-500/25 rounded-xl space-y-1.5 shadow-inner">
+              <p className="text-xs font-extrabold text-emerald-800 uppercase tracking-widest flex items-center gap-1.5 select-none">
+                <span className="material-symbols-outlined text-[16px]">clinical_notes</span>
+                Resultado / Laudo Clínico Homologado
+              </p>
               {sol.cid_10 && (
                 <p className="text-xs font-bold text-emerald-700">
-                  <span className="material-symbols-outlined text-[14px] align-middle mr-1">vaccines</span>
-                  CID-10: {sol.cid_10}
+                  <span className="bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/20 mr-1 select-all font-mono">
+                    CID-10: {sol.cid_10}
+                  </span>
                 </p>
               )}
               {sol.resultado && (
-                <p className="text-xs text-emerald-800 font-medium">{sol.resultado}</p>
+                <p className="text-xs md:text-sm text-emerald-900 font-semibold leading-relaxed mt-1 select-text">
+                  {sol.resultado}
+                </p>
               )}
             </div>
           )}
         </div>
-        <div className="flex flex-row md:flex-col lg:flex-row gap-2 flex-shrink-0 mt-3 md:mt-0 w-full md:w-auto">
+
+        {/* Ações de Ação no lado direito do Card */}
+        <div className="flex flex-row md:flex-col lg:flex-row gap-2 flex-shrink-0 mt-2 md:mt-0 w-full md:w-auto select-none">
           {sol.status !== 'concluido' && sol.status !== 'cancelado' && sol.prioridade !== 'urgente' && (
             <button
               onClick={() => abrirModalEscalar(sol)}
-              className="flex-1 md:flex-none px-3 py-2 border border-red-200 text-red-700 bg-red-50 font-bold rounded-xl hover:bg-red-100 transition-colors text-xs flex items-center justify-center gap-1"
+              className="flex-1 md:flex-none px-3.5 py-2 border border-red-500/20 text-red-700 bg-red-500/10 font-bold rounded-xl hover:bg-red-500/20 transition-all duration-200 text-xs flex items-center justify-center gap-1 active:scale-95 shadow-sm"
             >
-              <span className="material-symbols-outlined text-[16px]">warning</span>
-              Escalar
+              <span className="material-symbols-outlined text-[15px] animate-pulse">warning</span>
+              Escalar Urgência
             </button>
           )}
           <button
             onClick={() => abrirModalStatus(sol)}
-            className="flex-1 md:flex-none px-3 py-2 border border-outline text-on-surface font-bold rounded-xl hover:bg-surface-container-high transition-colors text-xs flex items-center justify-center gap-1"
+            className="flex-1 md:flex-none px-3.5 py-2 border border-outline-variant text-on-surface hover:text-primary bg-surface-container-high/40 hover:bg-primary/10 font-bold rounded-xl hover:border-primary/30 transition-all duration-200 text-xs flex items-center justify-center gap-1 active:scale-95 shadow-sm"
           >
-            <span className="material-symbols-outlined text-[16px]">edit</span>
-            Atualizar
+            <span className="material-symbols-outlined text-[15px]">edit</span>
+            Atualizar Status
           </button>
         </div>
       </div>
-      <div className="mt-4 pt-4 border-t border-surface-variant">
+
+      {/* Histórico expansível do card */}
+      <div className="mt-4 pt-4 border-t border-surface-variant/60">
         <button
           onClick={() => alternarHistorico(sol.id)}
-          className="flex items-center gap-2 text-sm font-bold text-primary"
+          className="flex items-center gap-1.5 text-xs font-extrabold text-primary hover:text-primary-dark uppercase tracking-wider transition-colors select-none"
           aria-expanded={Boolean(historicosAbertos[sol.id])}
         >
-          <span className="material-symbols-outlined text-lg">
+          <span className="material-symbols-outlined text-[17px]">
             {historicosAbertos[sol.id] ? 'expand_less' : 'history'}
           </span>
-          {historicosAbertos[sol.id] ? 'Ocultar histórico' : 'Ver histórico'}
+          {historicosAbertos[sol.id] ? 'Ocultar histórico' : 'Ver histórico de alterações'}
         </button>
+        
         {historicosAbertos[sol.id] && (
-          <div className="mt-4">
+          <div className="mt-4 animate-fade-in select-none">
             {historicos[sol.id]?.loading ? (
               <div className="space-y-2 animate-pulse">
                 <div className="h-14 bg-surface-container-high rounded-xl" />
                 <div className="h-14 bg-surface-container-high rounded-xl" />
               </div>
             ) : historicos[sol.id]?.erro ? (
-              <div className="p-4 rounded-xl bg-red-50 text-red-700 flex flex-wrap items-center justify-between gap-3">
-                <span className="text-sm font-bold">{historicos[sol.id].erro}</span>
-                <button onClick={() => carregarHistorico(sol.id, true)} className="px-3 py-2 bg-white rounded-lg font-bold text-xs">Tentar novamente</button>
+              <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-700 flex flex-wrap items-center justify-between gap-3">
+                <span className="text-xs font-bold">{historicos[sol.id].erro}</span>
+                <button onClick={() => carregarHistorico(sol.id, true)} className="px-3 py-1.5 bg-white rounded-lg font-bold text-xs shadow-sm hover:shadow-md active:scale-95 transition-all">Tentar novamente</button>
               </div>
             ) : historicos[sol.id]?.itens?.length > 0 ? (
-              <ol className="space-y-3">
+              <ol className="space-y-3 relative before:absolute before:inset-y-1 before:left-3 before:w-0.5 before:bg-surface-variant/40 pl-7">
                 {historicos[sol.id].itens.map((item) => (
-                  <li key={item.id} className="p-4 rounded-xl bg-surface-container-low border border-surface-variant">
-                    <p className="text-xs font-bold text-on-surface-variant">
-                      {new Date(item.alterado_em).toLocaleString('pt-BR')}
-                      {item.gestor_nome ? ` • ${item.gestor_nome}` : ''}
-                    </p>
-                    <p className="font-bold text-on-background mt-1">
-                      De: {item.status_anterior ? (STATUS_LABEL[item.status_anterior] || item.status_anterior) : 'Início'}
-                      {' → '}
-                      Para: {STATUS_LABEL[item.status_novo] || item.status_novo}
-                    </p>
-                    {item.observacao && <p className="text-sm text-on-surface-variant mt-1">{item.observacao}</p>}
+                  <li key={item.id} className="relative group/timeline-item">
+                    {/* Marcador na trilha vertical */}
+                    <span className="absolute -left-7 top-1 w-2.5 h-2.5 rounded-full bg-primary border-2 border-surface-container-lowest z-10 group-hover/timeline-item:scale-125 transition-transform" />
+                    
+                    <div className="p-4 rounded-xl bg-surface-container-low/50 border border-surface-variant/50 hover:bg-surface-container-low transition-colors duration-200">
+                      <p className="text-[10px] font-bold text-on-surface-variant/80 uppercase tracking-wide">
+                        {new Date(item.alterado_em).toLocaleString('pt-BR')}
+                        {item.gestor_nome ? ` • Gestor: ${item.gestor_nome}` : ''}
+                      </p>
+                      <p className="font-bold text-on-background mt-1.5 text-sm">
+                        Mudança de: <span className="text-on-surface-variant font-medium">{item.status_anterior ? (STATUS_LABEL[item.status_anterior] || item.status_anterior) : 'Cadastro inicial'}</span>
+                        {' → '}
+                        Para: <span className="text-primary font-extrabold">{STATUS_LABEL[item.status_novo] || item.status_novo}</span>
+                      </p>
+                      {item.observacao && <p className="text-xs text-on-surface-variant/90 font-medium mt-1.5 italic select-text">Observação: "{item.observacao}"</p>}
+                    </div>
                   </li>
                 ))}
               </ol>
             ) : (
-              <p className="text-sm text-on-surface-variant">Nenhum evento de histórico registrado.</p>
+              <p className="text-xs text-on-surface-variant font-semibold">Nenhum evento de histórico registrado.</p>
             )}
           </div>
         )}
@@ -515,34 +597,68 @@ export default function PerfilPaciente() {
 
   return (
     <GestorLayout>
-      {/* ── Cabeçalho com botão voltar ── */}
-      <div className="flex items-center gap-3 mb-6 lg:mb-8">
-        <button onClick={() => navigate(-1)} className="w-10 h-10 md:w-12 md:h-12 rounded-2xl bg-surface-container-high hover:bg-surface-container flex items-center justify-center transition-colors flex-shrink-0">
-          <span className="material-symbols-outlined">arrow_back</span>
-        </button>
-        <div>
-          <h1 className="text-2xl md:text-4xl font-extrabold tracking-tight text-on-background">
-            {paciente?.nome}
-          </h1>
-          <p className="text-on-surface-variant font-medium text-sm mt-0.5">CRA: {paciente?.cra}</p>
+      {/* ── Cabeçalho com botão voltar e Avatar de Ficha Clínica (Card Hero) ── */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6 lg:mb-8 select-none animate-fade-in">
+        <div className="flex items-center gap-4 min-w-0">
+          <button 
+            onClick={() => navigate(-1)} 
+            className="w-10 h-10 md:w-12 md:h-12 rounded-2xl bg-surface-container-high hover:bg-surface-container flex items-center justify-center transition-colors flex-shrink-0 shadow-sm border border-surface-variant/40"
+            title="Voltar"
+          >
+            <span className="material-symbols-outlined">arrow_back</span>
+          </button>
+          
+          {/* Avatar com as iniciais do paciente em destaque */}
+          <div className="w-12 h-12 md:w-16 md:h-16 rounded-full bg-primary/15 border-2 border-primary/20 text-primary font-black flex items-center justify-center text-base md:text-2xl shadow-sm flex-shrink-0">
+            {(paciente?.nome || 'P')
+              .split(' ')
+              .filter(Boolean)
+              .map(n => n[0])
+              .slice(0, 2)
+              .join('')
+              .toUpperCase()}
+          </div>
+
+          <div className="min-w-0">
+            <h1 className="text-xl md:text-3xl font-black tracking-tight text-on-background truncate">
+              {paciente?.nome}
+            </h1>
+            <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+              <span className="bg-surface-container-high px-2 py-0.5 rounded text-xs font-bold text-on-surface-variant border border-outline-variant select-all">
+                CRA: {paciente?.cra}
+              </span>
+              {paciente?.tipo_sanguineo && (
+                <span className="inline-flex items-center gap-1 bg-red-500/10 text-red-800 border border-red-500/20 px-2 py-0.5 rounded text-xs font-black">
+                  <span className="material-symbols-outlined text-[12px]">water_drop</span>
+                  Sangue {paciente.tipo_sanguineo}
+                </span>
+              )}
+              {paciente?.alergias && (
+                <span className="inline-flex items-center gap-1 bg-amber-500/10 text-amber-800 border border-amber-500/20 px-2 py-0.5 rounded text-xs font-black animate-pulse">
+                  <span className="material-symbols-outlined text-[12px]">warning</span>
+                  Alergia registrada
+                </span>
+              )}
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* ── Navegação por Abas ── */}
-      <div className="flex border-b border-surface-variant mb-6 overflow-x-auto no-scrollbar">
+      {/* ── Abas de Navegação Premium (Pílula Deslizante) ── */}
+      <div className="flex bg-surface-container-high/50 backdrop-blur-md p-1 rounded-xl max-w-md mb-6 border border-surface-variant/30 select-none">
         {[
-          { id: 'dados',          label: 'Dados',          icon: 'person' },
+          { id: 'dados',          label: 'Dados Clínicos',  icon: 'person' },
           { id: 'solicitacoes',   label: 'Solicitações',    icon: 'receipt_long' },
           { id: 'linha_do_tempo', label: 'Linha do Tempo',  icon: 'timeline' },
         ].map(tab => (
           <button
             key={tab.id}
             onClick={() => setAbaAtiva(tab.id)}
-            className={`flex items-center gap-2 px-4 py-3 text-sm font-bold border-b-2 transition-colors whitespace-nowrap
-              ${abaAtiva === tab.id
-                ? 'border-primary text-primary'
-                : 'border-transparent text-on-surface-variant hover:text-on-surface'
-              }`}
+            className={`flex-1 py-2 px-3 rounded-lg font-bold text-xs md:text-sm transition-all duration-200 flex items-center justify-center gap-1.5 whitespace-nowrap ${
+              abaAtiva === tab.id
+                ? 'bg-white text-primary shadow-sm'
+                : 'text-on-surface-variant hover:text-on-surface'
+            }`}
           >
             <span className="material-symbols-outlined text-base">{tab.icon}</span>
             {tab.label}
@@ -864,89 +980,121 @@ export default function PerfilPaciente() {
             </div>
           )}
 
-          {/* Lista de atendimentos */}
+          {/* Lista de atendimentos clínicas estilizada como Prontuário de Evolução Pontilhado */}
           {!loadingAtendimentos && atendimentos.length > 0 && (
-            <div className="space-y-3 md:space-y-4">
-              {atendimentos.map(at => (
-                <div key={at.id} className="bg-surface-container-lowest rounded-xl md:rounded-2xl border border-surface-variant p-4 md:p-6">
-                  {/* Cabeçalho do card: data + unidade + ações */}
-                  <div className="flex items-start justify-between gap-4 mb-3">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap mb-1">
-                        <span className="text-sm font-bold text-on-surface-variant">
-                          {formatarDataBR(at.data_atendimento)}
-                        </span>
-                        {at.tipo_unidade && (
-                          <span className="text-xs px-2 py-0.5 bg-surface-container-high rounded font-bold text-on-surface-variant">
-                            {TIPO_UNIDADE_LABEL[at.tipo_unidade] || at.tipo_unidade}
-                          </span>
-                        )}
+            <div className="relative before:absolute before:inset-y-2 before:left-4 md:before:left-6 before:w-0.5 before:bg-dashed before:border-l-2 before:border-dashed before:border-surface-variant/65 pl-10 md:pl-16 space-y-6">
+              {atendimentos.map(at => {
+                // Seleciona ícone e cor correspondente ao tipo de unidade (caps, hospital, ubs)
+                const unitIcon = TIPO_UNIDADE_ICON[at.tipo_unidade] || 'local_hospital';
+                const colorTheme = 
+                  at.tipo_unidade === 'hospital' || at.tipo_unidade === 'pronto_socorro'
+                    ? 'bg-red-500/10 text-red-750 border-red-500/20'
+                    : at.tipo_unidade === 'caps'
+                      ? 'bg-purple-500/10 text-purple-750 border-purple-500/20'
+                      : at.tipo_unidade === 'ame'
+                        ? 'bg-blue-500/10 text-blue-750 border-blue-500/20'
+                        : 'bg-primary/10 text-primary border-primary/20';
+
+                return (
+                  <div key={at.id} className="relative group/time-item">
+                    {/* Nó (ponto de conexão) na linha do tempo com o ícone do tipo de atendimento */}
+                    <span className={`absolute -left-10 md:-left-16 top-2 w-8 h-8 md:w-10 md:h-10 rounded-xl flex items-center justify-center border shadow-sm z-10 transition-transform duration-200 group-hover/time-item:scale-110 ${colorTheme}`}>
+                      <span className="material-symbols-outlined text-[16px] md:text-[18px]">
+                        {unitIcon}
+                      </span>
+                    </span>
+
+                    <div className="bg-surface-container-lowest rounded-2xl border border-surface-variant p-5 md:p-6 shadow-sm hover:shadow-md transition-all duration-300 relative animate-fade-in">
+                      {/* Cabeçalho do card: data + unidade + ações */}
+                      <div className="flex items-start justify-between gap-4 mb-3.5 select-none">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap mb-1.5">
+                            <span className="text-xs md:text-sm font-black text-primary bg-primary/5 border border-primary/10 px-2.5 py-0.5 rounded-full">
+                              {formatarDataBR(at.data_atendimento)}
+                            </span>
+                            {at.tipo_unidade && (
+                              <span className="text-[10px] px-2.5 py-0.5 bg-surface-container-high rounded-full font-extrabold text-on-surface-variant uppercase tracking-wider border border-outline-variant">
+                                {TIPO_UNIDADE_LABEL[at.tipo_unidade] || at.tipo_unidade}
+                              </span>
+                            )}
+                          </div>
+                          <h3 className="font-extrabold text-on-background text-base md:text-lg truncate">
+                            {at.unidade}
+                          </h3>
+                          {at.especialidade && (
+                            <p className="text-xs md:text-sm font-semibold text-on-surface-variant mt-0.5">
+                              Especialidade: <strong className="text-on-surface">{at.especialidade}</strong>
+                              {at.profissional ? ` • Responsável: Dr(a). ${at.profissional}` : ''}
+                            </p>
+                          )}
+                        </div>
+                        
+                        {/* Ações do atendimento */}
+                        <div className="flex gap-1.5 flex-shrink-0">
+                          <button
+                            onClick={() => abrirModalEditarAtendimento(at)}
+                            className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-surface-container-high border border-transparent hover:border-surface-variant/40 transition-all text-on-surface-variant"
+                            title="Editar atendimento"
+                          >
+                            <span className="material-symbols-outlined text-[17px]">edit</span>
+                          </button>
+                          <button
+                            onClick={() => handleDeletarAtendimento(at.id)}
+                            disabled={deletandoAtendimento === at.id}
+                            className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-red-50 text-red-600 border border-transparent hover:border-red-200 disabled:opacity-50 transition-all"
+                            title="Remover atendimento"
+                          >
+                            <span className="material-symbols-outlined text-[17px]">
+                              {deletandoAtendimento === at.id ? 'hourglass_empty' : 'delete'}
+                            </span>
+                          </button>
+                        </div>
                       </div>
-                      <h3 className="font-bold text-on-background truncate">{at.unidade}</h3>
-                      {at.especialidade && (
-                        <p className="text-sm text-on-surface-variant">
-                          {at.especialidade}
-                          {at.profissional ? ` • Dr(a). ${at.profissional}` : ''}
+
+                      {/* CID-10 em destaque */}
+                      {(at.cid_10_principal || at.cid_10_secundario) && (
+                        <div className="flex gap-2 flex-wrap mb-4 select-all">
+                          {at.cid_10_principal && (
+                            <span className="inline-flex items-center gap-1 text-xs px-2.5 py-0.5 bg-blue-500/10 text-blue-800 border border-blue-500/20 rounded font-bold font-mono">
+                              <span className="material-symbols-outlined text-[13px] text-blue-700 select-none">vaccines</span>
+                              CID: {at.cid_10_principal}
+                            </span>
+                          )}
+                          {at.cid_10_secundario && (
+                            <span className="inline-flex items-center gap-1 text-xs px-2.5 py-0.5 bg-blue-500/10 text-blue-800 border border-blue-500/20 rounded font-bold font-mono">
+                              <span className="material-symbols-outlined text-[13px] text-blue-700 select-none">vaccines</span>
+                              CID 2°: {at.cid_10_secundario}
+                            </span>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Conduta Clínica */}
+                      {at.conduta && (
+                        <div className="mb-3 p-3.5 bg-surface-container-low/40 border border-surface-variant/40 rounded-xl">
+                          <p className="text-[10px] font-extrabold text-on-surface-variant uppercase tracking-wider mb-1.5 select-none">
+                            Evolução / Conduta Médica
+                          </p>
+                          <p className="text-xs md:text-sm text-on-background font-medium leading-relaxed select-text">{at.conduta}</p>
+                        </div>
+                      )}
+
+                      {at.observacoes && (
+                        <p className="text-xs text-on-surface-variant/85 italic mt-3 bg-surface-container-low/20 px-3 py-2 rounded border border-surface-variant/20 select-text">
+                          Observações: "{at.observacoes}"
+                        </p>
+                      )}
+
+                      {/* Rodapé de auditoria clínica */}
+                      {at.registrado_por_nome && (
+                        <p className="text-[10px] text-on-surface-variant/80 font-bold uppercase tracking-wider mt-4 pt-3 border-t border-surface-variant/50 select-none">
+                          Registrado por: {at.registrado_por_nome}
                         </p>
                       )}
                     </div>
-                    <div className="flex gap-1 flex-shrink-0">
-                      <button
-                        onClick={() => abrirModalEditarAtendimento(at)}
-                        className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-surface-container-high transition-colors"
-                        title="Editar atendimento"
-                      >
-                        <span className="material-symbols-outlined text-base">edit</span>
-                      </button>
-                      <button
-                        onClick={() => handleDeletarAtendimento(at.id)}
-                        disabled={deletandoAtendimento === at.id}
-                        className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-red-50 text-red-600 disabled:opacity-50 transition-colors"
-                        title="Remover atendimento"
-                      >
-                        <span className="material-symbols-outlined text-base">
-                          {deletandoAtendimento === at.id ? 'hourglass_empty' : 'delete'}
-                        </span>
-                      </button>
-                    </div>
                   </div>
-
-                  {/* CID-10 */}
-                  {(at.cid_10_principal || at.cid_10_secundario) && (
-                    <div className="flex gap-2 flex-wrap mb-3">
-                      {at.cid_10_principal && (
-                        <span className="text-xs px-2 py-1 bg-blue-50 text-blue-700 rounded-lg font-bold">
-                          CID: {at.cid_10_principal}
-                        </span>
-                      )}
-                      {at.cid_10_secundario && (
-                        <span className="text-xs px-2 py-1 bg-blue-50 text-blue-700 rounded-lg font-bold">
-                          CID 2°: {at.cid_10_secundario}
-                        </span>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Conduta */}
-                  {at.conduta && (
-                    <div className="mb-2">
-                      <p className="text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-1">Conduta</p>
-                      <p className="text-sm text-on-background">{at.conduta}</p>
-                    </div>
-                  )}
-
-                  {at.observacoes && (
-                    <p className="text-xs text-on-surface-variant italic mt-2">{at.observacoes}</p>
-                  )}
-
-                  {/* Rodapé de auditoria */}
-                  {at.registrado_por_nome && (
-                    <p className="text-xs text-on-surface-variant mt-3 pt-3 border-t border-surface-variant">
-                      Registrado por: {at.registrado_por_nome}
-                    </p>
-                  )}
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
 

@@ -30,6 +30,7 @@ const PERFIS_ACESSO = {
   vigilancia:        ['gestor', 'admin'],
   medicamentos:      ['recepcionista', 'gestor', 'admin'],
   comunicados:       ['recepcionista', 'gestor', 'admin'],
+  relatorios:        ['gestor', 'admin'],
 };
 
 export default function SideNavGestor({ onFechar, retraida, onToggle }) {
@@ -90,17 +91,46 @@ export default function SideNavGestor({ onFechar, retraida, onToggle }) {
 
   return (
     <aside className={`w-72 ${retraida ? 'lg:w-16' : 'lg:w-72'} bg-surface-container-lowest border-r border-surface-variant flex flex-col h-full transition-all duration-300 relative z-20`}>
-      {/* Cabeçalho */}
-      <header className={`p-6 ${retraida ? 'lg:p-3 lg:justify-center' : ''} border-b border-surface-variant flex items-center justify-between min-h-[88px] lg:min-h-[72px] shrink-0`}>
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 flex items-center justify-center flex-shrink-0">
+      {/* Cabeçalho — Contém logotipo do sistema, título e botão de expansão lateral.
+          No modo colapsado (retraído), o próprio logotipo torna-se um botão clicável para
+          expandir o menu de volta, otimizando o espaço e a ergonomia. */}
+      <header className={`p-5 ${retraida ? 'lg:p-3 lg:justify-center' : ''} border-b border-surface-variant flex items-center justify-between min-h-[88px] lg:min-h-[72px] shrink-0`}>
+        <div 
+          className={`flex items-center gap-3 ${
+            retraida 
+              ? 'lg:cursor-pointer lg:hover:scale-105 lg:active:scale-95 transition-all duration-200' 
+              : ''
+          }`}
+          onClick={retraida ? onToggle : undefined}
+          title={retraida ? 'Expandir menu lateral' : undefined}
+        >
+          <div className="w-10 h-10 flex items-center justify-center flex-shrink-0 relative group/logo">
             <img src="/logo.webp" alt="Logo" className="w-full h-full object-contain" />
+            {/* Tooltip flutuante exibido em hover sobre o logotipo quando o menu está retraído */}
+            {retraida && (
+              <div className="hidden lg:group-hover/logo:flex absolute left-full ml-4 px-3 py-2 bg-gray-900 text-white text-xs font-bold rounded-lg whitespace-nowrap z-[100] pointer-events-none shadow-xl border border-gray-700">
+                Expandir menu
+              </div>
+            )}
           </div>
           <div className={retraida ? 'lg:hidden' : ''}>
             <h1 className="text-base font-bold text-on-background leading-tight">Gestão Saúde</h1>
           </div>
         </div>
 
+        {/* Botão de toggling (Recolher) para telas desktop — visível apenas quando o menu está expandido */}
+        {!retraida && (
+          <button
+            type="button"
+            onClick={onToggle}
+            aria-label="Recolher menu lateral"
+            className="hidden lg:flex w-8 h-8 rounded-lg hover:bg-surface-container-high items-center justify-center text-on-surface-variant hover:text-primary transition-all duration-200"
+          >
+            <span className="material-symbols-outlined text-xl">menu_open</span>
+          </button>
+        )}
+
+        {/* Botão de fechar (X) exclusivo para navegação móvel (drawer lateral) */}
         <button
           onClick={onFechar}
           aria-label="Fechar menu"
@@ -238,6 +268,24 @@ export default function SideNavGestor({ onFechar, retraida, onToggle }) {
         )}
 
         {/* ───────────────────────────────────────────────────────────────────
+            SEÇÃO: INDICADORES
+            Visível se o perfil tiver acesso a Relatórios
+            ─────────────────────────────────────────────────────────────────── */}
+        {pode('relatorios') && (
+          <>
+            <SectionLabel label="INDICADORES" retraida={retraida} />
+            <NavItem
+              to="/gestor/relatorios"
+              icon="bar_chart_4_bars"
+              label="Relatórios"
+              retraida={retraida}
+              activeClass={isActive('relatorios')}
+              onClick={handleNavegar}
+            />
+          </>
+        )}
+
+        {/* ───────────────────────────────────────────────────────────────────
             SEÇÃO: ADMINISTRAÇÃO
             Visível apenas para administradores do sistema.
             Mantém a lógica intacta com user?.perfil === 'admin' conforme exigido.
@@ -253,33 +301,6 @@ export default function SideNavGestor({ onFechar, retraida, onToggle }) {
               activeClass={isActive('usuarios')}
               onClick={handleNavegar}
             />
-            {/* Relatórios é informativo e visualmente distinto (inativo) */}
-            <div className={`group relative w-full flex items-center gap-3 px-4 py-3 ${retraida ? 'lg:px-0 lg:justify-center opacity-50' : 'opacity-60'} rounded-xl font-semibold text-sm text-on-surface-variant cursor-not-allowed`}>
-              <div className="relative flex-shrink-0 flex items-center justify-center">
-                <span className="material-symbols-outlined text-xl">bar_chart_4_bars</span>
-                {retraida && (
-                  <span className="absolute -bottom-1 -right-1 w-4 h-4 bg-amber-100 text-amber-700 rounded-full border-2 border-surface-container-lowest hidden lg:flex items-center justify-center">
-                    <span className="material-symbols-outlined text-[10px]">lock</span>
-                  </span>
-                )}
-              </div>
-              <span className={`flex-1 flex items-center justify-between ${retraida ? 'lg:hidden' : ''}`}>
-                <span>Relatórios</span>
-                <span className="text-[9px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full font-bold">
-                  Em breve
-                </span>
-              </span>
-
-              {/* Custom Tooltip para Relatórios */}
-              {retraida && (
-                <div className="hidden lg:group-hover:flex absolute left-full ml-3 px-3 py-2 bg-gray-900 text-white text-xs font-bold rounded-lg whitespace-nowrap z-[100] pointer-events-none shadow-xl items-center gap-2 border border-gray-700">
-                  Relatórios
-                  <span className="bg-amber-500 text-white text-[10px] font-extrabold px-1.5 py-0.5 rounded-full">
-                    Em breve
-                  </span>
-                </div>
-              )}
-            </div>
           </>
         )}
       </nav>
@@ -323,24 +344,6 @@ export default function SideNavGestor({ onFechar, retraida, onToggle }) {
           {retraida && (
             <div className="hidden lg:group-hover:flex absolute left-full ml-3 px-3 py-2 bg-gray-900 text-red-100 text-xs font-bold rounded-lg whitespace-nowrap z-[100] pointer-events-none shadow-xl">
               Sair do Sistema
-            </div>
-          )}
-        </button>
-
-        {/* Botão de Expandir/Retrair agora ancorado logicamente no footer */}
-        <button
-          type="button"
-          onClick={onToggle}
-          aria-label={retraida ? 'Expandir menu lateral' : 'Retrair menu lateral'}
-          className={`hidden lg:flex group relative mt-2 w-full items-center ${retraida ? 'justify-center' : 'justify-start px-4'} py-3 rounded-xl font-semibold text-sm text-on-surface-variant hover:bg-surface-container-high transition-colors`}
-        >
-          <span className="material-symbols-outlined text-xl flex-shrink-0">
-            {retraida ? 'keyboard_double_arrow_right' : 'keyboard_double_arrow_left'}
-          </span>
-          <span className={retraida ? 'hidden' : 'ml-3'}>Recolher menu</span>
-          {retraida && (
-            <div className="hidden lg:group-hover:flex absolute left-full ml-3 px-3 py-2 bg-gray-900 text-white text-xs font-bold rounded-lg whitespace-nowrap z-[100] pointer-events-none shadow-xl">
-              Expandir menu
             </div>
           )}
         </button>

@@ -47,7 +47,8 @@ app.use(helmet({
 // limitadores especificos mais restritivos dentro de routes/auth.js.
 const apiRateLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 300,
+  // Limite dinâmico: 300 em produção real, 10000 em desenvolvimento e testes locais
+  max: process.env.NODE_ENV === 'production' ? 300 : 10000,
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: 'Muitas requisicoes. Aguarde alguns minutos e tente novamente.' },
