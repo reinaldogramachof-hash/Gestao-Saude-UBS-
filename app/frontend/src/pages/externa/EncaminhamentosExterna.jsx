@@ -570,28 +570,24 @@ export default function EncaminhamentosExterna() {
                       ) : (
                         <button
                           onClick={(e) => iniciarAgendamento(e, enc)}
-                          className="w-full sm:w-auto px-5 py-2.5 h-11 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-black flex items-center justify-center gap-1.5 shadow-md shadow-blue-650/15 hover:-translate-y-0.5 active:scale-[0.98] transition-all"
+                          className="w-full sm:w-auto px-5 py-2.5 h-11 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-extrabold flex items-center justify-center gap-1.5 shadow-sm shadow-blue-600/10 hover:-translate-y-0.5 active:scale-[0.98] transition-all"
                         >
-                          <span className="material-symbols-outlined text-base font-bold">event</span>
+                          <span className="material-symbols-outlined text-base">event</span>
                           Agendar Atendimento
                         </button>
                       )
                     )}
-
-                    {/* Ação 3: Aguardando Resposta do Paciente */}
-                    {status === 'AGUARDANDO_CONFIRMACAO' && (
-                      <span className="px-4 py-2.5 bg-surface-variant/15 text-on-surface-variant/80 rounded-xl text-xs font-extrabold text-center w-full sm:w-auto block border border-surface-variant/25">
+                    {enc.status === 'AGUARDANDO_CONFIRMACAO' && (
+                      <span className="px-4 py-2 bg-gray-100 text-gray-600 rounded-xl text-xs font-bold text-center w-full sm:w-auto block border border-gray-200">
                         Aguardando Resposta do Paciente
                       </span>
                     )}
-
-                    {/* Ação 4: Registrar Retorno / Conduta */}
                     {['AGENDADO', 'CONFIRMADO_PACIENTE'].includes(enc.status) && (
                       <button
                         onClick={(e) => abrirModalRetorno(e, enc)}
-                        className="w-full sm:w-auto px-5 py-2.5 h-11 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-black flex items-center justify-center gap-1.5 shadow-md shadow-purple-650/15 hover:-translate-y-0.5 active:scale-[0.98] transition-all"
+                        className="w-full sm:w-auto px-5 py-2.5 h-11 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-extrabold flex items-center justify-center gap-1.5 shadow-sm shadow-purple-600/10 hover:-translate-y-0.5 active:scale-[0.98] transition-all"
                       >
-                        <span className="material-symbols-outlined text-base font-bold">assignment_turned_in</span>
+                        <span className="material-symbols-outlined text-base">assignment_turned_in</span>
                         Registrar Retorno
                       </button>
                     )}
@@ -603,82 +599,46 @@ export default function EncaminhamentosExterna() {
         </div>
       )}
 
-      {/* ── MODAL: REGISTRAR RETORNO CLÍNICO / CONDUTA ── */}
+      {/* Modal de Retorno Clínico */}
       {retornoAberto && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div
-            className="absolute inset-0 bg-on-surface/40 backdrop-blur-md transition-opacity"
-            onClick={() => !enviandoRetorno && setRetornoAberto(false)}
-          />
-          <form
-            onSubmit={enviarRetorno}
-            className="relative bg-surface-container-lowest rounded-[2rem] w-full max-w-lg shadow-2xl p-6 md:p-8 border border-surface-variant/30 animate-zoomIn flex flex-col max-h-[90vh]"
-          >
-            <header className="mb-5 flex-shrink-0">
-              <h2 className="text-xl font-black text-on-background tracking-tight">Registrar Retorno (UBS)</h2>
-              <p className="text-xs text-on-surface-variant font-semibold mt-1.5">
-                Paciente: <strong className="text-on-background">{encRetorno?.paciente_nome}</strong> • CRA: <strong className="text-on-background">{encRetorno?.paciente_cra}</strong>
-              </p>
-            </header>
-
-            <div className="space-y-5 overflow-y-auto pr-1 flex-1">
-              {/* Resultado do Procedimento */}
-              <div className="space-y-2">
-                <label className="text-sm font-extrabold text-on-surface-variant block">Resultado / Feedback do Procedimento *</label>
-                <select
-                  required
-                  value={retornoForm.feedback_tipo}
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fade-in">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => !enviandoRetorno && setRetornoAberto(false)}></div>
+          <form onSubmit={enviarRetorno} className="relative bg-surface-container-lowest rounded-3xl w-full max-w-lg shadow-2xl p-6 border border-surface-variant animate-zoom-in">
+            <h2 className="text-lg font-black text-on-background tracking-tight mb-1">Registrar Retorno (UBS)</h2>
+            <p className="text-xs text-on-surface-variant font-medium mb-4">
+              Paciente: <strong className="text-on-background">{encRetorno?.paciente_nome}</strong> • CRA: <strong className="text-on-background">{encRetorno?.paciente_cra}</strong>
+            </p>
+            <div className="space-y-4">
+              <div>
+                <label className="text-xs font-bold text-on-surface-variant block mb-1">Resultado / Feedback do Procedimento *</label>
+                <select required value={retornoForm.feedback_tipo}
                   onChange={(e) => setRetornoForm(prev => ({ ...prev, feedback_tipo: e.target.value }))}
-                  className="w-full px-4 py-3 bg-surface-container-high/75 border border-surface-variant/20 rounded-xl text-sm font-semibold outline-none focus:border-primary/50 focus:bg-surface-container-lowest focus:ring-2 focus:ring-primary/10 transition-all"
-                >
-                  <option value="">Selecione o resultado na lista...</option>
+                  className="w-full px-4 py-3 bg-surface-container-high/60 border border-surface-variant rounded-2xl text-sm font-semibold outline-none focus:border-primary/40 transition-all">
+                  <option value="">Selecione o resultado...</option>
                   {Object.entries(FEEDBACK_LABELS).map(([key, label]) => (
                     <option key={key} value={key}>{label}</option>
                   ))}
                 </select>
               </div>
-
-              {/* Conduta Clínica */}
-              <div className="space-y-2">
-                <label className="text-sm font-extrabold text-on-surface-variant block">Conduta Clínica Adotada *</label>
-                <textarea
-                  required
-                  rows={6}
-                  placeholder="Descreva detalhadamente a conduta adotada, o laudo ou a justificativa de cancelamento para reinserção no prontuário da UBS (mínimo de 10 caracteres)."
+              <div>
+                <label className="text-xs font-bold text-on-surface-variant block mb-1">Conduta Clínica Adotada *</label>
+                <textarea required rows={5} placeholder="Descreva a conduta (mínimo 10 caracteres)"
                   value={retornoForm.conduta}
                   onChange={(e) => setRetornoForm(prev => ({ ...prev, conduta: e.target.value }))}
-                  className="w-full px-4 py-3 bg-surface-container-high/75 border border-surface-variant/20 rounded-xl text-sm font-semibold outline-none focus:border-primary/50 focus:bg-surface-container-lowest focus:ring-2 focus:ring-primary/10 resize-none transition-all leading-relaxed"
-                />
-                <div className="text-right">
-                  <span className={`text-[10px] font-black ${retornoForm.conduta.length < 10 ? 'text-red-500' : 'text-emerald-700'}`}>
-                    {retornoForm.conduta.length}/10 caracteres mínimos.
-                  </span>
-                </div>
+                  className="w-full px-4 py-3 bg-surface-container-high/60 border border-surface-variant rounded-2xl text-sm font-semibold outline-none focus:border-primary/40 resize-none transition-all" />
               </div>
             </div>
-
-            {/* Ações do Rodapé */}
-            <div className="flex gap-3 mt-6 flex-shrink-0">
-              <button
-                type="button"
-                onClick={() => setRetornoAberto(false)}
-                disabled={enviandoRetorno}
-                className="flex-1 h-12 rounded-2xl border border-surface-variant hover:bg-surface-container-low font-bold text-sm transition-all active:scale-98"
-              >
-                Cancelar
-              </button>
-              <button
-                type="submit"
-                disabled={enviandoRetorno || retornoForm.conduta.length < 10 || !retornoForm.feedback_tipo}
-                className="flex-1 h-12 bg-primary hover:bg-primary text-white rounded-2xl font-bold text-sm shadow-md transition-all active:scale-98 disabled:opacity-50 disabled:active:scale-100"
-              >
-                {enviandoRetorno ? 'Enviando...' : 'Enviar à UBS'}
+            <div className="flex gap-3 mt-6">
+              <button type="button" onClick={() => setRetornoAberto(false)} disabled={enviandoRetorno}
+                className="flex-1 py-3 rounded-2xl border border-surface-variant font-bold text-xs uppercase tracking-wider transition-colors">Cancelar</button>
+              <button type="submit" disabled={enviandoRetorno || retornoForm.conduta.length < 10 || !retornoForm.feedback_tipo}
+                className="flex-1 py-3 bg-primary hover:bg-primary-dark text-white rounded-2xl font-bold text-xs uppercase tracking-wider transition-all disabled:opacity-50">
+                {enviandoRetorno ? 'Enviando...' : 'Enviar Retorno à UBS'}
               </button>
             </div>
           </form>
         </div>
       )}
-
       {/* ── DRAWER/GAVETA DE CONSULTA CLÍNICA DE PRONTUÁRIO SEGURO (LGPD) ── */}
       {prontuarioAberto && (
         <div className="fixed inset-0 z-50 flex justify-end p-0 sm:p-4">

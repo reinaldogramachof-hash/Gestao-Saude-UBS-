@@ -447,23 +447,23 @@ export default function AgendamentosGestor() {
               {/* Horário: início → fim */}
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-2">
-                  <label className="text-xs font-extrabold text-on-surface-variant uppercase tracking-wider">Hora Inicial*</label>
-                  <input type="time" min="07:00" max="18:00" value={form.hora_inicio}
+                  <label className="text-xs font-extrabold text-on-surface-variant uppercase tracking-wider">Hora Início*</label>
+                  <input required type="time" value={form.hora_inicio} min="07:00" max="18:00"
                     onChange={e => setForm(p => ({ ...p, hora_inicio: e.target.value }))}
                     className="w-full h-12 px-4 bg-surface-container-high/60 border border-surface-variant/40 rounded-xl focus:ring-4 focus:ring-primary/10 focus:border-primary outline-none font-semibold text-sm transition-all" />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-xs font-extrabold text-on-surface-variant uppercase tracking-wider">Hora Final*</label>
-                  <input type="time" min="07:00" max="18:00" value={form.hora_fim}
+                  <label className="text-xs font-extrabold text-on-surface-variant uppercase tracking-wider">Hora Fim*</label>
+                  <input required type="time" value={form.hora_fim} min="07:00" max="18:00"
                     onChange={e => setForm(p => ({ ...p, hora_fim: e.target.value }))}
                     className="w-full h-12 px-4 bg-surface-container-high/60 border border-surface-variant/40 rounded-xl focus:ring-4 focus:ring-primary/10 focus:border-primary outline-none font-semibold text-sm transition-all" />
                 </div>
               </div>
 
-              {/* Intervalo entre consultas */}
+              {/* Intervalo entre slots */}
               <div className="space-y-2">
-                <label className="text-xs font-extrabold text-on-surface-variant uppercase tracking-wider">Intervalo por Consulta*</label>
-                <select value={form.intervalo_minutos}
+                <label className="text-xs font-extrabold text-on-surface-variant uppercase tracking-wider">Intervalo entre consultas*</label>
+                <select required value={form.intervalo_minutos}
                   onChange={e => setForm(p => ({ ...p, intervalo_minutos: Number(e.target.value) }))}
                   className="w-full h-12 px-4 bg-surface-container-high/60 border border-surface-variant/40 rounded-xl focus:ring-4 focus:ring-primary/10 focus:border-primary outline-none font-semibold text-sm transition-all">
                   <option value={15}>15 minutos</option>
@@ -473,67 +473,59 @@ export default function AgendamentosGestor() {
                 </select>
               </div>
 
-              {/* Repetição e fins de semana */}
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-2">
-                  <label className="text-xs font-extrabold text-on-surface-variant uppercase tracking-wider">Repetir por</label>
-                  <select value={form.repetir_dias}
-                    onChange={e => setForm(p => ({ ...p, repetir_dias: Number(e.target.value) }))}
-                    className="w-full h-12 px-4 bg-surface-container-high/60 border border-surface-variant/40 rounded-xl focus:ring-4 focus:ring-primary/10 focus:border-primary outline-none font-semibold text-sm transition-all">
-                    {[1, 5, 10, 15, 20, 30].map(d => (
-                      <option key={d} value={d}>{d} {d === 1 ? 'dia' : 'dias'}</option>
-                    ))}
-                  </select>
-                </div>
-                <div className="space-y-2">
-                  <label className="text-xs font-extrabold text-on-surface-variant uppercase tracking-wider">Fins de Semana</label>
-                  <button type="button"
-                    onClick={() => setForm(p => ({ ...p, pular_fins_de_semana: !p.pular_fins_de_semana }))}
-                    className={`w-full h-12 rounded-xl border-2 font-bold text-sm transition-all duration-200 active:scale-95 flex items-center justify-center gap-1.5 ${
-                      form.pular_fins_de_semana
-                        ? 'border-primary bg-primary/10 text-primary shadow-sm shadow-primary/5'
-                        : 'border-surface-variant bg-surface-container-high/60 text-on-surface-variant hover:bg-surface-container-high'
-                    }`}>
-                    <span className="material-symbols-outlined text-base">
-                      {form.pular_fins_de_semana ? 'done' : 'calendar_today'}
-                    </span>
-                    {form.pular_fins_de_semana ? 'Pular Sáb/Dom ✓' : 'Incluir Sáb/Dom'}
-                  </button>
-                </div>
+              {/* Repetição */}
+              <div className="space-y-2">
+                <label className="text-xs font-extrabold text-on-surface-variant uppercase tracking-wider">Repetir por quantos dias?</label>
+                <select value={form.repetir_dias}
+                  onChange={e => setForm(p => ({ ...p, repetir_dias: Number(e.target.value) }))}
+                  className="w-full h-12 px-4 bg-surface-container-high/60 border border-surface-variant/40 rounded-xl focus:ring-4 focus:ring-primary/10 focus:border-primary outline-none font-semibold text-sm transition-all">
+                  <option value={1}>Apenas hoje</option>
+                  <option value={5}>5 dias úteis</option>
+                  <option value={10}>10 dias úteis</option>
+                  <option value={20}>20 dias úteis</option>
+                  <option value={30}>30 dias úteis</option>
+                </select>
               </div>
 
-              {/* Erros de validação do formulário */}
-              {erroFormulario && (
-                <p className="text-sm font-bold text-red-700 bg-red-50 border border-red-200 rounded-xl px-4 py-3">
-                  {erroFormulario}
-                </p>
-              )}
+              {/* Fins de semana */}
+              <div className="flex items-center justify-between p-4 bg-surface-container-low rounded-xl border border-surface-variant/40">
+                <span className="text-sm font-bold text-on-background">Incluir fins de semana</span>
+                <button type="button"
+                  onClick={() => setForm(p => ({ ...p, pular_fins_de_semana: !p.pular_fins_de_semana }))}
+                  className={`w-12 h-6 rounded-full transition-colors ${!form.pular_fins_de_semana ? 'bg-primary' : 'bg-surface-variant'}`}>
+                  <span className={`block w-5 h-5 rounded-full bg-white shadow transition-transform mx-0.5 ${!form.pular_fins_de_semana ? 'translate-x-6' : ''}`} />
+                </button>
+              </div>
 
-              {/* Card de Projeção / Preview de Slots em lote */}
-              {form.data_inicio && form.hora_inicio < form.hora_fim && (
-                <div className="text-xs text-primary bg-primary/5 border border-primary/20 rounded-2xl p-4 shadow-inner">
-                  <p className="font-extrabold flex items-center gap-1.5 uppercase tracking-wider text-[10px]">
-                    <span className="material-symbols-outlined text-sm">schedule_send</span>
-                    Projeção de Inserção em Lote
+              {/* Preview de slots */}
+              {horariosPreview.length > 0 && (
+                <div className="p-4 bg-primary/5 rounded-xl border border-primary/20">
+                  <p className="text-xs font-extrabold text-primary uppercase tracking-wider mb-2">
+                    Preview — {horariosPreview.length} slots serão criados
                   </p>
-                  <p className="font-semibold mt-1.5 text-on-surface">
-                    Serão gerados <strong>{horariosPreview.length * form.repetir_dias} slots</strong> na agenda.
-                  </p>
-                  <p className="text-on-surface-variant mt-1 leading-relaxed">
-                    Grade diária: {horariosPreview.slice(0, 6).join(', ')}
-                    {horariosPreview.length > 6 ? '...' : ''} {form.pular_fins_de_semana ? '(finais de semana pulados automaticamente)' : ''}
-                  </p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {horariosPreview.slice(0,8).map((h,i) => (
+                      <span key={i} className="text-xs font-mono bg-primary/10 text-primary px-2 py-0.5 rounded-lg">{h}</span>
+                    ))}
+                    {horariosPreview.length > 8 && (
+                      <span className="text-xs text-on-surface-variant font-medium">+{horariosPreview.length - 8} mais</span>
+                    )}
+                  </div>
                 </div>
               )}
 
+              {/* Erro */}
+              {erroFormulario && <p className="text-sm text-red-500 font-semibold">{erroFormulario}</p>}
+
+              {/* Ações */}
               <div className="flex gap-3 pt-2">
                 <button type="button" onClick={() => setModalAberto(false)}
-                  className="flex-1 h-12 rounded-2xl border border-outline-variant text-on-surface font-bold hover:bg-surface-container-low transition-colors text-sm">
+                  className="flex-1 h-12 rounded-xl border border-surface-variant font-bold text-xs uppercase tracking-wider hover:bg-surface-container-low transition-colors">
                   Cancelar
                 </button>
-                <button type="submit" disabled={enviando}
-                  className="flex-1 h-12 rounded-2xl bg-primary text-white font-bold hover:shadow-md transition-all active:scale-95 text-sm disabled:opacity-50">
-                  {enviando ? 'Criando...' : `Criar ${horariosPreview.length * form.repetir_dias || ''} horários`}
+                <button type="submit"
+                  className="flex-1 h-12 bg-primary hover:bg-primary-dark text-white rounded-xl font-extrabold text-xs uppercase tracking-wider transition-all active:scale-[0.98]">
+                  Criar Grade
                 </button>
               </div>
             </form>

@@ -15,6 +15,7 @@ import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import GestorLayout from '../../components/gestor/GestorLayout';
 import api from '../../services/api';
+import { useAuth } from '../../hooks/useAuth';
 
 // Mapeamento cromático para os badges translúcidos de status de investigação
 const STATUS_ESTILO = {
@@ -31,6 +32,8 @@ const STATUS_LABELS = {
 
 export default function VigilanciaGestor() {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const isMedico = user?.perfil === 'medico';
   const [notificacoes, setNotificacoes] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -127,13 +130,15 @@ export default function VigilanciaGestor() {
             Monitoramento tático de agravos no território e disparos de segurança pública.
           </p>
         </div>
-        <button
-          onClick={() => setModalNovaAberto(true)}
-          className="h-12 px-6 text-sm md:h-14 md:px-8 md:text-base bg-primary text-white font-bold rounded-2xl shadow-lg shadow-primary/20 hover:shadow-primary/35 hover:-translate-y-0.5 active:translate-y-0 active:scale-95 transition-all flex items-center gap-2 self-start sm:self-auto flex-shrink-0"
-        >
-          <span className="material-symbols-outlined text-xl">coronavirus</span>
-          Nova Notificação
-        </button>
+        {!isMedico && (
+          <button
+            onClick={() => setModalNovaAberto(true)}
+            className="h-12 px-6 text-sm md:h-14 md:px-8 md:text-base bg-primary text-white font-bold rounded-2xl shadow-lg shadow-primary/20 hover:shadow-primary/35 hover:-translate-y-0.5 active:translate-y-0 active:scale-95 transition-all flex items-center gap-2 self-start sm:self-auto flex-shrink-0"
+          >
+            <span className="material-symbols-outlined text-xl">coronavirus</span>
+            Nova Notificação
+          </button>
+        )}
       </div>
 
       {/* ── PAINEL EPIDEMIOLÓGICO TRILATERAL HSL GLASSMORPHIC ── */}
@@ -192,7 +197,7 @@ export default function VigilanciaGestor() {
                 <th className="px-6 py-4.5 text-xs font-bold text-on-surface-variant uppercase tracking-wider">Bairro (Foco)</th>
                 <th className="px-6 py-4.5 text-xs font-bold text-on-surface-variant uppercase tracking-wider">Data Notificação</th>
                 <th className="px-6 py-4.5 text-xs font-bold text-on-surface-variant uppercase tracking-wider">Status</th>
-                <th className="px-6 py-4.5 text-xs font-bold text-on-surface-variant uppercase tracking-wider text-right">Ações</th>
+                {!isMedico && <th className="px-6 py-4.5 text-xs font-bold text-on-surface-variant uppercase tracking-wider text-right">Ações</th>}
               </tr>
             </thead>
             <tbody className="divide-y divide-surface-variant/30">
@@ -257,9 +262,10 @@ export default function VigilanciaGestor() {
                       </td>
 
                       {/* Ações em Chips Translúcidos */}
-                      <td className="px-6 py-5 text-right">
-                        <div className="flex items-center justify-end gap-2 flex-wrap">
-                          {/* Confirmar e Descartar (Surge apenas para SUSPEITO) */}
+                      {!isMedico && (
+                        <td className="px-6 py-5 text-right">
+                          <div className="flex items-center justify-end gap-2 flex-wrap">
+                            {/* Confirmar e Descartar (Surge apenas para SUSPEITO) */}
                           {status === 'SUSPEITO' && (
                             <>
                               <button
@@ -289,6 +295,7 @@ export default function VigilanciaGestor() {
                           )}
                         </div>
                       </td>
+                      )}
                     </tr>
                   );
                 })

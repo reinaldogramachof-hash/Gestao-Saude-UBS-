@@ -55,6 +55,7 @@ const comunicadoSchema = Joi.object({
   tipo: Joi.string().valid('geral', 'individual').default('geral'),
   paciente_id: idNumerico.allow('', null),
   urgente: Joi.boolean().default(false),
+  segmentacao_clinica: Joi.string().allow('', null).max(100),
 });
 
 // Schema para criacao de grades de agenda em lote. Mantem datas/horas em
@@ -110,3 +111,4 @@ module.exports = {
   encaminhamentoSchema,
   vigilanciaSchema,
 };
+

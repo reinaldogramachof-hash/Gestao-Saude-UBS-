@@ -10,6 +10,7 @@ import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import GestorLayout from '../../components/gestor/GestorLayout';
 import api from '../../services/api';
+import { useAuth } from '../../hooks/useAuth';
 
 // Paleta translúcida com borda fina de alta definição para as badges de prioridade
 const PRIORIDADE_ESTILO = {
@@ -53,6 +54,8 @@ const STATUS_ESTILO = {
 
 export default function RegulacaoGestor() {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const isMedico = user?.perfil === 'medico';
   const [encaminhamentos, setEncaminhamentos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filtroStatus, setFiltroStatus] = useState('TODOS');
@@ -185,13 +188,15 @@ export default function RegulacaoGestor() {
           <h1 className="text-2xl md:text-4xl font-extrabold tracking-tight text-on-background">Regulação Externa</h1>
           <p className="text-on-surface-variant font-semibold mt-1 text-sm">Gerencie os encaminhamentos para CAPS, AMEs, UPAs e Hospitais via CROSS.</p>
         </div>
-        <button
-          onClick={() => setModalCriarAberto(true)}
-          className="h-12 px-6 text-sm md:h-14 md:px-8 md:text-base bg-primary text-white font-bold rounded-2xl shadow-lg shadow-primary/20 hover:shadow-primary/30 hover:-translate-y-0.5 active:translate-y-0 active:scale-95 transition-all flex items-center gap-2 self-start sm:self-auto flex-shrink-0"
-        >
-          <span className="material-symbols-outlined">post_add</span>
-          Novo Encaminhamento
-        </button>
+        {!isMedico && (
+          <button
+            onClick={() => setModalCriarAberto(true)}
+            className="h-12 px-6 text-sm md:h-14 md:px-8 md:text-base bg-primary text-white font-bold rounded-2xl shadow-lg shadow-primary/20 hover:shadow-primary/30 hover:-translate-y-0.5 active:translate-y-0 active:scale-95 transition-all flex items-center gap-2 self-start sm:self-auto flex-shrink-0"
+          >
+            <span className="material-symbols-outlined">post_add</span>
+            Novo Encaminhamento
+          </button>
+        )}
       </div>
 
       {/* ── Alerta de SLA Vencido Premium (HSL & Pulsante) ── */}
@@ -310,7 +315,7 @@ export default function RegulacaoGestor() {
                       <td className="p-4 md:p-5 text-right select-none">
                         <div className="flex items-center justify-end gap-2">
                           {/* Agendamento inline moderno */}
-                          {agendandoId === enc.id ? (
+                          {!isMedico && agendandoId === enc.id ? (
                             <div className="flex items-center gap-1.5 bg-surface-container-high/60 border border-surface-variant/50 p-1 rounded-xl shadow-inner animate-scale-up">
                               <input
                                 type="date"
@@ -335,7 +340,7 @@ export default function RegulacaoGestor() {
                             </div>
                           ) : (
                             <>
-                              {enc.status === 'AGUARDANDO_VAGA' && (
+                              {!isMedico && enc.status === 'AGUARDANDO_VAGA' && (
                                 <button
                                   onClick={() => iniciarAgendamento(enc)}
                                   className="px-3.5 py-2 bg-blue-500/10 hover:bg-blue-500/20 text-blue-800 border border-blue-500/20 font-bold rounded-xl text-xs transition-all active:scale-95 shadow-sm"
@@ -343,7 +348,7 @@ export default function RegulacaoGestor() {
                                   Marcar Agendado
                                 </button>
                               )}
-                              {enc.status === 'AGENDADO' && (
+                              {!isMedico && enc.status === 'AGENDADO' && (
                                 <button
                                   onClick={() => handleAtualizarStatus(enc, 'REALIZADO')}
                                   className="px-3.5 py-2 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-800 border border-emerald-500/20 font-bold rounded-xl text-xs transition-all active:scale-95 shadow-sm"

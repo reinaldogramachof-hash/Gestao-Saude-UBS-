@@ -1,198 +1,97 @@
 # Início de Sessão — Gestão Saúde UBS+
 > Este arquivo é atualizado pelo Arquiteto (Claude) ao final de cada fase ou sessão relevante.
 > Todo agente deve ler este arquivo ANTES de qualquer execução.
-> **Última atualização:** 2026-06-19 — Claude Sonnet 4.6 (Arquiteto)
+> **Última atualização:** 2026-06-24 — Claude Sonnet 4.6 (Arquiteto)
+> Próximo evento: **Banca UFBRA — 26/06/2026 às 20h**
 
 ---
 
-## ⚠️ LEIA ISTO PRIMEIRO — Contexto Crítico
+## Estado atual
 
-**Prazo:** Validação com banca acadêmica em **25/06/2026 (6 dias).**
-**Natureza da demo:** Dados simulados. A banca avalia interface e fluxo, não backend ao vivo.
-**Deploy ativo:**
-  - Frontend: https://gestao-saude-ubs.vercel.app
-  - Backend: https://gestao-saude-ubs-api.vercel.app
-  - Banco: Supabase (`crdtguvjuyfszxbpnwms`) com dados de demo
-**✅ SUPABASE_SECRET_KEY rotacionada (Claude Chrome Agent, pós 17/06) — sistema em produção confirmado.**
+**Testes:** 86/86 passando ✅  
+**Branch:** `main` — working tree com mudanças prontas para commit  
+**Bloqueio ativo:** `.git/index.lock` impede commits
 
----
-
-## Time Ativo nesta Fase
-
-| Papel | Quem | Responsabilidade |
-|---|---|---|
-| **QA / Orquestrador** | Reinaldo | Valida entregas, aprova direções, testa fluxos |
-| **Arquiteto** | Claude Sonnet 4.6 | Define o quê e como. Não executa código salvo emergência |
-| **Dev Sênior Executor** | Google Antigravity | Executa código, segue briefings do Arquiteto |
+Leia o relatório completo da sessão:
+`.Agent/reports/TASK_32_33_Perfil_Medico_Validacao.md`
 
 ---
 
-## Status Real do Projeto — 20/06/2026
+## Primeira ação do Codex
 
-**Fase:** 2 — Avançado (módulos principais + hardening implementados)
-**Build:** ✅ Passando — 36/36 testes, frontend build ok
-**Testes E2E:** ❌ Módulos Regulação e Vigilância nunca testados em produção
-**Migrations:** ✅ 018, 019, 020 aplicadas no Supabase e confirmadas
-**Deploy:** ✅ Atualizado — commit `fe500f4` em produção (Railway + Vercel)
-**Último commit:** `d95c222` — fix(regulacao): substitui window.prompt por input inline de data — TASK_25
-
----
-
-## O que foi feito até agora
-
-### Infraestrutura e Base
-- [x] Documentação base em `docs/` (5 documentos acadêmicos)
-- [x] Frontend React + Vite + Tailwind — 9 páginas gestor, 7 paciente + cadastro
-- [x] Backend Node.js + Express + Knex — auth middleware, gestor.js (1526 linhas), paciente.js, admin.js
-- [x] 20 migrations PostgreSQL no Supabase (001–020), todas aplicadas e validadas
-- [x] Seeds: UBSs de SJC + gestores de teste + dados de demo
-- [x] Autenticação JWT: gestor (e-mail + senha) e paciente (CRA + data nascimento)
-
-### Portal do Gestor
-- [x] Dashboard, Pacientes, Perfil/Solicitações, Medicamentos, Comunicados, Agendamentos, Usuários
-- [x] Sidebar retrátil com persistência no localStorage (mobile-first)
-- [x] Módulo Regulação — encaminhamentos externos com bridge automático para solicitações
-- [x] Módulo Vigilância e Surtos — notificações com fluxo para gerar Comunicados urgentes
-- [x] Módulos Transporte Sanitário e Serviço Social — REMOVIDOS (sem valor para MVP)
-
-### Portal do Paciente
-- [x] Dashboard, Solicitações, Detalhe, Medicamentos, Comunicados, Agendamentos, Cadastro
-- [x] FAB "+" como hub de ações: bottom sheet com 4 categorias → pré-preenche agendamento
-- [x] PWA básico (manifest + service worker)
-
-### Backend Segurança (TASK_24 — 20/06)
-- [x] Multi-tenant isolation via `ubs_id` em todas as rotas novas (encaminhamentos, vigilância)
-- [x] Transações Knex para operações atômicas (encaminhamento → status solicitação)
-- [x] Helmet + CORS restrito + rate limit global (300 req/15min) + rate limit login (10/15min)
-- [x] `token_version` no JWT — revogação de sessão sem blacklist
-- [x] `security_audit_logs` — auditoria de logins e operações sensíveis (LGPD)
-- [x] RLS habilitado em 12 tabelas no Supabase
-- [x] Campos explícitos em todas as respostas (sem `SELECT *`)
-- [x] Validação Joi de entrada em rotas sensíveis
-
----
-
-## Bugs Críticos Abertos (BLOQUEADORES)
-
-| ID | Descrição | Arquivo(s) | Prioridade |
-|---|---|---|---|
-| **SEC-01** | SUPABASE_SECRET_KEY | ✅ Rotacionada (Claude Chrome, pós 17/06) | — |
-| **C-01** | Gestor pode alterar solicitação de outra UBS por ID | `routes/gestor.js:123-146` | 🟡 Antes da banca |
-| **C-02** | `observacao_gestor` exposta ao paciente via API | `routes/paciente.js:108-122` | 🟡 Antes da banca |
-| **C-03** | Contas com `ativo=false` conseguem login | `routes/auth.js:36-48,80-88` | 🟡 Antes da banca |
-
-> **C-04 (RBAC)**, **C-05 (rate limit)**, **C-06 (dependências)** — pós-25/06.
-> **Nota:** C-01 já está resolvido para encaminhamentos (ubs_id) e vigilância (ubs_id) criados em TASK_23. O bug persiste em solicitações gerais do módulo anterior.
-
----
-
-## Próximas Ações Imediatas (Ordem Obrigatória)
-
-### 🟡 TESTE FUNCIONAL
-
-1. **Regulação** ✅ Validado em produção (TASK_25 — 20/06)
-   - Input de data inline implementado (window.prompt removido)
-   - Fluxo completo: criação → agendamento → conclusão → reflexo no paciente
-   - Bug multi-tenant corrigido: `centro@gestaoubs.dev` alinhado para `ubs_id: 4`
-
-2. **Vigilância** ❌ Pendente — Fluxo B não foi testado
-   - Criar surto → Confirmar → Gerar Alerta → publicar Comunicado urgente
-   - Verificar reflexo no portal do paciente
-   - **Primeira tarefa da próxima sessão**
-
-### 🟡 DADOS DE DEMO PARA A BANCA
-
-4. **Antigravity** — Gerar seed de demo para 25/06:
-   - 3–4 pacientes com nomes fictícios e CRAs de fácil memorização
-   - 2–3 solicitações por paciente em status diferentes
-   - 1–2 encaminhamentos ativos (1 AGUARDANDO_VAGA, 1 AGENDADO)
-   - 1 notificação de vigilância confirmada (ex: Dengue em Jardim das Indústrias)
-   - 3–4 slots de agendamento disponíveis para 25/06 manhã
-
-### 🟡 ENSAIO FINAL
-
-5. **Reinaldo** — Ensaio completo em produção 24/06 (véspera da banca):
-   - Fluxo 1: Auto-cadastro paciente → aprovação gestor → visualização de status
-   - Fluxo 2: Gestor atualiza medicamento → paciente vê disponibilidade
-   - Fluxo 3: Gestor cria comunicado urgente → paciente vê na home
-   - Fluxo 4: Paciente usa FAB "+" → seleciona consulta → agendamento pré-preenchido
-
----
-
-## O que está pendente (pós-25/06)
-
-- Substituir `window.prompt()` por DatePicker real no RegulacaoGestor
-- C-01 completo: gestor cross-UBS em solicitações gerais do módulo anterior
-- RBAC completo (C-04) — perfis recepcionista/gestor/admin
-- Suite de testes automatizados E2E
-- Atualização de dependências vulneráveis (C-06)
-- Download de comprovante de agendamento (PDF)
-- Push notifications frontend
-- HL7 FHIR / RNDS
-- WhatsApp Business API (Fase 2)
-- Domínio Hostgator (pós-validação)
-- Dashboard analítico completo (RF-G09)
-
----
-
-## Como rodar o projeto localmente
+### Passo 1 — Verificar index.lock
 
 ```bash
-# Terminal 1 — Backend
-cd app/backend
-npm run dev
-# Sobe em http://localhost:3001
-
-# Terminal 2 — Frontend
-cd app/frontend
-npm run dev
-# Abre em http://localhost:5173
+ls -la .git/index.lock
 ```
 
-**Credenciais de teste (gestor):**
-- centro@gestaoubs.dev / senha123
-- industrial@gestaoubs.dev / senha123
-- satelite@gestaoubs.dev / senha123
+Se existir, peça ao Reinaldo para executar no PowerShell:
+```powershell
+Remove-Item "C:\Users\reina\OneDrive\Desktop\Projetos\Gestão Saúde UBS+\.git\index.lock" -Force
+```
 
-**Credencial paciente:** CRA + data de nascimento (cadastrar via Portal do Gestor).
+### Passo 2 — Commit
 
----
+```bash
+git add -u
+git add app/backend/src/middleware/authorization.js
+git add app/backend/src/db/migrations/027_add_segmentacao_clinica_comunicados.js
+git add app/backend/src/db/seeds/008_slots_banca.js
+git add app/backend/test_contrato_rbac.js
+git add app/frontend/src/pages/gestor/RelatoriosGestor.jsx
+git add app/frontend/src/pages/gestor/PainelMedico.jsx
+git add tests/task33-relatorios.test.mjs
+git commit -m "feat: TASK_32/33 agenda + fluxo comunicação + perfil médico RBAC + relatórios"
+git push origin main
+```
 
-## Banco de Dados
+### Passo 3 — Migration 027 em produção
 
-- **Plataforma:** Supabase (PostgreSQL) — projeto `crdtguvjuyfszxbpnwms`, região us-east-1
-- **Pooler:** PgBouncer porta 6543 (transaction mode) — usar em produção
-- **SSL:** obrigatório — `knexfile.js` configurado com `ssl: { rejectUnauthorized: false }`
-- **Migrations aplicadas:** 001–017 + 2 migrations com timestamp (Antigravity TASK_23)
-- **Migrations PENDENTES:** 018 (ubs_id em encaminhamentos), 019 (ubs_id em vigilância)
-- **✅ SUPABASE_SECRET_KEY:** Rotacionada pós 17/06 — sistema em produção confirmado
+```bash
+cd app/backend
+NODE_ENV=production npx knex migrate:latest
+```
 
----
+Confirme que `027_add_segmentacao_clinica_comunicados` aparece.
 
-## Arquitetura de Layout (não alterar sem autorização)
+### Passo 4 — Verificar deploy Vercel
 
-### Portal do Gestor
-- Todas as páginas usam `<GestorLayout>` — gerencia `sidebarAberta` (drawer animado mobile)
-- Padding: `p-4 md:p-6 lg:p-10`
-
-### Portal do Paciente
-- Todas as páginas usam `<PacienteLayout>` — `max-w-md`, `position: relative`
-- `BottomNavSimples` usa `absolute` (não `fixed`) ancorado ao container do PacienteLayout
-- FAB "+" abre bottom sheet com overlay — z-index 50, renderizado fora do `<nav>`
-
----
-
-## Relatório Mais Recente
-
-`.Agent/reports/2026-06-19_TASK22-TASK23_FAB_Regulacao_Vigilancia.md`
+- Build sem erro de compilação
+- Slots da banca visíveis: UBS Vila Maria, 26/06/2026, 19h–21h
 
 ---
 
-## Padrões de Código Obrigatórios
+## Aviso crítico — Sync do Linux mount
 
-1. **Comentários** — Todo arquivo .js/.jsx/.sql deve ter cabeçalho explicativo (ver CLAUDE.md)
-2. **Mobile-first** — Todas as telas devem funcionar em 375px antes de desktop
-3. **Linguagem simples** — Textos ao paciente nunca usam jargão médico/burocrático
-4. **LGPD** — Nenhuma rota expõe dados de pacientes sem autenticação
-5. **Multi-tenant** — Toda query nova filtra por `ubs_id` do token JWT (`req.user.ubs_id`)
-6. **Relatório de sessão** — Sessões que alteram arquivos geram relatório em `.Agent/reports/`
+O sandbox Linux mostra versões stale de arquivos modificados pelo Antigravity via Windows.
+Ao validar qualquer arquivo, use sempre:
+
+```bash
+node -e "const s=require('fs').readFileSync('arquivo','utf8'); console.log('lines:',s.split('\n').length,'last:',JSON.stringify(s.split('\n').slice(-2)))"
+```
+
+Nunca confie no output do Read tool como prova do estado real do disco.
+
+---
+
+## Módulos entregues (status para a banca)
+
+| Módulo | Status |
+|---|---|
+| Agenda lote (TASK_32) | ✅ 86/86 |
+| Fluxo comunicação vivo (TASK_33) | ✅ |
+| Portal externo visual | ✅ |
+| Perfil médico RBAC + receituário | ✅ |
+| Segmentação clínica comunicados | ✅ |
+| Relatórios RF-G09 | ✅ |
+| Migration 027 em **PRODUÇÃO** | ⚠️ Pendente |
+| Commit + push + deploy | ⚠️ Pendente (aguarda index.lock) |
+
+---
+
+## Regras invioláveis
+
+- `ubs_id` e `gestor_id` vêm sempre do JWT — nunca do body
+- Nenhuma rota expõe pacientes sem autenticação (LGPD)
+- Médicos bloqueados via `soNaoMedico` em POST/PUT de regulação e vigilância
+- Todos os arquivos precisam de comentários explicativos

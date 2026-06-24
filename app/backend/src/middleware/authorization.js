@@ -22,4 +22,14 @@ function requirePerfil(perfisPermitidos) {
   };
 }
 
-module.exports = { requireTipo, requirePerfil };
+// Bloqueia médicos em rotas administrativas de // escrita (regulação, vigilância). Médicos têm acesso GET mas não POST/PUT/DELETE.
+function soNaoMedico(req, res, next) {
+  if (req.user?.perfil === 'medico') {
+    return res.status(403).json({
+      error: 'Perfil médico não autorizado para operações de escrita neste módulo.',
+    });
+  }
+  return next();
+}
+
+module.exports = { requireTipo, requirePerfil, soNaoMedico };

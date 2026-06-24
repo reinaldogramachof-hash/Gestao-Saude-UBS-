@@ -37,7 +37,7 @@
 const express      = require('express');
 const knex         = require('../db/knex');
 const pushService  = require('../services/pushService');
-const { requireTipo, requirePerfil } = require('../middleware/authorization');
+const { requireTipo, requirePerfil, soNaoMedico } = require('../middleware/authorization');
 const validateBody = require('../middleware/validateBody');
 const { registrarAuditoria } = require('../services/auditService');
 const {
@@ -1412,7 +1412,7 @@ router.get('/comunicados', async (req, res) => {
 // Body: { titulo, mensagem, tipo, paciente_id, urgente }
 router.post('/comunicado', validateBody(comunicadoSchema), async (req, res) => {
   try {
-    const { titulo, mensagem, tipo = 'geral', paciente_id, urgente = false } = req.body;
+    const { titulo, mensagem, tipo = 'geral', paciente_id, urgente = false, segmentacao_clinica } = req.body;
 
     // Campos obrigatórios
     if (!titulo || !mensagem) {
@@ -1436,6 +1436,7 @@ router.post('/comunicado', validateBody(comunicadoSchema), async (req, res) => {
         mensagem,
         tipo,
         urgente: Boolean(urgente), // garante tipo booleano mesmo se vier como string do form
+        segmentacao_clinica: segmentacao_clinica || null,
       })
       .returning(CAMPOS_COMUNICADO);
 
@@ -1490,9 +1491,10 @@ router.delete('/comunicado/:id', async (req, res) => {
 // ─── GET /api/gestor/agendamentos ─────────────────────────────────────────────
 // Épico 4: Lista todos os slots de agendamento da UBS, ordenados por data_hora.
 // Query param opcional: ?status=disponivel (filtra por status)
+// Query param opcional: ?gestor_responsavel_id=1 (filtra por gestor)
 router.get('/agendamentos', async (req, res) => {
   try {
-    const { status } = req.query;
+    const { status, gestor_responsavel_id } = req.query;
 
     let query = knex('agendamentos_gestao')
       .leftJoin('pacientes', 'agendamentos_gestao.paciente_id', 'pacientes.id')
@@ -1504,6 +1506,7 @@ router.get('/agendamentos', async (req, res) => {
         'agendamentos_gestao.status',
         'agendamentos_gestao.motivo',
         'agendamentos_gestao.paciente_id',
+        'agendamentos_gestao.gestor_responsavel_id',
         'pacientes.nome as paciente_nome'
       )
       .orderBy('agendamentos_gestao.data_hora', 'asc');
@@ -1511,6 +1514,11 @@ router.get('/agendamentos', async (req, res) => {
     // Filtro opcional por status (ex: ?status=disponivel)
     if (status) {
       query = query.where('agendamentos_gestao.status', status);
+    }
+
+    // Filtro opcional por gestor responsável
+    if (gestor_responsavel_id) {
+      query = query.where('agendamentos_gestao.gestor_responsavel_id', gestor_responsavel_id);
     }
 
     const agendamentos = await query;
@@ -1785,7 +1793,7 @@ router.get('/encaminhamentos', async (req, res) => {
 //
 // Body: { paciente_id, destino, especialidade, prioridade, observacoes?, solicitacao_id? }
 // Prioridade: 'VERDE' | 'AMARELO' | 'VERMELHO'
-router.post('/encaminhamento', validateBody(encaminhamentoSchema), async (req, res) => {
+router.post('/encaminhamento', soNaoMedico, validateBody(encaminhamentoSchema), async (req, res) => {
   try {
     const { paciente_id, destino, especialidade, prioridade, observacoes, solicitacao_id } = req.body;
 
@@ -1878,7 +1886,7 @@ router.post('/encaminhamento', validateBody(encaminhamentoSchema), async (req, r
 //   - Só permite alterar encaminhamentos da própria UBS do gestor
 //
 // Body: { status_novo, data_agendamento?, observacoes? }
-router.put('/encaminhamento/:id/status', async (req, res) => {
+router.put('/encaminhamento/:id/status', soNaoMedico, async (req, res) => {
   try {
     const { status_novo, data_agendamento, observacoes } = req.body;
 
@@ -2055,7 +2063,7 @@ router.get('/vigilancia', async (req, res) => {
 //
 // Body: { agravo, bairro, cep?, paciente_id? }
 // paciente_id é opcional — surtos territoriais não precisam de paciente específico.
-router.post('/vigilancia', validateBody(vigilanciaSchema), async (req, res) => {
+router.post('/vigilancia', soNaoMedico, validateBody(vigilanciaSchema), async (req, res) => {
   try {
     const { agravo, bairro, cep, paciente_id } = req.body;
 
@@ -2103,7 +2111,7 @@ router.post('/vigilancia', validateBody(vigilanciaSchema), async (req, res) => {
 // ─── PUT /api/gestor/vigilancia/:id/status ───────────────────────────────────
 // Atualiza o status de investigação de uma notificação.
 // Body: { status_investigacao } — 'SUSPEITO' | 'CONFIRMADO' | 'DESCARTADO'
-router.put('/vigilancia/:id/status', async (req, res) => {
+router.put('/vigilancia/:id/status', soNaoMedico, async (req, res) => {
   try {
     const { status_investigacao } = req.body;
 
@@ -2129,62 +2137,50 @@ router.put('/vigilancia/:id/status', async (req, res) => {
     await registrarAuditoria(req, {
       acao: 'vigilancia_status_atualizar',
       entidade: 'notificacoes_vigilancia',
-      entidade_id: atualizada.id,
-      escopo_ubs_id: atualizada.ubs_id,
+      entidade_id: req.params.id,
+      escopo_ubs_id: req.user.ubs_id,
       metadata: { status_investigacao },
     });
 
     return res.json(atualizada);
   } catch (err) {
     console.error('[PUT /gestor/vigilancia/:id/status]', err);
-    return res.status(500).json({ error: 'Erro ao atualizar status da notificação.' });
+    return res.status(500).json({ error: 'Erro ao atualizar notificação de vigilância.' });
   }
 });
 
 // ─── GET /api/gestor/relatorios ──────────────────────────────────────────────
-// Gera métricas simples de atividade para a UBS do gestor logado (RF-G09),
-// incluindo solicitações abertas, distribuição por status e alertas de urgências
-// ociosas (prioridade urgente sem atualização há mais de 7 dias).
+// RF-G09: Relatório de atividade da UBS para gestores e admins.
+// Retorna distribuição de status das solicitações ativas e lista de urgências
+// ociosas. Isolado por ubs_id do token — nunca expõe dados de outra UBS.
+// LGPD: retorna apenas nome e CRA do paciente, nunca CPF.
 router.get('/relatorios', async (req, res) => {
   try {
     const ubsId = req.user.ubs_id;
 
-    // 1. Total de solicitações abertas (excluindo concluídas e canceladas)
-    const abertasCount = await knex('solicitacoes')
-      .where({ ubs_id: ubsId })
-      .whereNotIn('status', ['concluido', 'cancelado'])
-      .count('id as total')
-      .first();
-
-    // 2. Distribuição por status das solicitações ativas
+    // ── Distribuição de status das solicitações ativas ──
+    // Conta solicitações por status, excluindo as já encerradas.
     const distribuicao = await knex('solicitacoes')
       .where({ ubs_id: ubsId })
       .whereNotIn('status', ['concluido', 'cancelado'])
-      .select('status')
-      .count('id as total')
-      .groupBy('status');
+      .groupBy('status')
+      .select('status', knex.raw('COUNT(*) as total'));
 
-    // 3. Urgências ociosas: prioridade 'urgente', status ativo, sem atualização há > 7 dias
-    const seteDiasAtras = new Date();
-    seteDiasAtras.setDate(seteDiasAtras.getDate() - 7);
-
-    const urgentesParadas = await knex('solicitacoes')
+    // ── Urgências ociosas (prioridade urgente, não concluídas) ──
+    // Exibe apenas nome e CRA — CPF e dados sensíveis são omitidos (LGPD).
+    const urgencias = await knex('solicitacoes')
       .join('pacientes', 'solicitacoes.paciente_id', 'pacientes.id')
       .where('solicitacoes.ubs_id', ubsId)
       .where('solicitacoes.prioridade', 'urgente')
       .whereNotIn('solicitacoes.status', ['concluido', 'cancelado'])
-      .where('solicitacoes.atualizado_em', '<', seteDiasAtras)
       .select(
         'solicitacoes.id',
-        'solicitacoes.tipo',
-        'solicitacoes.descricao',
         'solicitacoes.status',
-        'solicitacoes.atualizado_em',
+        'solicitacoes.descricao_paciente',
+        'solicitacoes.criado_em',
         'pacientes.nome as paciente_nome',
         'pacientes.cra as paciente_cra',
-        'pacientes.id as paciente_id'
-      )
-      .orderBy('solicitacoes.atualizado_em', 'asc');
+      );
 
     await registrarAuditoria(req, {
       acao: 'relatorio_atividade_gerado',
@@ -2194,16 +2190,12 @@ router.get('/relatorios', async (req, res) => {
     });
 
     return res.json({
-      total_abertas: Number(abertasCount.total || 0),
-      distribuicao_status: distribuicao.map(d => ({
-        status: d.status,
-        total: Number(d.total || 0)
-      })),
-      urgentes_paradas: urgentesParadas
+      distribuicao_status: distribuicao,
+      urgencias_ociosas: urgencias,
     });
   } catch (err) {
     console.error('[GET /gestor/relatorios]', err);
-    return res.status(500).json({ error: 'Erro ao gerar relatorio de atividade.' });
+    return res.status(500).json({ error: 'Erro ao gerar relatório.' });
   }
 });
 

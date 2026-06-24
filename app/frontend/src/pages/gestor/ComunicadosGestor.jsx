@@ -22,7 +22,7 @@ export default function ComunicadosGestor() {
   const [loading, setLoading] = useState(true);
   const [modalAberto, setModalAberto] = useState(false);
   const [enviando, setEnviando] = useState(false);
-  const [form, setForm] = useState({ titulo: '', mensagem: '', tipo: 'geral', paciente_id: '', urgente: false });
+  const [form, setForm] = useState({ titulo: '', mensagem: '', tipo: 'geral', paciente_id: '', urgente: false, segmentacao_clinica: '' });
 
   // Carrega todos os comunicados ativos gerados pela gestão da UBS
   const carregarComunicados = () => {
@@ -78,11 +78,12 @@ export default function ComunicadosGestor() {
       await api.post('/gestor/comunicado', {
         ...form,
         paciente_id: form.tipo === 'individual' ? form.paciente_id : null,
+        segmentacao_clinica: form.tipo === 'segmentado' ? form.segmentacao_clinica : null,
         urgente:     form.urgente,
       });
       toast.success('Comunicado publicado com sucesso!');
       setModalAberto(false);
-      setForm({ titulo: '', mensagem: '', tipo: 'geral', paciente_id: '', urgente: false });
+      setForm({ titulo: '', mensagem: '', tipo: 'geral', paciente_id: '', urgente: false, segmentacao_clinica: '' });
       carregarComunicados();
     } catch (error) {
       console.error('[ComunicadosGestor] Erro ao salvar comunicado:', error);
@@ -275,8 +276,29 @@ export default function ComunicadosGestor() {
                 >
                   <option value="geral">Geral — Visível para todos os pacientes da unidade</option>
                   <option value="individual">Individual — Direcionado a um paciente específico</option>
+                  <option value="segmentado">Segmentado — Por perfil clínico (ex: Diabéticos)</option>
                 </select>
               </div>
+
+              {/* Seleção de Segmentação Clínica (Apenas para segmentado) */}
+              {form.tipo === 'segmentado' && (
+                <div className="space-y-2 animate-fade-in">
+                  <label className="text-sm font-extrabold text-on-surface-variant">Grupo Clínico *</label>
+                  <select
+                    required
+                    name="segmentacao_clinica"
+                    value={form.segmentacao_clinica || ''}
+                    onChange={handleInputChange}
+                    className="w-full h-12 px-4 bg-surface-container-high/75 border border-surface-variant/20 rounded-xl outline-none font-medium focus:border-primary/50 focus:bg-surface-container-lowest focus:ring-2 focus:ring-primary/20 transition-all text-sm appearance-none"
+                  >
+                    <option value="">Selecione um grupo clínico...</option>
+                    <option value="Hipertensão">Pacientes com Hipertensão</option>
+                    <option value="Diabetes">Pacientes com Diabetes</option>
+                    <option value="Gestantes">Gestantes</option>
+                    <option value="Asma">Pacientes com Asma</option>
+                  </select>
+                </div>
+              )}
 
               {/* Seleção de Paciente Destinatário (Apenas para individual) */}
               {form.tipo === 'individual' && (

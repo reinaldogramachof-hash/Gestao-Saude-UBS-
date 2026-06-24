@@ -286,6 +286,31 @@ export default function PainelMedico() {
   // Opções: 'dados' (dados clínicos), 'solicitacoes' (pedidos de exames), 'linha_do_tempo' (evolução)
   const [abaAtiva, setAbaAtiva] = useState('dados');
 
+  // Estados do Dashboard
+  const [agendamentosDoDia, setAgendamentosDoDia] = useState([]);
+  const [loadingAgenda, setLoadingAgenda] = useState(false);
+
+  useEffect(() => {
+    async function carregarAgenda() {
+      if (!user) return;
+      try {
+        setLoadingAgenda(true);
+        const res = await api.get(`/gestor/agendamentos?status=reservado&gestor_responsavel_id=${user.id}`);
+        const hojeLocal = new Date().toLocaleDateString('pt-BR');
+        const agendaHoje = res.data.filter(a => {
+           if (!a.data_hora) return false;
+           return new Date(a.data_hora).toLocaleDateString('pt-BR') === hojeLocal;
+        });
+        setAgendamentosDoDia(agendaHoje);
+      } catch (error) {
+        console.error('[PainelMedico] Erro ao carregar agenda:', error);
+      } finally {
+        setLoadingAgenda(false);
+      }
+    }
+    carregarAgenda();
+  }, [user]);
+
   // ── Funções Clínicas: Evolução (Atendimentos) ──
   const resetFormAtendimento = () => {
     setFormAtendimento({
@@ -549,7 +574,9 @@ export default function PainelMedico() {
   );
 
   return (
-    <GestorLayout>
+    <>
+      <div className="print:hidden min-h-screen">
+        <GestorLayout>
       {/* ─── Cabeçalho da Página ─── */}
       <div className="mb-6 lg:mb-8 animate-fade-in select-none">
         <h1 className="text-2xl md:text-4xl font-extrabold tracking-tight text-on-background">
@@ -583,16 +610,55 @@ export default function PainelMedico() {
         </button>
       </form>
 
-      {/* ─── Estado Inicial ─── */}
+      {/* ─── Dashboard Diário / Estado Inicial ─── */}
       {!buscaRealizada && !buscando && !loadingPaciente && !pacienteAtivo && (
-        <div className="py-20 text-center bg-surface-container-lowest rounded-3xl border border-surface-variant select-none animate-fade-in">
-          <span className="material-symbols-outlined text-5xl block mb-3 opacity-30 text-on-surface-variant">
-            stethoscope
-          </span>
-          <p className="text-on-surface-variant font-extrabold text-base">Prontuário Médico Digital</p>
-          <p className="text-xs text-on-surface-variant/75 mt-1 max-w-md mx-auto">
-            Informe o número de CRA ou nome do munícipe acima para carregar o prontuário completo, histórico de exames e evolução clínica.
-          </p>
+        <div className="flex flex-col gap-6 animate-fade-in select-none">
+          {/* Dashboard Clínico - Agenda do Médico */}
+          <div className="bg-surface-container-lowest border border-surface-variant rounded-3xl p-6 md:p-8 shadow-sm">
+            <h3 className="text-xl font-black text-on-background mb-6 flex items-center gap-2">
+              <span className="material-symbols-outlined text-primary">calendar_today</span>
+              Seus Atendimentos de Hoje
+            </h3>
+            {loadingAgenda ? (
+              <p className="text-sm text-on-surface-variant font-medium animate-pulse">Carregando sua agenda clínica...</p>
+            ) : agendamentosDoDia.length > 0 ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                {agendamentosDoDia.map(ag => (
+                  <div key={ag.id} className="p-4 rounded-2xl border border-surface-variant/60 bg-surface-container hover:bg-surface-container-high transition-colors flex flex-col gap-3 group">
+                    <div className="flex justify-between items-start">
+                      <p className="text-[10px] font-black uppercase text-primary bg-primary/10 border border-primary/20 px-2 py-0.5 rounded-md tracking-wider">
+                        {new Date(ag.data_hora).toLocaleTimeString('pt-BR', { hour: '2-digit', minute:'2-digit' })}
+                      </p>
+                      <span className="text-[10px] bg-amber-500/10 text-amber-800 border border-amber-500/20 font-bold px-1.5 py-0.5 rounded uppercase">{STATUS_LABEL[ag.status] || ag.status}</span>
+                    </div>
+                    <p className="font-extrabold text-base text-on-background truncate" title={ag.paciente_nome}>{ag.paciente_nome}</p>
+                    <button 
+                      onClick={() => carregarPerfil(ag.paciente_id)}
+                      className="mt-auto w-full py-2 bg-primary/10 border border-primary/20 text-primary hover:bg-primary hover:border-primary hover:text-on-primary text-xs font-bold rounded-xl transition-all duration-300 flex items-center justify-center gap-1 active:scale-95"
+                    >
+                      <span className="material-symbols-outlined text-[16px]">stethoscope</span>
+                      Iniciar Atendimento
+                    </button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="bg-surface-container/50 border border-surface-variant/40 rounded-2xl p-6 text-center">
+                <p className="text-sm text-on-surface-variant font-bold">A agenda para hoje está livre.</p>
+                <p className="text-xs text-on-surface-variant/70 mt-1">Nenhum atendimento marcado para você nesta data.</p>
+              </div>
+            )}
+          </div>
+
+          <div className="py-12 text-center bg-surface-container-lowest rounded-3xl border border-surface-variant shadow-sm">
+            <span className="material-symbols-outlined text-4xl block mb-2 opacity-30 text-on-surface-variant">
+              medical_information
+            </span>
+            <p className="text-on-surface-variant font-extrabold text-base">Busca Avulsa de Prontuário</p>
+            <p className="text-xs text-on-surface-variant/75 mt-1 max-w-sm mx-auto">
+              Para pacientes de urgência ou fora da agenda, informe o número de CRA ou nome do munícipe na barra superior.
+            </p>
+          </div>
         </div>
       )}
 
@@ -660,10 +726,19 @@ export default function PainelMedico() {
       {!loadingPaciente && pacienteAtivo && (
         <div className="space-y-6 animate-fade-in">
           
-          {/* Ficha Principal e Cabeçalho do Prontuário (Card Hero) */}
-          <div className="flex flex-col sm:flex-row sm:items-center gap-4 select-none p-5 md:p-6 bg-surface-container-lowest rounded-3xl border border-surface-variant shadow-sm">
+          {/* Ficha Principal e Cabeçalho do Prontuário (Card Hero) - Cores dinâmicas de Alerta */}
+          <div className={`flex flex-col sm:flex-row sm:items-center gap-4 select-none p-5 md:p-6 rounded-3xl border shadow-sm relative overflow-hidden ${
+            (pacienteAtivo.alergias || pacienteAtivo.comorbidades) ? 'bg-red-50 border-red-300' : 'bg-surface-container-lowest border-surface-variant'
+          }`}>
+            {(pacienteAtivo.alergias || pacienteAtivo.comorbidades) && (
+              <div className="absolute top-0 right-0 bg-red-600 text-white text-[9px] font-black uppercase tracking-widest px-3 py-1 rounded-bl-lg shadow-sm animate-pulse flex items-center gap-1">
+                <span className="material-symbols-outlined text-[10px]">warning</span> Alerta Clínico
+              </div>
+            )}
             {/* Avatar com Iniciais em Destaque */}
-            <div className="w-12 h-12 md:w-16 md:h-16 rounded-full bg-primary/15 border-2 border-primary/20 text-primary font-black flex items-center justify-center text-base md:text-2xl shadow-sm flex-shrink-0">
+            <div className={`w-12 h-12 md:w-16 md:h-16 rounded-full border-2 font-black flex items-center justify-center text-base md:text-2xl shadow-sm flex-shrink-0 ${
+              (pacienteAtivo.alergias || pacienteAtivo.comorbidades) ? 'bg-red-100 border-red-200 text-red-700' : 'bg-primary/15 border-primary/20 text-primary'
+            }`}>
               {(pacienteAtivo.nome || 'P')
                 .split(' ')
                 .filter(Boolean)
@@ -673,8 +748,10 @@ export default function PainelMedico() {
                 .toUpperCase()}
             </div>
 
-            <div className="min-w-0">
-              <h2 className="text-xl md:text-3xl font-black tracking-tight text-on-background truncate">
+            <div className="min-w-0 mt-2 sm:mt-0 z-10 flex-1">
+              <h2 className={`text-xl md:text-3xl font-black tracking-tight truncate ${
+                (pacienteAtivo.alergias || pacienteAtivo.comorbidades) ? 'text-red-950' : 'text-on-background'
+              }`}>
                 {pacienteAtivo.nome}
               </h2>
               <div className="flex items-center gap-2 mt-1.5 flex-wrap">
@@ -694,6 +771,18 @@ export default function PainelMedico() {
                   </span>
                 )}
               </div>
+            </div>
+
+            {/* Botões de Ação Rápida */}
+            <div className="sm:ml-auto flex items-center gap-3 mt-4 sm:mt-0 z-10">
+              <button 
+                onClick={() => window.print()}
+                className="px-4 py-2 bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20 font-bold rounded-xl text-xs md:text-sm transition-all active:scale-95 flex items-center gap-2 shadow-sm"
+                title="Imprimir documento oficial em branco para o paciente"
+              >
+                <span className="material-symbols-outlined text-base">print</span>
+                Receituário / Atestado
+              </button>
             </div>
           </div>
 
@@ -1290,6 +1379,40 @@ export default function PainelMedico() {
           </div>
         </div>
       )}
-    </GestorLayout>
+        </GestorLayout>
+      </div>
+
+      {/* BLOCO DE IMPRESSÃO (Oculto na tela, visível apenas no papel) */}
+      {pacienteAtivo && (
+        <div className="hidden print:block w-full max-w-3xl mx-auto p-10 bg-white text-black font-sans">
+          <div className="flex flex-col items-center justify-center border-b-2 border-black pb-6 mb-8 text-center">
+            <div className="w-16 h-16 rounded-full border-2 border-black flex items-center justify-center mb-3">
+               <span className="font-serif font-bold text-xl">SUS</span>
+            </div>
+            <h1 className="text-2xl font-black uppercase tracking-widest">Secretaria de Saúde</h1>
+            <h2 className="text-lg font-bold">Prefeitura Municipal de São José dos Campos</h2>
+            <p className="text-sm font-semibold mt-1">Unidade Básica de Saúde — {pacienteAtivo.ubs_nome || 'UBS+'}</p>
+          </div>
+          <div className="mb-10 text-right text-sm font-semibold">
+            Data: {new Date().toLocaleDateString('pt-BR')}
+          </div>
+          <div className="mb-8 border border-gray-400 p-4 rounded-xl">
+            <p className="text-sm uppercase tracking-wide font-bold text-gray-500 mb-1">Paciente</p>
+            <p className="text-xl font-bold">{pacienteAtivo.nome}</p>
+            <p className="text-sm mt-1">CRA: {pacienteAtivo.cra}</p>
+          </div>
+          <div className="min-h-[400px] border border-gray-400 p-4 rounded-xl">
+            <p className="text-sm uppercase tracking-wide font-bold text-gray-500 mb-4 border-b border-gray-300 pb-2">Prescrição / Atestado</p>
+          </div>
+          <div className="mt-20 pt-8 flex flex-col items-center border-t border-gray-400 w-64 mx-auto">
+            <p className="font-bold text-sm">Assinatura e Carimbo Médico</p>
+            <p className="text-xs text-gray-500 mt-1">{user?.nome || 'Médico Responsável'}</p>
+          </div>
+          <div className="mt-8 text-center text-xs text-gray-400 italic">
+            * Este documento é um Rascunho para Impressão e não possui assinatura digital ICP-Brasil. O preenchimento e carimbo físico são obrigatórios para validade legal.
+          </div>
+        </div>
+      )}
+    </>
   );
 }

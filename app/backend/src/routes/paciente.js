@@ -303,9 +303,31 @@ router.get('/comunicados', async (req, res) => {
   try {
     const comunicados = await knex('comunicados')
       .where('comunicados.ubs_id', req.user.ubs_id)
-      // Retorna: comunicados gerais OU comunicados endereçados especificamente ao paciente
+      // Retorna comunicados gerais (sem segmentacao), individuais do paciente,
+      // ou segmentados cujo termo matching (substring case-insensitive) exista nas comorbidades.
       .andWhere(function () {
-        this.where('comunicados.tipo', 'geral').orWhere('comunicados.paciente_id', req.user.id);
+        this
+          // Comunicados gerais sem segmentação
+          .where(function () {
+            this.where('comunicados.tipo', 'geral')
+                .whereNull('comunicados.segmentacao_clinica');
+          })
+          // Comunicados individuais endereçados a este paciente
+          .orWhere(function () {
+            this.where('comunicados.tipo', 'individual')
+                .where('comunicados.paciente_id', req.user.id);
+          })
+          // Comunicados segmentados: entrega só se comorbidades do paciente bater (ILIKE)
+          .orWhere(function () {
+            this.whereNotNull('comunicados.segmentacao_clinica')
+                .whereExists(
+                  knex('pacientes')
+                    .where('pacientes.id', req.user.id)
+                    .whereRaw(
+                      'pacientes.comorbidades ILIKE \'%\' || comunicados.segmentacao_clinica || \'%\''
+                    )
+                );
+          });
       })
       .leftJoin('comunicados_leitura', function() {
         this.on('comunicados_leitura.comunicado_id', '=', 'comunicados.id')
@@ -605,7 +627,6 @@ router.put('/encaminhamento/:id/confirmar', async (req, res) => {
   }
 });
 
-
 // ─── GET /api/paciente/vapid-public-key ──────────────────────────────────────
 // Expõe a chave pública VAPID para o frontend configurar o service worker.
 // Esta chave é pública por natureza — não há risco em expô-la.
@@ -613,5 +634,5 @@ router.get('/vapid-public-key', (req, res) => {
   res.json({ publicKey: process.env.VAPID_PUBLIC_KEY });
 });
 
-
 module.exports = router;
+;

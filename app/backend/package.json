@@ -7,7 +7,8 @@
     "start": "node -e \"require('knex')(require('./knexfile').production).migrate.latest().then(() => { console.log('Migrations OK'); require('./server'); })\"",
     "start:direct": "node server.js",
     "dev": "nodemon server.js",
-    "migrate": "knex migrate:latest --env production"
+    "migrate": "knex migrate:latest --env production",
+    "test:rbac": "node test_contrato_rbac.js"
   },
   "engines": {
     "node": ">=18.0.0"
