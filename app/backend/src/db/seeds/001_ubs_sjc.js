@@ -106,6 +106,8 @@ exports.seed = async function(knex) {
   const ubsSatelite    = await knex('ubs').where('nome', 'UBS Jardim Satélite').first();
   // UBS Interlagos incluída para cobrir o fluxo de auto-cadastro na demo da banca
   const ubsInterlagos  = await knex('ubs').where('nome', 'UBS Interlagos').first();
+  // UBS Vila Maria incluída para demo da banca (pacientes seed 007 pertencem a esta UBS)
+  const ubsVilaMaría   = await knex('ubs').where('nome', 'UBS Vila Maria').first();
 
   if (!ubsCentro || !ubsIndustrial || !ubsSatelite) return;
 
@@ -116,6 +118,8 @@ exports.seed = async function(knex) {
       'industrial@gestaoubs.dev',
       'satelite@gestaoubs.dev',
       'interlagos@gestaoubs.dev',
+      'vilamaria@gestaoubs.dev',
+      'medico.vilamaria@gestaoubs.dev',
     ])
     .del();
 
@@ -128,6 +132,12 @@ exports.seed = async function(knex) {
   // Insere gestor de Interlagos apenas se a UBS existir no banco
   if (ubsInterlagos) {
     gestores.push({ ubs_id: ubsInterlagos.id, nome: 'Gestor Interlagos', email: 'interlagos@gestaoubs.dev', senha_hash: senhaHash, perfil: 'admin' });
+  }
+
+  // Insere gestor (admin) e médico de Vila Maria para a demo da banca (seed 007)
+  if (ubsVilaMaría) {
+    gestores.push({ ubs_id: ubsVilaMaría.id, nome: 'Gestor Vila Maria',  email: 'vilamaria@gestaoubs.dev',         senha_hash: senhaHash, perfil: 'admin'  });
+    gestores.push({ ubs_id: ubsVilaMaría.id, nome: 'Dr. Médico Demo',    email: 'medico.vilamaria@gestaoubs.dev',  senha_hash: senhaHash, perfil: 'medico' });
   }
 
   await knex('usuarios_gestores').insert(gestores);
