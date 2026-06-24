@@ -42,7 +42,16 @@ async function authMiddleware(req, res, next) {
     req.user = decoded;
     next();
   } catch (error) {
-    return res.status(401).json({ error: 'Token invalido!' });
+    // Erros de JWT (assinatura inválida, expirado, malformado) → 401
+    // O jsonwebtoken lança JsonWebTokenError, TokenExpiredError ou NotBeforeError.
+    // Qualquer outro erro (timeout de banco, query falha no cold start serverless)
+    // deve retornar 503 para o frontend NÃO limpar o token nem forçar logout.
+    const JWT_ERRORS = ['JsonWebTokenError', 'TokenExpiredError', 'NotBeforeError'];
+    if (JWT_ERRORS.includes(error.name)) {
+      return res.status(401).json({ error: 'Token invalido!' });
+    }
+    console.error('[authMiddleware] Erro de infraestrutura (provavel cold start):', error.message);
+    return res.status(503).json({ error: 'servico_indisponivel' });
   }
 }
 

@@ -29,6 +29,14 @@ const adminRouter     = require('./src/routes/admin');
 
 const app = express();
 
+// ─── Trust Proxy ─────────────────────────────────────────────────────────────
+// O Vercel/Railway executam a API atrás de um reverse proxy que injeta o IP
+// real do cliente no header X-Forwarded-For. Sem este setting, o Express
+// ignora o header e o express-rate-limit não consegue identificar o cliente
+// real, gerando ValidationError em toda requisição (ERR_ERL_FORWARDED_HEADER).
+// Valor 1 = confia no primeiro proxy da cadeia (o do Vercel/Railway).
+app.set('trust proxy', 1);
+
 // Helmet adiciona headers HTTP defensivos (ex: bloquear sniffing de MIME e
 // reduzir superficie de ataques de navegadores) sem alterar as rotas da API.
 app.use(helmet({

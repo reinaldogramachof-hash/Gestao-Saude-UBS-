@@ -65,11 +65,19 @@ api.interceptors.request.use((config) => {
 });
 
 // ─── Interceptor de RESPONSE ───────────────────────────────────────────────
-// Se qualquer resposta retornar 401 (não autorizado / token expirado),
-// limpa os dados de sessão e manda o usuário para a tela de login.
+// 401 = token inválido/expirado → limpa sessão e redireciona para login.
+// 503 = serviço indisponível (cold start do serverless / DB timeout) →
+//       NÃO limpa o token, apenas rejeita a promise. O componente pode
+//       mostrar "Tente novamente" sem derrubar a sessão do usuário.
 api.interceptors.response.use(
   (response) => response, // Resposta OK: passa direto
   (error) => {
+    // 503 do backend = erro de infraestrutura, não de autenticação.
+    // Não fazer logout — o token ainda é válido.
+    if (error.response?.status === 503) {
+      return Promise.reject(error);
+    }
+
     if (error.response?.status === 401) {
       // O portal precisa ser identificado antes da limpeza. Depois que o
       // storage é apagado, não seria mais possível distinguir gestor e paciente.
