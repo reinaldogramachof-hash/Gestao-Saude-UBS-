@@ -76,8 +76,19 @@ test('interceptor 401 preserva o portal correto antes de limpar a sessao', async
   assert.match(source, /usuario\.tipo\s*===\s*'gestor'/);
   assert.match(source, /usuario\.tipo\s*===\s*'externa'/);
   assert.match(source, /window\.location\.href\s*=\s*['"]\/login-gestor['"]/);
-  assert.match(source, /window\.location\.href\s*=\s*['"]\/externa\/login['"]/);
+  assert.match(source, /window\.location\.href\s*=\s*['"]\/login-externa['"]/);
   assert.match(source, /window\.location\.href\s*=\s*['"]\/login-paciente['"]/);
+});
+
+test('chaves de sessao reconhecem paginas de login de cada portal', async () => {
+  const api = await read('app/frontend/src/services/api.js');
+  const auth = await read('app/frontend/src/contexts/AuthContext.jsx');
+
+  assert.match(api, /path\s*===\s*['"]\/login-gestor['"]/);
+  assert.match(api, /path\s*===\s*['"]\/login-externa['"]/);
+  assert.match(api, /window\.location\.href\s*=\s*['"]\/login-externa['"]/);
+  assert.match(auth, /TOKEN_KEYS\[dadosUsuario\.tipo\]/);
+  assert.match(auth, /USER_KEYS\[dadosUsuario\.tipo\]/);
 });
 
 test('paginas do paciente usam helper compartilhado e nao exibem descricao tecnica', async () => {

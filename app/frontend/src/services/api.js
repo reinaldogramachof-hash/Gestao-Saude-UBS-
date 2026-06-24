@@ -32,18 +32,23 @@ export const USER_KEYS = {
   externa:  '@UBS_User_Externa',
 };
 
+// Identifica o portal pela rota atual. As telas de login precisam entrar na
+// mesma regra do portal protegido, porque o AuthContext salva a sessao ainda
+// antes do navigate para /gestor/* ou /externa/*.
+function getPortalFromPath(path) {
+  if (path.startsWith('/gestor') || path === '/login-gestor') return 'gestor';
+  if (path.startsWith('/externa') || path === '/login-externa') return 'externa';
+  return 'paciente';
+}
+
 export function getTokenKey() {
-  const path = window.location.pathname;
-  if (path.startsWith('/gestor')) return '@UBS_Token_Gestor';
-  if (path.startsWith('/externa')) return '@UBS_Token_Externa';
-  return '@UBS_Token_Paciente';
+  const portal = getPortalFromPath(window.location.pathname);
+  return TOKEN_KEYS[portal];
 }
 
 export function getUserKey() {
-  const path = window.location.pathname;
-  if (path.startsWith('/gestor')) return '@UBS_User_Gestor';
-  if (path.startsWith('/externa')) return '@UBS_User_Externa';
-  return '@UBS_User_Paciente';
+  const portal = getPortalFromPath(window.location.pathname);
+  return USER_KEYS[portal];
 }
 
 const api = axios.create({
@@ -99,7 +104,7 @@ api.interceptors.response.use(
       if (usuario.tipo === 'gestor') {
         window.location.href = '/login-gestor';
       } else if (usuario.tipo === 'externa') {
-        window.location.href = '/externa/login';
+        window.location.href = '/login-externa';
       } else {
         window.location.href = '/login-paciente';
       }

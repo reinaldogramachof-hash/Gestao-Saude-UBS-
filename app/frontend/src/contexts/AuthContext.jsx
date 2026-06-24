@@ -17,7 +17,7 @@
  * ─────────────────────────────────────────────────────────────────────────────
  */
 import React, { createContext, useState, useEffect, useContext } from 'react';
-import api, { getTokenKey, getUserKey } from '../services/api';
+import api, { TOKEN_KEYS, USER_KEYS, getTokenKey, getUserKey } from '../services/api';
 
 export const AuthContext = createContext({});
 
@@ -72,8 +72,13 @@ export const AuthProvider = ({ children }) => {
     const { token: _ignorado, ...dadosUsuario } = userData;
     setUser(dadosUsuario);
     setToken(tokenRecebido);
-    localStorage.setItem(getTokenKey(), tokenRecebido);
-    localStorage.setItem(getUserKey(), JSON.stringify(dadosUsuario));
+    // Usa o tipo retornado pela API para salvar a sessao no portal correto.
+    // No login gestor, por exemplo, a URL ainda e /login-gestor; depender so
+    // do pathname pode gravar o token na chave errada e derrubar o dashboard.
+    const tokenKey = TOKEN_KEYS[dadosUsuario.tipo] || getTokenKey();
+    const userKey = USER_KEYS[dadosUsuario.tipo] || getUserKey();
+    localStorage.setItem(tokenKey, tokenRecebido);
+    localStorage.setItem(userKey, JSON.stringify(dadosUsuario));
 
     // Ativa push notifications automaticamente para pacientes após login
     if (dadosUsuario.tipo === 'paciente') {
