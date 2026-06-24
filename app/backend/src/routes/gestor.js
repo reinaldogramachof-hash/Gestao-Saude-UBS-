@@ -225,7 +225,8 @@ router.get('/pacientes/pendentes', async (req, res) => {
   try {
     const pendentes = await knex('pacientes')
       .leftJoin('ubs', 'pacientes.ubs_id', 'ubs.id')
-      .where({ 'pacientes.ativo': false })
+      .where('pacientes.ativo', true)
+      .where('pacientes.criado_em', '>=', knex.raw("NOW() - INTERVAL '7 days'"))
       .select(
         'pacientes.id',
         'pacientes.nome',
@@ -1338,7 +1339,8 @@ router.get('/alertas', async (req, res) => {
 router.get('/dashboard/pendentes', async (req, res) => {
   try {
     const total = await knex('pacientes')
-      .where({ ativo: false })
+      .where({ ativo: true })
+      .where('criado_em', '>=', knex.raw("NOW() - INTERVAL '7 days'"))
       .count('id as total')
       .first();
     return res.json({ pendentes_aprovacao: Number(total.total) });

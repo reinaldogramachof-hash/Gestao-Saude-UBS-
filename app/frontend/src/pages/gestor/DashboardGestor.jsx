@@ -114,7 +114,7 @@ export default function DashboardGestor() {
                          border border-amber-300 hover:bg-amber-200 transition-colors"
             >
               <span className="material-symbols-outlined text-base">person_add</span>
-              {pendentes} novo{pendentes > 1 ? 's' : ''} cadastro{pendentes > 1 ? 's' : ''} aguardando aprovação
+              {pendentes} novo{pendentes > 1 ? 's' : ''} paciente{pendentes > 1 ? 's' : ''} nos últimos 7 dias
               <span className="material-symbols-outlined text-base">arrow_forward</span>
             </button>
           )}

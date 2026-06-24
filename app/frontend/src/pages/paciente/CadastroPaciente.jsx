@@ -9,16 +9,16 @@
  *   1. Seleciona a UBS pela região/bairro (lista carregada da API)
  *   2. Preenche nome, data de nascimento e contato
  *   3. Recebe o CRA na tela de confirmação
- *   4. Aguarda ativação presencial pela equipe da UBS para poder fazer login
+ *   4. Ja pode fazer login; a validacao presencial fica como etapa complementar
  *
  * LGPD:
  *   - CPF é opcional e armazenado apenas para identificação na UBS
  *   - Nenhum dado é exibido publicamente
- *   - Cadastro fica inativo até validação da equipe de saúde
+ *   - Cadastro fica ativo imediatamente, com orientacao para validar documentos na UBS
  *
  * API:
  *   GET  /api/auth/ubs                 → lista UBSs ativas ordenadas por bairro
- *   POST /api/auth/cadastro-paciente   → cria o cadastro pendente
+ *   POST /api/auth/cadastro-paciente   → cria o cadastro com acesso imediato
  * ─────────────────────────────────────────────────────────────────────────────
  */
 import { useState, useEffect } from 'react';
@@ -450,12 +450,12 @@ export default function CadastroPaciente() {
               />
             </div>
 
-            {/* Aviso sobre aprovação */}
+            {/* Aviso sobre acesso imediato e validacao presencial */}
             <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 flex gap-2">
               <span className="material-symbols-outlined text-amber-600 text-lg flex-shrink-0">info</span>
               <p className="text-xs text-amber-800 font-medium leading-relaxed">
-                Após o cadastro, sua solicitação será analisada pela equipe da {ubsSelecionada.nome}.
-                Leve um documento de identidade à unidade para ativar o acesso.
+                Após o cadastro, você já poderá entrar no portal. Para validar seus documentos,
+                agende uma visita à {ubsSelecionada.nome} e leve um documento com foto e comprovante de residência.
               </p>
             </div>
 
@@ -487,7 +487,7 @@ export default function CadastroPaciente() {
           {/* Cabeçalho verde de sucesso */}
           <div className="bg-emerald-500 p-6 text-white text-center">
             <span className="material-symbols-outlined text-5xl block mb-2">check_circle</span>
-            <h2 className="text-xl font-extrabold">Cadastro enviado!</h2>
+            <h2 className="text-xl font-extrabold">Cadastro realizado com sucesso!</h2>
             <p className="text-emerald-100 text-sm mt-1">Olá, {confirmacao.nome.split(' ')[0]}!</p>
           </div>
 
@@ -506,12 +506,15 @@ export default function CadastroPaciente() {
             {/* Próximos passos */}
             <div className="space-y-3">
               <p className="font-bold text-on-background text-sm">Próximos passos:</p>
+              <p className="text-sm text-on-surface font-medium leading-relaxed">
+                Você já pode acessar o sistema com seu CRA e data de nascimento. Para validar seus documentos, agende uma visita à sua UBS.
+              </p>
 
               {[
                 { icon: 'save',            text: `Anote seu CRA: ${confirmacao.cra}` },
                 { icon: 'badge',           text: 'Leve um documento de identidade (RG ou CPF) à unidade' },
                 { icon: 'local_hospital',  text: `Vá à ${confirmacao.ubs}` },
-                { icon: 'lock_open',       text: 'Após a validação, você já pode entrar no portal' },
+                { icon: 'lock_open',       text: 'Entre no portal agora usando o CRA e sua data de nascimento' },
               ].map((item, i) => (
                 <div key={i} className="flex items-start gap-3">
                   <div className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center flex-shrink-0">
@@ -526,7 +529,7 @@ export default function CadastroPaciente() {
               to="/login-paciente"
               className="block w-full h-12 bg-primary text-white font-bold rounded-2xl shadow-lg shadow-primary/20 flex items-center justify-center text-sm"
             >
-              Ir para o Login
+              Acessar agora
             </Link>
           </div>
         </div>

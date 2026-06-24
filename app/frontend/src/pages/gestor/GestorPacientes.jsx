@@ -2,11 +2,11 @@
  * PÁGINA: GestorPacientes.jsx
  * ─────────────────────────────────────────────────────────────────────────────
  * FUNÇÃO: Lista, busca, pagina e cadastra pacientes, exibindo solicitações
- *         ativas e urgências. Inclui aba "Aguardando aprovação" para validar
- *         cadastros feitos pelo portal público (auto-cadastro do munícipe).
+ *         ativas e urgências. Inclui aba "Novos Pacientes" para acompanhar
+ *         cadastros recentes feitos pelo portal público (auto-cadastro do munícipe).
  *
  * API: GET    /api/gestor/pacientes                → lista paginada (ativos)
- *      GET    /api/gestor/pacientes/pendentes      → cadastros aguardando aprovação
+ *      GET    /api/gestor/pacientes/pendentes      → novos cadastros dos ultimos 7 dias
  *      POST   /api/gestor/paciente                 → cadastro manual pelo gestor
  *      PATCH  /api/gestor/paciente/:id/ativar      → aprova cadastro pendente
  *      DELETE /api/gestor/paciente/:id/rejeitar    → rejeita cadastro pendente
@@ -58,8 +58,8 @@ export default function GestorPacientes() {
     }
   }, [busca, paginaAtual, aba]);
 
-  // Carrega pendentes no mount para exibir badge de contagem mesmo na aba de ativos
-  // O gestor precisa ver quantos cadastros aguardam aprovação sem precisar clicar na aba.
+  // Carrega novos pacientes no mount para exibir badge de contagem mesmo na aba de ativos.
+  // O gestor precisa ver cadastros recentes sem precisar clicar na aba.
   useEffect(() => {
     fetchPendentes();
   }, []);
@@ -70,7 +70,7 @@ export default function GestorPacientes() {
       const res = await api.get('/gestor/pacientes/pendentes');
       setPendentes(res.data);
     } catch {
-      toast.error('Erro ao carregar cadastros pendentes.');
+      toast.error('Erro ao carregar novos pacientes.');
     } finally {
       setLoadingPendentes(false);
     }
@@ -268,7 +268,7 @@ export default function GestorPacientes() {
         </button>
       </div>
 
-      {/* ── Abas: Pacientes ativos / Aguardando aprovação ── */}
+      {/* ── Abas: Pacientes ativos / Novos pacientes ── */}
       <div className="flex gap-2 mb-6 border-b border-surface-variant">
         <button
           onClick={() => setAba('ativos')}
@@ -288,8 +288,8 @@ export default function GestorPacientes() {
               : 'border-transparent text-on-surface-variant hover:text-on-surface'
           }`}
         >
-          Aguardando Aprovação
-          {/* Badge com contagem de pendentes — visível mesmo na aba de ativos */}
+          Novos Pacientes
+          {/* Badge com contagem de novos pacientes — visivel mesmo na aba de ativos */}
           {pendentes.length > 0 && (
             <span className="bg-amber-100 text-amber-700 text-xs font-extrabold px-2 py-0.5 rounded-full">
               {pendentes.length}
@@ -299,7 +299,7 @@ export default function GestorPacientes() {
       </div>
 
       {/* ════════════════════════════════════════════════════════════════
-          ABA: AGUARDANDO APROVAÇÃO
+          ABA: NOVOS PACIENTES
           ════════════════════════════════════════════════════════════════ */}
       {aba === 'pendentes' && (
         <div className="grid grid-cols-1 xl:grid-cols-2 2xl:grid-cols-3 gap-4">
@@ -310,7 +310,7 @@ export default function GestorPacientes() {
           ) : pendentes.length === 0 ? (
             <div className="col-span-full py-20 text-center bg-surface-container-lowest rounded-2xl border border-surface-variant">
               <span className="material-symbols-outlined text-5xl block mb-3 opacity-30">how_to_reg</span>
-              <p className="text-on-surface-variant font-semibold">Nenhum cadastro aguardando aprovação.</p>
+              <p className="text-on-surface-variant font-semibold">Nenhum novo paciente nos últimos 7 dias.</p>
               <p className="text-xs text-on-surface-variant mt-1">Quando um munícipe se cadastrar pelo portal, aparecerá aqui.</p>
             </div>
           ) : (

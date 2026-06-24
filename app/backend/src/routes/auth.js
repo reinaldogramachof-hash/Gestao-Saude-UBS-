@@ -16,6 +16,7 @@ const rateLimit = require('express-rate-limit');
 const knex = require('../db/knex');
 const validateBody = require('../middleware/validateBody');
 const { registrarAuditoria } = require('../services/auditService');
+const pushService = require('../services/pushService');
 const { loginGestorSchema, loginPacienteSchema, loginExternaSchema } = require('../validators/securitySchemas');
 
 const router = express.Router();
@@ -229,14 +230,15 @@ router.get('/ubs', async (req, res) => {
 router.post('/cadastro-paciente', cadastroRateLimiter, async (req, res) => {
   try {
     const { nome, data_nascimento, ubs_id, bairro, telefone, email, cpf } = req.body;
+    const ubsId = Number(ubs_id);
 
-    if (!nome || !data_nascimento || !ubs_id || !bairro) {
+    if (!nome || !data_nascimento || !ubsId || !bairro) {
       return res.status(400).json({
         error: 'Nome completo, data de nascimento, unidade de saude e bairro sao obrigatorios.',
       });
     }
 
-    const ubs = await knex('ubs').where({ id: ubs_id, ativa: true }).first();
+    const ubs = await knex('ubs').where({ id: ubsId, ativa: true }).first();
     if (!ubs) {
       return res.status(404).json({ error: 'Unidade de saude nao encontrada ou inativa.' });
     }
@@ -255,42 +257,78 @@ router.post('/cadastro-paciente', cadastroRateLimiter, async (req, res) => {
       }
     }
 
+    // Gera CRA no formato AAMMDD + 4 digitos e tenta ate 5 vezes para evitar colisao
+    // rara quando duas pessoas se cadastram no mesmo dia.
     const hoje = new Date();
     const aammdd = String(hoje.getFullYear()).slice(2)
       + String(hoje.getMonth() + 1).padStart(2, '0')
       + String(hoje.getDate()).padStart(2, '0');
-    const sufixo = String(Math.floor(Math.random() * 9000) + 1000);
-    const craNovo = `${aammdd}${sufixo}`;
+    let cra, craUnico = false;
+    for (let tentativa = 0; tentativa < 5; tentativa++) {
+      const sufixo = String(Math.floor(Math.random() * 9000) + 1000);
+      cra = `${aammdd}${sufixo}`;
+      const craExiste = await knex('pacientes').where({ cra }).first();
+      if (!craExiste) {
+        craUnico = true;
+        break;
+      }
+    }
 
-    const craExiste = await knex('pacientes').where({ cra: craNovo }).first();
-    if (craExiste) {
-      return res.status(500).json({ error: 'Erro ao gerar numero de cadastro. Tente novamente.' });
+    if (!craUnico) {
+      return res.status(500).json({ error: 'Nao foi possivel gerar CRA unico. Tente novamente.' });
     }
 
     const [paciente] = await knex('pacientes')
       .insert({
-        ubs_id,
-        cra: craNovo,
+        ubs_id: ubsId,
+        cra,
         nome: nome.trim(),
         cpf: cpfLimpo,
         data_nascimento,
         telefone: telefone || null,
         email: email || null,
-        ativo: false,
+        ativo: true,
       })
       .returning(['id', 'cra', 'nome', 'ubs_id']);
+
+    // Comunicado individual de boas-vindas: aparece no portal do paciente logo no
+    // primeiro acesso, sem depender de aprovacao manual do gestor.
+    await knex('comunicados').insert({
+      titulo: 'Bem-vindo ao Gestao Saude UBS+!',
+      mensagem: 'Seu cadastro foi realizado com sucesso. Para ativar todos os recursos do sistema, agende uma visita à sua UBS para validação de documentos. Apresente um documento com foto e comprovante de residência.',
+      tipo: 'individual',
+      paciente_id: paciente.id,
+      ubs_id: ubsId,
+      urgente: false,
+      criado_em: knex.fn.now(),
+    });
+
+    // Notifica gestores ativos da UBS para que acompanhem o novo cadastro sem
+    // bloquear o acesso imediato do paciente.
+    const gestores = await knex('usuarios_gestores')
+      .where({ ubs_id: Number(ubs_id), ativo: true })
+      .select('id');
+    await Promise.allSettled(gestores.map(gestor => pushService.enviar(
+      gestor.id,
+      'gestor',
+      {
+        titulo: 'Novo paciente cadastrado',
+        corpo: `${paciente.nome} solicitou acesso a unidade. Acesse Pacientes para visualizar.`,
+        url: '/gestor/pacientes',
+      }
+    )));
 
     await registrarAuditoria(req, {
       ator_tipo: 'paciente',
       acao: 'cadastro_paciente_solicitado',
       entidade: 'pacientes',
       entidade_id: paciente.id,
-      escopo_ubs_id: Number(ubs_id),
+      escopo_ubs_id: ubsId,
       metadata: { cra: paciente.cra },
     });
 
     return res.status(201).json({
-      mensagem: 'Cadastro realizado com sucesso! Aguarde a aprovacao da sua UBS para acessar o portal.',
+      mensagem: 'Cadastro realizado com sucesso! Voce ja pode acessar o portal com seu CRA e data de nascimento.',
       cra: paciente.cra,
       nome: paciente.nome,
       ubs: ubs.nome,
