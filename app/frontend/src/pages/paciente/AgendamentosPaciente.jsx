@@ -30,6 +30,19 @@ const STATUS_LABEL = {
   cancelado:  'Cancelado',
 };
 
+// Mantém a hora operacional gravada pelo backend sem converter pelo fuso do
+// navegador. Os slots da banca são cadastrados como horário da UBS; usar
+// new Date(iso).toLocaleTimeString() desloca 19:00 para 16:00 em São Paulo.
+const parseDataHoraOperacional = (dt) => {
+  const [dataISO, horaCompleta = '12:00:00'] = String(dt || '').split('T');
+  const [ano, mes, dia] = dataISO.split('-').map(Number);
+  const dataLocal = new Date(ano, mes - 1, dia);
+  return {
+    dataLocal,
+    hora: horaCompleta.slice(0, 5),
+  };
+};
+
 export default function AgendamentosPaciente() {
   const location = useLocation();
   const meusAgendamentosRef = useRef(null); // Referência para rolagem suave pós-agendamento
@@ -133,9 +146,8 @@ export default function AgendamentosPaciente() {
   };
 
   const formatarDataHora = (dt) => {
-    const dateStr = dt.includes('T') ? dt : dt + 'T12:00:00';
-    const data = new Date(dateStr).toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' });
-    const hora = new Date(dateStr).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    const { dataLocal, hora } = parseDataHoraOperacional(dt);
+    const data = dataLocal.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' });
     // Capitaliza apenas a primeira letra do dia da semana (português correto).
     // NÃO usar CSS 'capitalize' pois capitaliza cada palavra individualmente.
     const str = `${data}, às ${hora}`;
@@ -145,12 +157,10 @@ export default function AgendamentosPaciente() {
   // Formato compacto para listagem de horários: "Dom, 12/07 · 14:00"
   // Usado nos cards de horários disponíveis para evitar quebra de linha.
   const formatarSlotCompacto = (dt) => {
-    const dateStr = dt.includes('T') ? dt : dt + 'T12:00:00';
-    const d = new Date(dateStr);
+    const { dataLocal, hora } = parseDataHoraOperacional(dt);
     const diasSemana = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
-    const dia = diasSemana[d.getDay()];
-    const data = d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
-    const hora = d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    const dia = diasSemana[dataLocal.getDay()];
+    const data = dataLocal.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
     return `${dia}, ${data} · ${hora}`;
   };
 

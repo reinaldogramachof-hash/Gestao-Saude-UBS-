@@ -43,6 +43,7 @@ export default function MedicamentosGestor() {
   const [formCadastro, setFormCadastro] = useState(FORM_INICIAL);
   const [formEdicao, setFormEdicao] = useState({ disponivel: false, observacao: '', instrucoes_retirada: '' });
   const [salvando, setSalvando] = useState(false);
+  const [busca, setBusca] = useState(''); // Estado para filtrar medicamentos por nome/princípio ativo em tempo real
 
   // Carrega a listagem de medicamentos da UBS logada
   const load = async () => {
@@ -67,11 +68,20 @@ export default function MedicamentosGestor() {
   const disponiveis = meds.filter((med) => med.disponivel).length;
   const emFalta = meds.length - disponiveis;
 
-  // Filtragem local dos medicamentos
+  // Filtragem local dos medicamentos (Aba + Busca em tempo real)
+  // LGPD/Performance: Como a listagem da unidade é leve, a filtragem local no frontend
+  // evita chamadas de rede desnecessárias e atualiza a interface instantaneamente.
   const medsFiltrados = meds.filter((med) => {
-    if (filtro === 'disponiveis') return med.disponivel;
-    if (filtro === 'em_falta') return !med.disponivel;
-    return true;
+    const bateFiltro =
+      filtro === 'disponiveis' ? med.disponivel :
+      filtro === 'em_falta' ? !med.disponivel : true;
+
+    const termo = busca.toLowerCase().trim();
+    const bateBusca = !termo || 
+      med.nome.toLowerCase().includes(termo) ||
+      (med.principio_ativo && med.principio_ativo.toLowerCase().includes(termo));
+
+    return bateFiltro && bateBusca;
   });
 
   // Salva um novo medicamento no banco
@@ -181,21 +191,45 @@ export default function MedicamentosGestor() {
         </div>
       </div>
 
-      {/* ── BARRA DE FILTROS (PÍLULA DESLIZANTE CORPORATIVA) ── */}
-      <div className="inline-flex bg-surface-container-high/60 backdrop-blur-md border border-surface-variant/30 rounded-2xl p-1.5 mb-6 overflow-x-auto max-w-full gap-1">
-        {FILTROS.map((item) => (
-          <button
-            key={item.value}
-            onClick={() => setFiltro(item.value)}
-            className={`px-5 py-2.5 rounded-xl font-extrabold text-sm whitespace-nowrap transition-all duration-250 ${
-              filtro === item.value
-                ? 'bg-primary text-white shadow-md shadow-primary/20 scale-102'
-                : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-container-low'
-            }`}
-          >
-            {item.label}
-          </button>
-        ))}
+      {/* ── BARRA DE FILTROS E PESQUISA REATIVA ── */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+        <div className="inline-flex bg-surface-container-high/60 backdrop-blur-md border border-surface-variant/30 rounded-2xl p-1.5 overflow-x-auto max-w-full gap-1">
+          {FILTROS.map((item) => (
+            <button
+              key={item.value}
+              onClick={() => setFiltro(item.value)}
+              className={`px-5 py-2.5 rounded-xl font-extrabold text-sm whitespace-nowrap transition-all duration-250 ${
+                filtro === item.value
+                  ? 'bg-primary text-white shadow-md shadow-primary/20 scale-102'
+                  : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-container-low'
+              }`}
+            >
+              {item.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Caixa de Busca com Lupa e botão Limpar reativo */}
+        <div className="relative w-full sm:max-w-xs">
+          <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant/70 text-xl">
+            search
+          </span>
+          <input
+            type="text"
+            placeholder="Buscar medicamento..."
+            value={busca}
+            onChange={(e) => setBusca(e.target.value)}
+            className="w-full h-12 pl-11 pr-10 rounded-2xl bg-surface-container-low border border-outline-variant/60 focus:border-primary text-sm font-semibold text-on-background placeholder-on-surface-variant/50 shadow-sm focus:shadow-md focus:ring-1 focus:ring-primary/20 transition-all outline-none"
+          />
+          {busca && (
+            <button
+              onClick={() => setBusca('')}
+              className="material-symbols-outlined absolute right-4 top-1/2 -translate-y-1/2 text-on-surface-variant/60 hover:text-on-surface text-lg cursor-pointer"
+            >
+              close
+            </button>
+          )}
+        </div>
       </div>
 
       {/* ── RENDERIZAÇÃO PRINCIPAL / TABELA DE ESTOQUE ── */}

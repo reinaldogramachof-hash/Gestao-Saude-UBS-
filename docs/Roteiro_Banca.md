@@ -8,12 +8,12 @@
 
 | Portal | Usuário | Senha |
 |---|---|---|
-| **Gestor (admin — UBS Centro)** | centro@gestaoubs.dev | senha123 |
-| **Gestor (admin — UBS Vila Maria)** | vilamaria@gestaoubs.dev | senha123 |
-| **Gestor (médico — UBS Vila Maria)** | medico.vilamaria@gestaoubs.dev | senha123 |
+| **Gestor matriz (admin — UBS Centro)** | centro@gestaoubs.dev | senha123 |
 | **Paciente (Ana Paula Santos)** | CRA: `2606260001` / Nasc: `15/03/1985` | — |
-| **Paciente alternativo (Ana Clara — DEMO)** | CRA: `DEMO-0001` / Nasc: `22/03/1985` | — |
+| **Paciente alternativo (Ana Clara — DEMO)** | CRA: `DEMO-0001` / Nasc: `22/04/1989` | — |
 | **Externa (AME SJC)** | ame@sjc.sp.gov.br | externa123 |
+
+> **Modo matriz da demo:** em ambiente de testes, todas as ações de gestão ficam centralizadas no painel `centro@gestaoubs.dev`. Mesmo dados de outras UBSs, como Vila Maria, devem ser demonstrados por esse gestor matriz.
 
 > **ATENÇÃO — PRÉ-REQUISITO OBRIGATÓRIO:** Antes da banca, rodar as seeds no terminal:
 > ```
@@ -31,8 +31,8 @@
 
 - [ ] Verificar conexão de internet
 - [ ] Abrir 3 abas: Portal do Gestor / Portal do Paciente / Portal Externo
-- [ ] Fazer login em cada portal e verificar que carregan corretamente
-- [ ] Confirmar que Ana Paula Santos (CRA 2025-00042) tem ao menos 1 solicitação com status `em_analise` ou `autorizado`
+- [ ] Fazer login em cada portal e verificar que carregam corretamente
+- [ ] Confirmar que Ana Paula Santos (CRA 2606260001) tem ao menos 1 solicitação com status `em_analise` ou `autorizado`
 - [ ] Confirmar que há pelo menos 1 encaminhamento para o AME em status `AGENDADO` para a Ana Paula
 - [ ] Deixar o painel do gestor aberto na aba 1
 
@@ -141,14 +141,13 @@
 
 ## 5. Perfil Médico com RBAC (2 minutos)
 
-### Passo 5.1 — Logout e relogin como médico (30 seg)
-- No Portal do Gestor, fazer logout
-- Login com `medico.vilamaria@gestaoubs.dev` / `senha123`
-- **Mencionar:** mesmo portal, perfil diferente — controle de acesso por função
+### Passo 5.1 — Contextualizar controle por perfil (30 seg)
+- Permanecer no Portal do Gestor matriz (`centro@gestaoubs.dev`)
+- **Mencionar:** o sistema possui RBAC por perfil (`admin`, `gestor`, `recepcionista`, `medico`), mas a demo centraliza a operação no gestor matriz para evitar troca de credenciais durante a banca
 
 ### Passo 5.2 — Limitações do Perfil Médico (30 seg)
-- Abrir menu: mostrar que Regulação e Vigilância aparecem, mas em modo leitura
-- Tentar atualizar um status → mostrar que botões de escrita não aparecem (ou que a API retorna 403)
+- Abrir menu e explicar que Regulação/Vigilância usam guardas de perfil no backend
+- Se perguntarem pelo perfil médico específico, mostrar o teste automatizado/RBAC ou o middleware `soNaoMedico`
 - **Mencionar:** middleware `soNaoMedico` — médico não pode alterar dados regulatórios
 
 ### Passo 5.3 — Painel Médico Exclusivo (1 min)

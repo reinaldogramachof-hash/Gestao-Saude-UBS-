@@ -23,6 +23,20 @@ test('dashboard exibe card hero do proximo agendamento e mantém grid com agenda
   assert.doesNotMatch(source, /titulo="Pr.ximo Agendamento"/);
 });
 
+test('agenda do paciente preserva hora operacional sem conversao de fuso', async () => {
+  const agenda = await read('app/frontend/src/pages/paciente/AgendamentosPaciente.jsx');
+  const dashboard = await read('app/frontend/src/pages/paciente/DashboardPaciente.jsx');
+
+  // Slots de agenda sao salvos como hora da UBS; a UI deve usar slice(0, 5)
+  // do horario ISO em vez de converter UTC para o fuso do navegador.
+  assert.match(agenda, /parseDataHoraOperacional/);
+  assert.match(agenda, /horaCompleta\.slice\(0,\s*5\)/);
+  assert.doesNotMatch(agenda, /toLocaleTimeString\('pt-BR'/);
+  assert.match(dashboard, /parseDataHoraOperacional/);
+  assert.match(dashboard, /horaCompleta\.slice\(0,\s*5\)/);
+  assert.doesNotMatch(dashboard, /toLocaleTimeString\('pt-BR'/);
+});
+
 test('dashboard adiciona barra resumo e reduz espaçamentos principais', async () => {
   const source = await read('app/frontend/src/pages/paciente/DashboardPaciente.jsx');
 
@@ -35,6 +49,22 @@ test('dashboard adiciona barra resumo e reduz espaçamentos principais', async (
   assert.match(source, /mt-1 md:pb-12 relative z-20 space-y-3/);
   assert.match(source, /p-3 rounded-2xl/);
   assert.match(source, /rounded-xl px-3 py-2/);
+});
+
+test('portal do paciente sincroniza comunicados com polling leve e evento global', async () => {
+  const layout = await read('app/frontend/src/components/paciente/PacienteLayout.jsx');
+  const dashboard = await read('app/frontend/src/pages/paciente/DashboardPaciente.jsx');
+
+  // O layout precisa recalcular o badge sem depender de troca manual de rota.
+  assert.match(layout, /const POLLING_COMUNICADOS_MS = 15000/);
+  assert.match(layout, /window\.addEventListener\('comunicados-atualizados', buscarContagem\)/);
+  assert.match(layout, /setInterval\(buscarContagem,\s*POLLING_COMUNICADOS_MS\)/);
+
+  // O dashboard tambem precisa se refrescar sozinho enquanto o paciente fica
+  // parado na home, mantendo cards e chips coerentes com o header.
+  assert.match(dashboard, /const POLLING_DASHBOARD_MS = 15000/);
+  assert.match(dashboard, /window\.dispatchEvent\(new CustomEvent\('comunicados-atualizados'\)\)/);
+  assert.match(dashboard, /setInterval\(\(\) => fetchDados\(\{ silencioso: true \}\),\s*POLLING_DASHBOARD_MS\)/);
 });
 
 test('solicitacoes define FLUXO fora do componente e renderiza mini-stepper', async () => {

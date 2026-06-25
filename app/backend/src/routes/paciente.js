@@ -497,6 +497,14 @@ router.post('/push-subscribe', async (req, res) => {
       return res.status(400).json({ error: 'Dados de subscription inválidos.' });
     }
 
+    // LGPD E PRIVACIDADE: Se este endpoint (dispositivo físico) já estiver cadastrado 
+    // para qualquer outro usuário (ex: logins anteriores no mesmo navegador), removemos 
+    // a associação antiga para evitar que ele continue recebendo notificações cruzadas.
+    await knex('push_subscriptions')
+      .where({ endpoint })
+      .andWhereNot({ usuario_id: req.user.id, tipo_usuario: 'paciente' })
+      .delete();
+
     // Salva ou ignora se já existir (upsert via ON CONFLICT DO NOTHING)
     await knex('push_subscriptions')
       .insert({

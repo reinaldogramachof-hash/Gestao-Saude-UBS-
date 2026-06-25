@@ -40,6 +40,7 @@ const pushService  = require('../services/pushService');
 const { requireTipo, requirePerfil, soNaoMedico } = require('../middleware/authorization');
 const validateBody = require('../middleware/validateBody');
 const { registrarAuditoria } = require('../services/auditService');
+const gestorNotificationService = require('../services/gestorNotificationService');
 const {
   statusSolicitacaoSchema,
   atendimentoSchema,
@@ -245,9 +246,10 @@ async function validarPacienteDaUbs(pacienteId, ubsId, trx = knex) {
 // MODO MATRIZ: exibe pendentes de TODAS as UBSs — o campo ubs.nome identifica a origem.
 router.get('/pacientes/pendentes', async (req, res) => {
   try {
+    // Busca apenas pacientes inativos (pendentes de aprovação presencial na UBS)
     const pendentes = await knex('pacientes')
       .leftJoin('ubs', 'pacientes.ubs_id', 'ubs.id')
-      .where('pacientes.ativo', true)
+      .where('pacientes.ativo', false)
       .where('pacientes.criado_em', '>=', knex.raw("NOW() - INTERVAL '7 days'"))
       .select(
         'pacientes.id',
@@ -339,6 +341,13 @@ router.delete('/paciente/:id/rejeitar', async (req, res) => {
 router.get('/pacientes', async (req, res) => {
   try {
     const { busca, pagina = 1, limite = 20 } = req.query;
+
+    // LGPD E SEGURANÇA: Para evitar a exposição e o vazamento de prontuários ativos em massa, 
+    // a listagem de pacientes exige um termo de busca ativo. Se estiver vazio, retorna lista vazia.
+    if (!busca || busca.trim() === '') {
+      return res.json([]);
+    }
+
     const offset = (Number(pagina) - 1) * Number(limite);
 
     // LEFT JOINs: solicitações para métricas + UBS para mostrar origem do paciente.
@@ -648,6 +657,16 @@ router.patch('/solicitacao/:id/escalar', async (req, res) => {
         url:    `/paciente/solicitacao/${resultado.solicitacao.id}`,
       }
     ).catch(() => {}); // Erro de push não afeta a resposta da API
+
+    // Registra a notificação operacional no banco de dados para os gestores
+    await gestorNotificationService.criarNotificacao(resultado.solicitacao.ubs_id, {
+      tipo_evento: 'urgencia_escalada',
+      titulo: 'Solicitação escalada para Urgente',
+      mensagem: `Solicitação #${resultado.solicitacao.id} foi marcada como URGENTE. Motivo: ${justificativa.trim().substring(0, 100)}...`,
+      rota_destino: '/dashboard',
+      entidade: 'solicitacoes',
+      entidade_id: resultado.solicitacao.id
+    });
 
     return res.json(resultado.solicitacao);
   } catch (err) {
@@ -1360,8 +1379,9 @@ router.get('/alertas', async (req, res) => {
 // MODO MATRIZ: conta pendentes de TODAS as UBSs.
 router.get('/dashboard/pendentes', async (req, res) => {
   try {
+    // Conta apenas pacientes inativos (cadastros pendentes de aprovação presencial)
     const total = await knex('pacientes')
-      .where({ ativo: true })
+      .where({ ativo: false })
       .where('criado_em', '>=', knex.raw("NOW() - INTERVAL '7 days'"))
       .count('id as total')
       .first();
@@ -1866,6 +1886,16 @@ router.post('/encaminhamento', soNaoMedico, validateBody(encaminhamentoSchema), 
       metadata: { paciente_id: resultado.paciente_id, solicitacao_id: resultado.solicitacao_id },
     });
 
+    // Registra a notificação operacional de novo encaminhamento criado
+    await gestorNotificationService.criarNotificacao(req.user.ubs_id, {
+      tipo_evento: 'novo_encaminhamento',
+      titulo: 'Novo encaminhamento regulado',
+      mensagem: `Encaminhamento criado para ${pacienteLocal.nome} — Destino: ${destino} (${especialidade}).`,
+      rota_destino: '/regulacao',
+      entidade: 'encaminhamentos',
+      entidade_id: resultado.id
+    });
+
     return res.status(201).json(resultado);
   } catch (err) {
     if (err.statusCode) {
@@ -1961,6 +1991,16 @@ router.put('/encaminhamento/:id/status', soNaoMedico, async (req, res) => {
       entidade_id: atualizado.id,
       escopo_ubs_id: atualizado.ubs_id,
       metadata: { status_novo },
+    });
+
+    // Registra a notificação operacional sobre atualização do status de encaminhamento
+    await gestorNotificationService.criarNotificacao(req.user.ubs_id, {
+      tipo_evento: 'status_encaminhamento',
+      titulo: 'Encaminhamento atualizado',
+      mensagem: `Encaminhamento de ${atualizado.paciente_nome} alterado para ${status_novo}.`,
+      rota_destino: '/regulacao',
+      entidade: 'encaminhamentos',
+      entidade_id: atualizado.id
     });
 
     return res.json(atualizado);
@@ -2101,6 +2141,16 @@ router.post('/vigilancia', soNaoMedico, validateBody(vigilanciaSchema), async (r
       metadata: { paciente_id: notificacao.paciente_id },
     });
 
+    // Registra a notificação operacional sobre o novo caso de vigilância
+    await gestorNotificationService.criarNotificacao(req.user.ubs_id, {
+      tipo_evento: 'vigilancia_epidemiologica',
+      titulo: 'Novo caso de vigilância',
+      mensagem: `Registrado caso suspeito de ${agravo} no bairro ${bairro || 'não informado'}.`,
+      rota_destino: '/vigilancia',
+      entidade: 'notificacoes_vigilancia',
+      entidade_id: notificacao.id
+    });
+
     return res.status(201).json(notificacao);
   } catch (err) {
     console.error('[POST /gestor/vigilancia]', err);
@@ -2140,6 +2190,16 @@ router.put('/vigilancia/:id/status', soNaoMedico, async (req, res) => {
       entidade_id: req.params.id,
       escopo_ubs_id: req.user.ubs_id,
       metadata: { status_investigacao },
+    });
+
+    // Registra a notificação operacional sobre a atualização do status de vigilância
+    await gestorNotificationService.criarNotificacao(req.user.ubs_id, {
+      tipo_evento: 'vigilancia_epidemiologica',
+      titulo: 'Status de vigilância atualizado',
+      mensagem: `Caso de ${notificacao.agravo} alterado para status ${status_investigacao}.`,
+      rota_destino: '/vigilancia',
+      entidade: 'notificacoes_vigilancia',
+      entidade_id: notificacao.id
     });
 
     return res.json(atualizada);
@@ -2196,6 +2256,140 @@ router.get('/relatorios', async (req, res) => {
   } catch (err) {
     console.error('[GET /gestor/relatorios]', err);
     return res.status(500).json({ error: 'Erro ao gerar relatório.' });
+  }
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SUBSISTEMA: NOTIFICAÇÕES OPERACIONAIS DOS GESTORES
+// ─────────────────────────────────────────────────────────────────────────────
+
+// ─── GET /api/gestor/notificacoes ────────────────────────────────────────────
+// Retorna as últimas 50 notificações operacionais da UBS do gestor logado.
+// Realiza um LEFT JOIN com a tabela de leitura para calcular se o gestor atual já as leu.
+router.get('/notificacoes', async (req, res) => {
+  try {
+    const ubsId = req.user.ubs_id;
+    const gestorId = req.user.id;
+
+    // Busca com left join para identificar dinamicamente quais estão lidas por este gestor
+    const notificacoes = await knex('notificacoes_gestor as n')
+      .leftJoin('notificacoes_gestor_leitura as l', function () {
+        this.on('l.notificacao_id', '=', 'n.id').andOn('l.gestor_id', '=', knex.raw('?', [gestorId]));
+      })
+      .where('n.ubs_id', ubsId)
+      .select([
+        'n.id',
+        'n.tipo_evento',
+        'n.titulo',
+        'n.mensagem',
+        'n.rota_destino',
+        'n.entidade',
+        'n.entidade_id',
+        'n.metadata_json',
+        'n.criado_em',
+        knex.raw('CASE WHEN l.id IS NOT NULL THEN true ELSE false END as lida')
+      ])
+      .orderBy('n.criado_em', 'desc')
+      .limit(50);
+
+    return res.json(notificacoes);
+  } catch (err) {
+    console.error('[GET /gestor/notificacoes]', err);
+    return res.status(500).json({ error: 'Erro ao buscar notificações.' });
+  }
+});
+
+// ─── GET /api/gestor/notificacoes/nao-lidas-count ────────────────────────────
+// Retorna a contagem de notificações operacionais não lidas do gestor logado.
+router.get('/notificacoes/nao-lidas-count', async (req, res) => {
+  try {
+    const ubsId = req.user.ubs_id;
+    const gestorId = req.user.id;
+
+    // Conta quantos registros da UBS não possuem entrada de leitura correspondente para este gestor
+    const [resultado] = await knex('notificacoes_gestor as n')
+      .leftJoin('notificacoes_gestor_leitura as l', function () {
+        this.on('l.notificacao_id', '=', 'n.id').andOn('l.gestor_id', '=', knex.raw('?', [gestorId]));
+      })
+      .where('n.ubs_id', ubsId)
+      .whereNull('l.id')
+      .count('n.id as total');
+
+    return res.json({ total: Number(resultado.total) });
+  } catch (err) {
+    console.error('[GET /gestor/notificacoes/nao-lidas-count]', err);
+    return res.status(500).json({ error: 'Erro ao contar notificações não lidas.' });
+  }
+});
+
+// ─── POST /api/gestor/notificacao/:id/lida ───────────────────────────────────
+// Marca uma notificação operacional específica como lida pelo gestor logado.
+router.post('/notificacao/:id/lida', async (req, res) => {
+  try {
+    const ubsId = req.user.ubs_id;
+    const gestorId = req.user.id;
+    const notificacaoId = Number(req.params.id);
+
+    // SEGURANÇA (Multi-tenant): Valida se a notificação de fato pertence à UBS do gestor autenticado
+    const notificacao = await knex('notificacoes_gestor')
+      .where({ id: notificacaoId, ubs_id: ubsId })
+      .first();
+
+    if (!notificacao) {
+      return res.status(404).json({ error: 'Notificação não encontrada ou não pertence à sua UBS.' });
+    }
+
+    // Registra a leitura do gestor se ela já não existir (prevenção via ON CONFLICT)
+    await knex('notificacoes_gestor_leitura')
+      .insert({
+        notificacao_id: notificacaoId,
+        gestor_id: gestorId,
+        lido_em: knex.fn.now()
+      })
+      .onConflict(['notificacao_id', 'gestor_id'])
+      .ignore();
+
+    return res.json({ ok: true });
+  } catch (err) {
+    console.error('[POST /gestor/notificacao/:id/lida]', err);
+    return res.status(500).json({ error: 'Erro ao marcar notificação como lida.' });
+  }
+});
+
+// ─── POST /api/gestor/notificacoes/marcar-todas-lidas ───────────────────────
+// Marca todas as notificações operacionais pendentes da UBS como lidas para o gestor logado.
+router.post('/notificacoes/marcar-todas-lidas', async (req, res) => {
+  try {
+    const ubsId = req.user.ubs_id;
+    const gestorId = req.user.id;
+
+    // Busca todas as notificações não lidas da UBS deste gestor
+    const naoLidas = await knex('notificacoes_gestor as n')
+      .leftJoin('notificacoes_gestor_leitura as l', function () {
+        this.on('l.notificacao_id', '=', 'n.id').andOn('l.gestor_id', '=', knex.raw('?', [gestorId]));
+      })
+      .where('n.ubs_id', ubsId)
+      .whereNull('l.id')
+      .select('n.id');
+
+    if (naoLidas.length > 0) {
+      const inserts = naoLidas.map(n => ({
+        notificacao_id: n.id,
+        gestor_id: gestorId,
+        lido_em: knex.fn.now()
+      }));
+
+      // Insere em lote as leituras
+      await knex('notificacoes_gestor_leitura')
+        .insert(inserts)
+        .onConflict(['notificacao_id', 'gestor_id'])
+        .ignore();
+    }
+
+    return res.json({ ok: true });
+  } catch (err) {
+    console.error('[POST /gestor/notificacoes/marcar-todas-lidas]', err);
+    return res.status(500).json({ error: 'Erro ao marcar todas as notificações como lidas.' });
   }
 });
 

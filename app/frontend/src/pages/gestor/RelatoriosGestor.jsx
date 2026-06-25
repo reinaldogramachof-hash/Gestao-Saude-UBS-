@@ -77,6 +77,10 @@ export default function RelatoriosGestor() {
 
   // Lógica matemática para construção do Donut Chart SVG dinâmico
   const totalGrafico = dados?.distribuicao_status?.reduce((acc, curr) => acc + curr.total, 0) || 0;
+  // O backend expõe `urgencias_ociosas`; o fallback mantém compatibilidade com
+  // builds antigos que ainda chamavam a mesma lista de `urgentes_paradas`.
+  const urgenciasOciosas = dados?.urgencias_ociosas || dados?.urgentes_paradas || [];
+  const totalSolicitacoesAtivas = dados?.total_abertas ?? totalGrafico;
   const r = 36;
   const circ = 2 * Math.PI * r; // ~226.19
   
@@ -97,7 +101,7 @@ export default function RelatoriosGestor() {
     };
   }).filter(Boolean) || [];
 
-  const totalUrgentesParadas = dados?.urgentes_paradas?.length || 0;
+  const totalUrgentesParadas = urgenciasOciosas.length;
 
   // Retorna a contagem de dias inativos desde a última atualização do status
   const calcularDiasInativos = (dataISO) => {
@@ -156,7 +160,7 @@ export default function RelatoriosGestor() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
             <CardMetrica
               title="Solicitações Ativas na UBS"
-              value={dados?.total_abertas || 0}
+              value={totalSolicitacoesAtivas}
               label="Volume total de demandas em andamento"
               icon="pending_actions"
               bgGradiente="from-primary/5 to-primary/10"
@@ -288,7 +292,7 @@ export default function RelatoriosGestor() {
                           </td>
                         </tr>
                       ) : (
-                        dados.urgentes_paradas.map(sol => {
+                        urgenciasOciosas.map(sol => {
                           const dias = calcularDiasInativos(sol.atualizado_em);
                           return (
                             <tr key={sol.id} className="hover:bg-surface-container-low/40 transition-colors">
@@ -301,7 +305,7 @@ export default function RelatoriosGestor() {
                               {/* Procedimento e Descrição */}
                               <td className="px-5 py-4">
                                 <p className="font-extrabold text-on-background capitalize text-sm">{sol.tipo}</p>
-                                <p className="text-[10px] text-on-surface-variant/80 font-medium mt-0.5">{sol.descricao}</p>
+                                <p className="text-[10px] text-on-surface-variant/80 font-medium mt-0.5">{sol.descricao_paciente || sol.descricao}</p>
                               </td>
 
                               {/* Status Translúcido com Contador de Inatividade */}

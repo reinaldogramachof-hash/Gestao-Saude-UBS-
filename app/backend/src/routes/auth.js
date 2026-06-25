@@ -17,6 +17,7 @@ const knex = require('../db/knex');
 const validateBody = require('../middleware/validateBody');
 const { registrarAuditoria } = require('../services/auditService');
 const pushService = require('../services/pushService');
+const gestorNotificationService = require('../services/gestorNotificationService');
 const { loginGestorSchema, loginPacienteSchema, loginExternaSchema } = require('../validators/securitySchemas');
 
 const router = express.Router();
@@ -319,6 +320,16 @@ router.post('/cadastro-paciente', cadastroRateLimiter, async (req, res) => {
         url: '/gestor/pacientes',
       }
     )));
+
+    // Registra a notificação operacional no banco de dados para o painel do gestor
+    await gestorNotificationService.criarNotificacao(ubsId, {
+      tipo_evento: 'novo_paciente',
+      titulo: 'Novo paciente cadastrado',
+      mensagem: `${paciente.nome} realizou auto-cadastro no portal.`,
+      rota_destino: '/pacientes',
+      entidade: 'pacientes',
+      entidade_id: paciente.id
+    });
 
     await registrarAuditoria(req, {
       ator_tipo: 'paciente',

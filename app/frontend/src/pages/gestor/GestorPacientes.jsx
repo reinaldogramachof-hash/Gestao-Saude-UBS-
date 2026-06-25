@@ -37,10 +37,18 @@ export default function GestorPacientes() {
     nome: '', cra: '', data_nascimento: '', cpf: '', telefone: '', email: ''
   });
 
-  // Gatilho de recarga baseado na busca, página e aba atual
+  // Gatilho de recarga baseado na busca, página e aba atual.
+  // LGPD E SEGURANÇA: Se o campo de busca estiver limpo, não fazemos requisição para pacientes ativos,
+  // limpando a lista local imediatamente para preservar o sigilo dos dados.
   useEffect(() => {
     if (aba === 'ativos') {
-      const timer = setTimeout(() => fetchPacientes(), busca ? 400 : 0);
+      if (!busca || busca.trim() === '') {
+        setPacientes([]);
+        setLoading(false);
+        return;
+      }
+      // Debounce de 400ms para evitar chamadas de API desnecessárias enquanto o usuário digita
+      const timer = setTimeout(() => fetchPacientes(), 400);
       return () => clearTimeout(timer);
     } else {
       fetchPendentes();
@@ -407,6 +415,22 @@ export default function GestorPacientes() {
                         </td>
                       </tr>
                     ))
+                  ) : (!busca || busca.trim() === '') ? (
+                    <tr>
+                      <td colSpan="7" className="p-16 text-center text-on-surface-variant/80">
+                        <div className="flex flex-col items-center justify-center gap-3.5 max-w-md mx-auto">
+                          <div className="w-12 h-12 rounded-2xl bg-surface-container-high flex items-center justify-center border border-outline-variant/60 shadow-sm">
+                            <span className="material-symbols-outlined text-primary text-2xl">search</span>
+                          </div>
+                          <div className="space-y-1">
+                            <p className="font-extrabold text-on-background text-sm">Consulta de Prontuário</p>
+                            <p className="text-xs font-semibold leading-relaxed opacity-85">
+                              Por razões de privacidade e segurança (LGPD), a listagem em massa de pacientes ativos não é exibida por padrão. Utilize a barra de pesquisa acima informando o nome ou o CRA do paciente para localizar seu registro.
+                            </p>
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
                   ) : pacientes.length > 0 ? (
                     pacientes.map(p => (
                       <tr key={p.id} className="hover:bg-surface-container-low/30 transition-colors">

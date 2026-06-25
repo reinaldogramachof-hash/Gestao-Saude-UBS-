@@ -10,19 +10,20 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 const http = require('http');
+const knex = require('./src/db/knex');
 
 // ─── Configuração dos seeds de teste ─────────────────────────────────────────
 // Altere estes valores para credenciais existentes no banco de desenvolvimento.
 const BASE_URL = 'http://localhost:3001';
 
-// Credenciais de um MÉDICO (perfil: 'medico') — deve existir no banco
-const CREDS_MEDICO = { email: 'medico@ubs.dev', senha: 'senha123' };
+// Credenciais de um MÉDICO (perfil: 'medico') — deve existir no banco (Vilamaria)
+const CREDS_MEDICO = { email: 'medico.vilamaria@gestaoubs.dev', senha: 'senha123' };
 
 // Credenciais de um GESTOR normal (perfil: 'recepcionista' ou 'gestor')
 const CREDS_GESTOR = { email: 'centro@gestaoubs.dev', senha: 'senha123' };
 
-// CRA e data de nascimento de um paciente com comorbidade conhecida (ex: "Diabetes")
-const CREDS_PACIENTE_DIABETES = { cra: 'CRA-001', data_nascimento: '1980-01-01' };
+// CRA e data de nascimento de um paciente com comorbidade conhecida (ex: Ana Clara - Asma/Diabetes)
+const CREDS_PACIENTE_DIABETES = { cra: 'DEMO-0001', data_nascimento: '1985-03-22' };
 
 // ─── Helpers HTTP ─────────────────────────────────────────────────────────────
 // Faz uma requisição HTTP e retorna Promise<{ status, body }>
@@ -80,7 +81,7 @@ function assert(nome, condicao, mensagem) {
 
 // ─── Suite 1: Login e extração de tokens ─────────────────────────────────────
 async function obterTokenGestor(creds) {
-  const res = await request('POST', '/api/auth/gestor/login', creds);
+  const res = await request('POST', '/api/auth/login-gestor', creds);
   if (res.status !== 200 || !res.body?.token) {
     throw new Error(`Login falhou para ${creds.email}: HTTP ${res.status} — ${JSON.stringify(res.body)}`);
   }
@@ -88,7 +89,7 @@ async function obterTokenGestor(creds) {
 }
 
 async function obterTokenPaciente(creds) {
-  const res = await request('POST', '/api/auth/paciente/login', creds);
+  const res = await request('POST', '/api/auth/login-paciente', creds);
   if (res.status !== 200 || !res.body?.token) {
     throw new Error(`Login paciente falhou: HTTP ${res.status} — ${JSON.stringify(res.body)}`);
   }
@@ -163,12 +164,12 @@ async function testarRbacMedico(tokenMedico) {
 async function testarComunicadosSegmentados(tokenGestor, tokenPaciente) {
   console.log('\n📋 Suite 3: Comunicados segmentados por comorbidade');
 
-  // 3.1 — Criar comunicado segmentado para "Diabetes" como gestor
+  // 3.1 — Criar comunicado segmentado para "Asma" como gestor
   const criacao = await request('POST', '/api/gestor/comunicado', {
-    titulo: '[TESTE] Comunicado Diabetes',
-    mensagem: 'Informativo exclusivo para pacientes com Diabetes cadastrados.',
+    titulo: '[TESTE] Comunicado Asma',
+    mensagem: 'Informativo exclusivo para pacientes com Asma cadastrados.',
     tipo: 'geral',
-    segmentacao_clinica: 'Diabetes',
+    segmentacao_clinica: 'Asma',
     urgente: false,
   }, tokenGestor);
   assert(
@@ -179,7 +180,7 @@ async function testarComunicadosSegmentados(tokenGestor, tokenPaciente) {
 
   if (criacao.status !== 201) return; // Não faz sentido testar o GET se o POST falhou
 
-  // 3.2 — Paciente com Diabetes deve ver o comunicado segmentado
+  // 3.2 — Paciente com Asma deve ver o comunicado segmentado
   if (tokenPaciente) {
     const listagem = await request('GET', '/api/paciente/comunicados', null, tokenPaciente);
     assert(
@@ -189,9 +190,9 @@ async function testarComunicadosSegmentados(tokenGestor, tokenPaciente) {
     );
 
     if (listagem.status === 200 && Array.isArray(listagem.body)) {
-      const encontrou = listagem.body.some(c => c.titulo === '[TESTE] Comunicado Diabetes');
+      const encontrou = listagem.body.some(c => c.titulo === '[TESTE] Comunicado Asma');
       assert(
-        'Comunicado Diabetes aparece para paciente com comorbidade Diabetes',
+        'Comunicado Asma aparece para paciente com comorbidade Asma',
         encontrou,
         encontrou ? 'encontrado na listagem' : 'NÃO encontrado — verifique comorbidade do paciente seed'
       );
@@ -223,6 +224,20 @@ async function main() {
   console.log('  🔬 TESTES DE CONTRATO — RBAC e Comunicados Segmentados');
   console.log('  Alvo: ' + BASE_URL);
   console.log('═══════════════════════════════════════════════════════════════');
+
+  // Prepara o banco de dados para os testes de comunicados segmentados:
+  // Garante que o paciente de teste DEMO-0001 pertença à UBS Centro (ID 1)
+  // e possua a comorbidade 'Asma' para receber os comunicados do teste.
+  try {
+    const ubsCentro = await knex('ubs').where('nome', 'UBS Centro').first();
+    if (ubsCentro) {
+      await knex('pacientes')
+        .where({ cra: 'DEMO-0001' })
+        .update({ ubs_id: ubsCentro.id, comorbidades: 'Asma' });
+    }
+  } catch (err) {
+    console.warn('⚠️  Aviso: Não foi possível preparar dados de comorbidade no banco:', err.message);
+  }
 
   let tokenMedico, tokenGestor, tokenPaciente;
 

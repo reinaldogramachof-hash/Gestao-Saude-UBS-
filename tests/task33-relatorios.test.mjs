@@ -57,9 +57,13 @@ test('página RelatoriosGestor renderiza cards HSL, donut chart e tabela ociosa'
 
   assert.match(relatoriosPage, /api\.get\(['"]\/gestor\/relatorios['"]\)/);
   assert.match(relatoriosPage, /const totalGrafico = dados\?\.distribuicao_status\?\.reduce/);
+  assert.match(relatoriosPage, /dados\?\.urgencias_ociosas/);
+  assert.match(relatoriosPage, /dados\?\.urgentes_paradas/);
+  assert.match(relatoriosPage, /const totalSolicitacoesAtivas = dados\?\.total_abertas \?\? totalGrafico/);
   assert.match(relatoriosPage, /<svg viewBox="0 0 100 100"/);
   assert.match(relatoriosPage, /strokeDasharray=\{seg\.strokeDasharray\}/);
   assert.match(relatoriosPage, /calcularDiasInativos/);
   assert.match(relatoriosPage, /sol\.paciente_cra/);
+  assert.match(relatoriosPage, /sol\.descricao_paciente \|\| sol\.descricao/);
   assert.match(relatoriosPage, /\/gestor\/paciente\/\$\{sol\.paciente_id\}/);
 });

@@ -13,6 +13,7 @@ const { soExterna } = require('../middleware/auth');
 const { registrarAuditoria } = require('../services/auditService');
 // Push notifications: notifica o paciente quando a unidade externa agenda ou conclui
 const pushService = require('../services/pushService');
+const gestorNotificationService = require('../services/gestorNotificationService');
 
 const router = express.Router();
 
@@ -163,6 +164,16 @@ router.put('/encaminhamento/:id/receber', async (req, res) => {
       escopo_ubs_id: encaminhamento.ubs_id,
     });
 
+    // Notifica os gestores da UBS que o encaminhamento foi recebido pela unidade externa
+    await gestorNotificationService.criarNotificacao(encaminhamento.ubs_id, {
+      tipo_evento: 'status_encaminhamento',
+      titulo: 'Encaminhamento recebido externamente',
+      mensagem: `O encaminhamento do paciente #${encaminhamento.paciente_id} foi recebido por ${req.user.nome}.`,
+      rota_destino: '/regulacao',
+      entidade: 'encaminhamentos',
+      entidade_id: encaminhamento.id
+    });
+
     return res.json({ ok: true, status: 'RECEBIDO' });
   } catch (err) {
     console.error('[PUT /externa/encaminhamento/:id/receber]', err);
@@ -219,6 +230,16 @@ router.put('/encaminhamento/:id/agendar', validateBody(agendamentoSchema), async
       metadata: { data_procedimento_unidade: req.body.data_procedimento_unidade },
     });
 
+    // Notifica os gestores da UBS sobre o agendamento externo
+    await gestorNotificationService.criarNotificacao(encaminhamento.ubs_id, {
+      tipo_evento: 'status_encaminhamento',
+      titulo: 'Consulta/Procedimento agendado',
+      mensagem: `Atendimento do paciente #${encaminhamento.paciente_id} agendado para ${req.body.data_procedimento_unidade} em ${req.user.nome}.`,
+      rota_destino: '/regulacao',
+      entidade: 'encaminhamentos',
+      entidade_id: encaminhamento.id
+    });
+
     // Notifica o paciente: data do procedimento foi confirmada pela unidade externa.
     // Feito fora da transação — falha no push não desfaz o agendamento.
     pushService.enviar(encaminhamento.paciente_id, 'paciente', {
@@ -259,20 +280,26 @@ router.put('/encaminhamento/:id/concluir', validateBody(feedbackSchema), async (
           .where({ id: encaminhamento.solicitacao_id })
           .first();
 
+        // Se o feedback for de cancelamento ou recusa clínica, a solicitação retorna para a regulação da UBS 
+        // para que a equipe gestora possa reavaliar o caso e tomar providências (como re-encaminhar para outra unidade).
+        const ehCancelamento = ['CANCELADO_AUSENCIA', 'CANCELADO_CONTRAINDICADO'].includes(req.body.feedback_tipo);
+        const statusNovoSolicitacao = ehCancelamento ? 'aguardando_regulacao' : 'concluido';
+        const dataConclusao = ehCancelamento ? null : trx.fn.now();
+
         await trx('solicitacoes')
           .where({ id: encaminhamento.solicitacao_id })
           .update({
-            status: 'concluido',
-            data_conclusao: trx.fn.now(),
+            status: statusNovoSolicitacao,
+            data_conclusao: dataConclusao,
             atualizado_em: trx.fn.now(),
           });
 
         await trx('historico_status').insert({
           solicitacao_id: encaminhamento.solicitacao_id,
-          gestor_id: null,
+          gestor_id:      null, // Ação disparada pela Unidade Externa
           status_anterior: solicitacao?.status || null,
-          status_novo: 'concluido',
-          observacao: req.body.feedback_tipo,
+          status_novo:     statusNovoSolicitacao,
+          observacao:     `[Retorno Rede Externa - ${req.body.feedback_tipo}] Conduta: ${req.body.feedback_conduta}`,
         });
       }
     });
@@ -285,11 +312,33 @@ router.put('/encaminhamento/:id/concluir', validateBody(feedbackSchema), async (
       metadata: { feedback_tipo: req.body.feedback_tipo },
     });
 
-    // Notifica o paciente: procedimento concluído e conduta enviada para a UBS.
-    // Feito fora da transação — falha no push não desfaz a conclusão.
+    // Identifica se foi cancelamento/devolução ou conclusão
+    const ehCancelamento = ['CANCELADO_AUSENCIA', 'CANCELADO_CONTRAINDICADO'].includes(req.body.feedback_tipo);
+    const tituloNotificacao = ehCancelamento ? 'Encaminhamento devolvido por unidade externa' : 'Atendimento externo concluído';
+    const msgNotificacao = ehCancelamento 
+      ? `Encaminhamento do paciente #${encaminhamento.paciente_id} devolvido por ${req.user.nome}. Motivo: ${req.body.feedback_tipo}.`
+      : `Encaminhamento do paciente #${encaminhamento.paciente_id} concluído por ${req.user.nome}. Conduta enviada.`;
+
+    // Notifica os gestores da UBS sobre o retorno clínico/devolução
+    await gestorNotificationService.criarNotificacao(encaminhamento.ubs_id, {
+      tipo_evento: 'retorno_externo',
+      titulo: tituloNotificacao,
+      mensagem: msgNotificacao,
+      rota_destino: '/regulacao',
+      entidade: 'encaminhamentos',
+      entidade_id: encaminhamento.id
+    });
+
+    // Notifica o paciente de acordo com o resultado real do procedimento externo.
+    // Feito fora da transação — falha no push não desfaz a gravação dos dados.
+    const tituloPush = ehCancelamento ? 'Encaminhamento retornado à UBS' : 'Atendimento externo concluído';
+    const corpoPush = ehCancelamento 
+      ? 'Seu encaminhamento foi devolvido para reavaliação da UBS. Acompanhe pelo aplicativo.'
+      : 'Seu procedimento foi realizado. A conduta foi enviada à sua UBS. Confira os detalhes no app.';
+
     pushService.enviar(encaminhamento.paciente_id, 'paciente', {
-      titulo: 'Atendimento externo concluído',
-      corpo:  'Seu procedimento foi realizado. A conduta foi enviada à sua UBS. Confira os detalhes no app.',
+      titulo: tituloPush,
+      corpo:  corpoPush,
       url:    `/paciente/solicitacao/${encaminhamento.solicitacao_id}`,
     }).catch(() => {});
 

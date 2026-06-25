@@ -25,6 +25,10 @@ import BottomNavSimples from './BottomNavSimples';
 import api from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
 
+// Intervalo curto e estável para manter o badge de avisos sincronizado mesmo
+// quando o paciente permanece parado na mesma tela durante vários minutos.
+const POLLING_COMUNICADOS_MS = 15000;
+
 export default function PacienteLayout({ children, semNav = false }) {
   const { pathname } = useLocation();
   const { user } = useAuth();
@@ -33,8 +37,9 @@ export default function PacienteLayout({ children, semNav = false }) {
   const [unreadCount, setUnreadCount] = useState(0);
   const [pacienteDados, setPacienteDados] = useState(null);
 
-  // Busca e monitora quantidade de comunicados não lidos a cada troca de rota
-  // ou quando eventos personalizados de leitura são disparados na mesma página.
+  // Busca e monitora quantidade de comunicados não lidos a cada troca de rota,
+  // por polling leve em segundo plano e por eventos globais disparados por
+  // páginas internas quando alguma atualização relevante acontece.
   useEffect(() => {
     if (semNav || !user) return;
     
@@ -53,10 +58,14 @@ export default function PacienteLayout({ children, semNav = false }) {
     // Adiciona listener para escutar evento customizado disparado quando o paciente
     // marca comunicados como lidos dentro da página de comunicados.
     window.addEventListener('comunicado-lido', buscarContagem);
+    window.addEventListener('comunicados-atualizados', buscarContagem);
+    const pollingId = setInterval(buscarContagem, POLLING_COMUNICADOS_MS);
     
-    // Cleanup do event listener ao desmontar o componente
+    // Cleanup dos listeners e do polling ao desmontar o componente
     return () => {
+      clearInterval(pollingId);
       window.removeEventListener('comunicado-lido', buscarContagem);
+      window.removeEventListener('comunicados-atualizados', buscarContagem);
     };
   }, [pathname, semNav, user]);
 

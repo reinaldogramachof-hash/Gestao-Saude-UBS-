@@ -17,6 +17,10 @@ import api from '../../services/api';
 import PacienteLayout from '../../components/paciente/PacienteLayout';
 import { STATUS_LABELS, STATUS_CORES, formatarDataBR } from '../../utils/statusHelper';
 
+// Intervalo curto de atualização em segundo plano para que a home do paciente
+// reflita novos avisos e pendências sem exigir navegação manual entre abas.
+const POLLING_DASHBOARD_MS = 15000;
+
 // ─────────────────────────────────────────────────────────────────────────────
 // COMPONENTE: QuickAccessCard
 // FUNÇÃO: Card de acesso rápido na home screen. Exibe ícone, título, valor resumido
@@ -52,15 +56,25 @@ function QuickAccessCard({ icon, titulo, valor, cor, bg, rota, badge, navigate }
   );
 }
 
+// Mantém a hora operacional gravada pelo backend sem converter pelo fuso do
+// navegador. Isso evita que slots cadastrados como 19:00 sejam exibidos como
+// 16:00 no Brasil por causa do sufixo UTC do timestamp ISO.
+const parseDataHoraOperacional = (dataHora) => {
+  const [dataISO, horaCompleta = '12:00:00'] = String(dataHora || '').split('T');
+  const [ano, mes, dia] = dataISO.split('-').map(Number);
+  return {
+    dataLocal: new Date(ano, mes - 1, dia),
+    hora: horaCompleta.slice(0, 5),
+  };
+};
+
 // Formata o próximo agendamento de forma curta — "Seg, 23/06 às 10:00"
 const formatarProximoAg = (dataHora) => {
   if (!dataHora) return null;
-  const dateStr = dataHora.includes('T') ? dataHora : dataHora + 'T12:00:00';
-  const d = new Date(dateStr);
+  const { dataLocal, hora } = parseDataHoraOperacional(dataHora);
   const diasSemana = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
-  const dia = diasSemana[d.getDay()];
-  const data = d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
-  const hora = d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+  const dia = diasSemana[dataLocal.getDay()];
+  const data = dataLocal.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
   return `${dia}, ${data} às ${hora}`;
 };
 
@@ -75,10 +89,13 @@ export default function DashboardPaciente() {
   const [erro, setErro] = useState(false);
   const navigate = useNavigate();
 
-  // Função separada para permitir retry em caso de erro
-  const fetchDados = () => {
-    setLoading(true);
-    setErro(false);
+  // Função separada para permitir retry em caso de erro. Quando chamada pelo
+  // polling, evita religar o esqueleto de loading para não "piscar" a tela.
+  const fetchDados = ({ silencioso = false } = {}) => {
+    if (!silencioso) {
+      setLoading(true);
+      setErro(false);
+    }
     Promise.all([
       api.get('/paciente/meus-dados'),
       api.get('/paciente/minhas-solicitacoes'),
@@ -91,6 +108,7 @@ export default function DashboardPaciente() {
         setSols(rSols.data);
         setUnreadComunicados(rComuns.data.filter(c => !c.lido).length);
         setPendenciasConfirmacao(rPendencias.data || []);
+        window.dispatchEvent(new CustomEvent('comunicados-atualizados'));
 
         // Filtra agendamentos futuros e pega o mais próximo
         const agora = new Date();
@@ -99,11 +117,24 @@ export default function DashboardPaciente() {
           .sort((a, b) => new Date(a.data_hora) - new Date(b.data_hora));
         setProximoAgendamento(futuros[0] || null);
       })
-      .catch(() => setErro(true))
-      .finally(() => setLoading(false));
+      .catch(() => {
+        if (!silencioso) {
+          setErro(true);
+        }
+      })
+      .finally(() => {
+        if (!silencioso) {
+          setLoading(false);
+        }
+      });
   };
 
-  useEffect(() => { fetchDados(); }, []);
+  useEffect(() => {
+    fetchDados();
+    const pollingId = setInterval(() => fetchDados({ silencioso: true }), POLLING_DASHBOARD_MS);
+
+    return () => clearInterval(pollingId);
+  }, []);
 
   const confirmarPresenca = async (id) => {
     setConfirmandoId(id);
