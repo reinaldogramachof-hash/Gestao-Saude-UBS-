@@ -11,10 +11,11 @@
  * ─────────────────────────────────────────────────────────────────────────────
  */
 import React, { useState, useEffect, useRef } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import api from '../../services/api';
 import PacienteLayout from '../../components/paciente/PacienteLayout';
+import { useAuth } from '../../contexts/AuthContext';
 
 const STATUS_BADGE = {
   disponivel: 'bg-emerald-100 text-emerald-700',
@@ -45,6 +46,8 @@ const parseDataHoraOperacional = (dt) => {
 
 export default function AgendamentosPaciente() {
   const location = useLocation();
+  const navigate = useNavigate();
+  const { user, login } = useAuth();
   const meusAgendamentosRef = useRef(null); // Referência para rolagem suave pós-agendamento
   const [disponiveis, setDisponiveis] = useState([]);
   const [meus, setMeus] = useState([]);
@@ -109,9 +112,23 @@ export default function AgendamentosPaciente() {
     e.preventDefault();
     setReservando(true);
     try {
-      await api.post(`/paciente/agendamento/${slotSelecionado.id}/reservar`, { motivo });
+      const response = await api.post(`/paciente/agendamento/${slotSelecionado.id}/reservar`, { motivo });
       toast.success('Agendamento confirmado! ✓');
       setModalAberto(false);
+
+      // FLUXO DE ATIVAÇÃO AUTOMÁTICA DO PACIENTE NOVO
+      // Se a resposta trouxer o novo token JWT de ativação, atualiza a sessão
+      // no localStorage/AuthContext e redireciona ao Dashboard com banner de sucesso.
+      if (response.data && response.data.token) {
+        login(response.data, response.data.token);
+        navigate('/paciente', {
+          state: {
+            mensagemSucesso: 'Cadastro validado! Agora você tem acesso completo ao portal.'
+          }
+        });
+        return;
+      }
+
       carregarTodos();
       // Rola a tela suavemente para a seção "Meus Agendamentos" para feedback imediato do novo slot reservado
       setTimeout(() => {
@@ -173,6 +190,17 @@ export default function AgendamentosPaciente() {
       </header>
 
       <main className="px-6 py-5 space-y-5">
+        {/* Banner informativo de cadastro pendente para novos pacientes inativos */}
+        {!user?.ativo && (
+          <div className="flex gap-3 p-4 bg-amber-50 text-amber-900 rounded-2xl border border-amber-200 shadow-sm items-start">
+            <span className="material-symbols-outlined text-amber-600 text-2xl flex-shrink-0">info</span>
+            <p className="text-xs font-medium leading-relaxed">
+              Seu cadastro está pendente de validação. Agende uma visita à UBS
+              para confirmar seu acesso e liberar todos os recursos do portal.
+            </p>
+          </div>
+        )}
+
         {loading ? (
           Array(3).fill(0).map((_, i) => <div key={i} className="h-24 bg-surface-container-low rounded-2xl animate-pulse" />)
         ) : erro ? (

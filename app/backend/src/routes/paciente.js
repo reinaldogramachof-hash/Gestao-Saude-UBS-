@@ -20,6 +20,7 @@
  * ─────────────────────────────────────────────────────────────────────────────
  */
 const express = require('express');
+const jwt     = require('jsonwebtoken');
 const knex    = require('../db/knex');
 const { registrarAuditoria } = require('../services/auditService');
 
@@ -411,7 +412,11 @@ router.get('/agendamentos/meus', async (req, res) => {
 
 // ─── POST /api/paciente/agendamento/:id/reservar ──────────────────────────────
 // Épico 4: Reserva um slot disponível para o paciente logado.
+//          Se o paciente for inativo (ativo = false), ativa-o automaticamente,
+//          grava auditoria de ativação e gera um novo JWT para atualização rápida
+//          do estado de autenticação no frontend sem exigir novo login.
 // Body: { motivo }
+// ─────────────────────────────────────────────────────────────────────────────
 router.post('/agendamento/:id/reservar', async (req, res) => {
   try {
     const { motivo } = req.body;
@@ -439,6 +444,51 @@ router.post('/agendamento/:id/reservar', async (req, res) => {
         motivo:      motivo || null,
       })
       .returning('*');
+
+    // FLUXO DE ATIVAÇÃO AUTOMÁTICA (PACIENTE NOVO)
+    // Se o JWT atual do paciente indica que ele está inativo, realizamos a ativação.
+    if (req.user.ativo === false || !req.user.ativo) {
+      // 1. Atualiza o status do paciente no banco de dados para ativo (ativo = true)
+      await knex('pacientes')
+        .where({ id: req.user.id })
+        .update({ ativo: true });
+
+      // 2. Coleta os dados mais recentes do paciente no banco de dados
+      const pacienteAtualizado = await knex('pacientes')
+        .where({ id: req.user.id })
+        .first();
+
+      // 3. Registra a ação de ativação na tabela de auditoria operacional
+      await registrarAuditoria(req, {
+        ator_tipo: 'paciente',
+        ator_id: req.user.id,
+        ator_ubs_id: req.user.ubs_id,
+        acao: 'ativacao_por_agendamento',
+        entidade: 'pacientes',
+        entidade_id: req.user.id,
+        escopo_ubs_id: req.user.ubs_id,
+        metadata: { agendamento_id: req.params.id, ubs_id: req.user.ubs_id },
+      });
+
+      // 4. Cria o novo payload seguro e assina o novo token JWT ativo
+      const payload = {
+        id: pacienteAtualizado.id,
+        nome: pacienteAtualizado.nome,
+        ubs_id: pacienteAtualizado.ubs_id,
+        tipo: 'paciente',
+        ativo: true,
+        token_version: pacienteAtualizado.token_version || 0,
+      };
+
+      const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '12h' });
+
+      // Retorna o agendamento reservado + o novo JWT com payload atualizado para o frontend
+      return res.json({
+        ...atualizado,
+        token,
+        ...payload,
+      });
+    }
 
     return res.json(atualizado);
   } catch (err) {

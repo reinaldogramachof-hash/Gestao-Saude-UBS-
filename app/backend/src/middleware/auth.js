@@ -29,8 +29,22 @@ async function authMiddleware(req, res, next) {
     }
 
     const tabela = TABELAS_POR_TIPO[decoded.tipo];
-    const usuarioAtual = await knex(tabela)
-      .where({ id: decoded.id, ativo: true })
+    const query = knex(tabela).where({ id: decoded.id });
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // REGRA BANCA: Gestores e unidades externas precisam estar ativos (ativo = true).
+    // Para pacientes, permitimos ativo = false para que recém-cadastrados consigam
+    // manter a sessão autenticada, visualizar o onboarding e fazer o agendamento
+    // que ativa sua conta automaticamente.
+    // RISCO (PÓS-BANCA): Pacientes inativados por admin também passarão por aqui.
+    // Pós-banca, deve-se implementar a coluna 'motivo_inativacao' ou similar
+    // para distinguir pendentes de cadastro de inativados por exclusão/segurança.
+    // ─────────────────────────────────────────────────────────────────────────
+    if (decoded.tipo !== 'paciente') {
+      query.where({ ativo: true });
+    }
+
+    const usuarioAtual = await query
       .select('id', 'token_version')
       .first();
 

@@ -12,10 +12,11 @@
  * ─────────────────────────────────────────────────────────────────────────────
  */
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import api from '../../services/api';
 import PacienteLayout from '../../components/paciente/PacienteLayout';
 import { STATUS_LABELS, STATUS_CORES, formatarDataBR } from '../../utils/statusHelper';
+import { useAuth } from '../../contexts/AuthContext';
 
 // Intervalo curto de atualização em segundo plano para que a home do paciente
 // reflita novos avisos e pendências sem exigir navegação manual entre abas.
@@ -79,6 +80,7 @@ const formatarProximoAg = (dataHora) => {
 };
 
 export default function DashboardPaciente() {
+  const { user } = useAuth();
   const [sols, setSols] = useState([]);
   const [paciente, setPaciente] = useState({});
   const [unreadComunicados, setUnreadComunicados] = useState(0);
@@ -88,6 +90,7 @@ export default function DashboardPaciente() {
   const [loading, setLoading] = useState(true);
   const [erro, setErro] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
 
   // Função separada para permitir retry em caso de erro. Quando chamada pelo
   // polling, evita religar o esqueleto de loading para não "piscar" a tela.
@@ -135,6 +138,17 @@ export default function DashboardPaciente() {
 
     return () => clearInterval(pollingId);
   }, []);
+
+  useEffect(() => {
+    // Trata e exibe mensagens de sucesso vindas do redirecionamento por state do roteador
+    if (location.state?.mensagemSucesso) {
+      import('react-hot-toast').then(({ default: toast }) => {
+        toast.success(location.state.mensagemSucesso);
+      });
+      // Limpa o estado no histórico para evitar disparos repetidos ao atualizar a página
+      window.history.replaceState({}, document.title);
+    }
+  }, [location.state]);
 
   const confirmarPresenca = async (id) => {
     setConfirmandoId(id);
@@ -229,6 +243,32 @@ export default function DashboardPaciente() {
           </div>
         </div>
       </header>
+
+      {/* ── Card de Onboarding para Pacientes Inativos ── */}
+      {user?.ativo === false && (
+        <section className="px-6 pt-4 max-w-5xl mx-auto w-full">
+          <div className="bg-amber-50 border border-amber-200 rounded-2xl p-5 shadow-sm">
+            <div className="flex gap-4 items-start">
+              <div className="w-12 h-12 bg-amber-100 text-amber-800 rounded-2xl flex items-center justify-center flex-shrink-0">
+                <span className="material-symbols-outlined text-2xl text-amber-800">priority_high</span>
+              </div>
+              <div className="space-y-2 flex-1">
+                <h3 className="font-extrabold text-amber-900 text-base">Bem-vindo ao UBS+! Valide seu cadastro</h3>
+                <p className="text-sm text-amber-800 leading-relaxed">
+                  Para ativar seu acesso completo, agende uma visita à sua UBS.
+                  É rápido e garante que sua equipe de saúde possa atendê-lo.
+                </p>
+                <button
+                  onClick={() => navigate('/paciente/agendamentos')}
+                  className="bg-amber-600 text-white font-bold px-5 py-2.5 rounded-xl text-sm active:scale-95 transition-transform shadow-md shadow-amber-600/25"
+                >
+                  Agendar agora
+                </button>
+              </div>
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* ── Card Hero: Proximo Agendamento ── */}
       {/* Exibido apenas quando ha um agendamento futuro reservado para destacar a proxima consulta sem scroll. */}
