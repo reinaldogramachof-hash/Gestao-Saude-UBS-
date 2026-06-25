@@ -483,6 +483,81 @@ router.get('/paciente/:id', async (req, res) => {
 });
 
 
+// ─── DELETE /api/gestor/paciente/:id/excluir ──────────────────────────────────
+// Soft delete restrito a admin. Anonimiza os dados sensíveis (LGPD) e inativa a conta.
+// Mantém as solicitações para preservar estatísticas.
+router.delete('/paciente/:id/excluir', requirePerfil(['admin']), async (req, res) => {
+  try {
+    const paciente = await knex('pacientes').where({ id: req.params.id }).first();
+    if (!paciente) return res.status(404).json({ error: 'Paciente não encontrado.' });
+
+    // Anonymize personal data
+    await knex('pacientes').where({ id: req.params.id }).update({
+      ativo: false,
+      nome: 'Paciente Inativo (Anonimizado)',
+      cpf: paciente.cpf ? `EXC_${paciente.id}_${paciente.cpf}`.substring(0, 14) : null,
+      cra: `EXC_${paciente.id}_${paciente.cra}`.substring(0, 20),
+      telefone: null,
+      email: null,
+      data_nascimento: '1900-01-01',
+      atualizado_em: knex.fn.now()
+    });
+
+    await registrarAuditoria(req, {
+      acao: 'paciente_excluir_soft',
+      entidade: 'pacientes',
+      entidade_id: paciente.id,
+      escopo_ubs_id: paciente.ubs_id,
+    });
+
+    return res.json({ message: 'Paciente inativado e anonimizado com sucesso.' });
+  } catch (err) {
+    console.error('[DELETE /gestor/paciente/:id/excluir]', err);
+    return res.status(500).json({ error: 'Erro ao inativar paciente.' });
+  }
+});
+
+// ─── PUT /api/gestor/paciente/:id/transferir ──────────────────────────────────
+// Transfere um paciente para outra UBS, atualizando o ubs_id do paciente e
+// movendo todas as suas solicitações para a nova UBS.
+router.put('/paciente/:id/transferir', requirePerfil(['admin']), async (req, res) => {
+  try {
+    const { nova_ubs_id } = req.body;
+    if (!nova_ubs_id) return res.status(400).json({ error: 'A nova UBS é obrigatória.' });
+
+    const paciente = await knex('pacientes').where({ id: req.params.id }).first();
+    if (!paciente) return res.status(404).json({ error: 'Paciente não encontrado.' });
+
+    await knex.transaction(async (trx) => {
+      // Move o paciente
+      await trx('pacientes').where({ id: req.params.id }).update({
+        ubs_id: nova_ubs_id,
+        atualizado_em: trx.fn.now()
+      });
+
+      // Move as solicitações
+      await trx('solicitacoes').where({ paciente_id: req.params.id }).update({
+        ubs_id: nova_ubs_id,
+        atualizado_em: trx.fn.now()
+      });
+    });
+
+    await registrarAuditoria(req, {
+      acao: 'paciente_transferir',
+      entidade: 'pacientes',
+      entidade_id: paciente.id,
+      escopo_ubs_id: nova_ubs_id,
+      metadata: { ubs_origem: paciente.ubs_id, ubs_destino: nova_ubs_id }
+    });
+
+    return res.json({ message: 'Paciente transferido com sucesso.' });
+  } catch (err) {
+    console.error('[PUT /gestor/paciente/:id/transferir]', err);
+    return res.status(500).json({ error: 'Erro ao transferir paciente.' });
+  }
+});
+
+
 // ─── PUT /api/gestor/solicitacao/:id/status ───────────────────────────────────
 // Atualiza o status de uma solicitação E registra a mudança no histórico.
 // O histórico é imutável — cada mudança cria um novo registro (nunca edita).
@@ -1278,6 +1353,7 @@ router.get('/dashboard/stats', async (req, res) => {
       medsIndisponiveis,
       atividadeRecente,
       encaminhamentosPendentes,
+      encaminhamentosRetorno, // ← NOVO: captura a contagem de retornos
     ] = await Promise.all([
       // COUNT de todos os pacientes ativos (modo matriz — sem filtro por UBS)
       knex('pacientes').where({ ativo: true }).count('id as total').first(),
@@ -1294,6 +1370,7 @@ router.get('/dashboard/stats', async (req, res) => {
         .join('pacientes', 'solicitacoes.paciente_id', 'pacientes.id')
         .select(
           'solicitacoes.id',
+          'solicitacoes.paciente_id', // ← BUG CRÍTICO FIX: Corrige navegação para o perfil do paciente
           'solicitacoes.descricao_paciente',
           'solicitacoes.status',
           'solicitacoes.atualizado_em',
@@ -1301,18 +1378,27 @@ router.get('/dashboard/stats', async (req, res) => {
         )
         .orderBy('solicitacoes.atualizado_em', 'desc')
         .limit(6),
-      // COUNT de encaminhamentos aguardando vaga
-      knex('encaminhamentos').where({ status: 'AGUARDANDO_VAGA' }).count('id as total').first(),
+      // GAP 1: COUNT de encaminhamentos ativos em trâmite na rede externa (aguardando vaga até agendado)
+      knex('encaminhamentos')
+        .whereIn('status', ['AGUARDANDO_VAGA', 'RECEBIDO', 'AGUARDANDO_CONFIRMACAO', 'CONFIRMADO_PACIENTE', 'AGENDADO'])
+        .count('id as total')
+        .first(),
+      // GAP 2: COUNT de encaminhamentos que já retornaram da rede externa e aguardam ação da UBS
+      knex('encaminhamentos')
+        .where({ status: 'RETORNO_UBS' })
+        .count('id as total')
+        .first(),
     ]);
 
     return res.json({
-      total_pacientes:           Number(totalPacientes.total),
-      em_analise:                Number(emAnalise.total),
-      autorizados:               Number(autorizados.total),
-      data_marcada:              Number(dataMarcada.total),
-      medicamentos_indisponiveis: Number(medsIndisponiveis.total),
-      encaminhamentos_pendentes: Number(encaminhamentosPendentes.total),
-      atividade_recente:         atividadeRecente,
+      total_pacientes:             Number(totalPacientes.total),
+      em_analise:                  Number(emAnalise.total),
+      autorizados:                 Number(autorizados.total),
+      data_marcada:                Number(dataMarcada.total),
+      medicamentos_indisponiveis:  Number(medsIndisponiveis.total),
+      encaminhamentos_pendentes:   Number(encaminhamentosPendentes.total),
+      retornos_ubs_pendentes:      Number(encaminhamentosRetorno.total), // ← NOVO
+      atividade_recente:           atividadeRecente,
     });
   } catch (err) {
     console.error('[GET /gestor/dashboard/stats]', err);
@@ -1813,7 +1899,8 @@ router.get('/encaminhamentos', async (req, res) => {
 //
 // Body: { paciente_id, destino, especialidade, prioridade, observacoes?, solicitacao_id? }
 // Prioridade: 'VERDE' | 'AMARELO' | 'VERMELHO'
-router.post('/encaminhamento', soNaoMedico, validateBody(encaminhamentoSchema), async (req, res) => {
+// Removido soNaoMedico para permitir que o médico realize encaminhamentos na consulta
+router.post('/encaminhamento', validateBody(encaminhamentoSchema), async (req, res) => {
   try {
     const { paciente_id, destino, especialidade, prioridade, observacoes, solicitacao_id } = req.body;
 
@@ -1916,7 +2003,8 @@ router.post('/encaminhamento', soNaoMedico, validateBody(encaminhamentoSchema), 
 //   - Só permite alterar encaminhamentos da própria UBS do gestor
 //
 // Body: { status_novo, data_agendamento?, observacoes? }
-router.put('/encaminhamento/:id/status', soNaoMedico, async (req, res) => {
+// Removido soNaoMedico para permitir que o médico atualize o status de encaminhamentos na consulta
+router.put('/encaminhamento/:id/status', async (req, res) => {
   try {
     const { status_novo, data_agendamento, observacoes } = req.body;
 

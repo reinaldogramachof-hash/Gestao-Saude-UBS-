@@ -286,6 +286,24 @@ export default function PainelMedico() {
   // Opções: 'dados' (dados clínicos), 'solicitacoes' (pedidos de exames), 'linha_do_tempo' (evolução)
   const [abaAtiva, setAbaAtiva] = useState('dados');
 
+  // Estados para Criação de Solicitações Clínicas e Encaminhamentos
+  const [modalSolicitacaoAberto, setModalSolicitacaoAberto] = useState(false);
+  const [enviandoSolicitacao, setEnviandoSolicitacao] = useState(false);
+  const [formSolicitacao, setFormSolicitacao] = useState({
+    tipo: 'exame',
+    descricao_interna: '',
+    descricao_paciente: '',
+    prioridade: 'rotina',
+    data_prevista: '',
+    local_executor: '',
+    catalogo_id: null,
+    unidade_externa_id: null,
+  });
+  const [catalogoSugestoes, setCatalogoSugestoes] = useState([]);
+  const [unidadesExternas, setUnidadesExternas] = useState([]);
+  const [buscaCatalogo, setBuscaCatalogo] = useState('');
+  const [mostrarSugestoes, setMostrarSugestoes] = useState(false);
+
   // Estados do Dashboard
   const [agendamentosDoDia, setAgendamentosDoDia] = useState([]);
   const [loadingAgenda, setLoadingAgenda] = useState(false);
@@ -310,6 +328,13 @@ export default function PainelMedico() {
     }
     carregarAgenda();
   }, [user]);
+
+  // Carrega a lista de unidades externas no mount da página para combos de encaminhamento
+  useEffect(() => {
+    api.get('/gestor/unidades-externas')
+      .then(r => setUnidadesExternas(r.data))
+      .catch(err => console.error('[PainelMedico] Erro ao carregar unidades externas:', err));
+  }, []);
 
   // ── Funções Clínicas: Evolução (Atendimentos) ──
   const resetFormAtendimento = () => {
@@ -469,6 +494,45 @@ export default function PainelMedico() {
     }
   };
 
+  // ── Funções Clínicas: Criação de Novas Solicitações e Encaminhamentos ──
+  // Abre o modal de nova solicitação redefinindo o formulário de entrada para o padrão
+  const abrirModalNovaSolicitacao = () => {
+    setFormSolicitacao({
+      tipo: 'exame',
+      descricao_interna: '',
+      descricao_paciente: '',
+      prioridade: 'rotina',
+      data_prevista: '',
+      local_executor: '',
+      catalogo_id: null,
+      unidade_externa_id: null,
+    });
+    setBuscaCatalogo('');
+    setCatalogoSugestoes([]);
+    setModalSolicitacaoAberto(true);
+  };
+
+  // Envia os dados de criação de solicitação e encaminhamento integrado para o backend
+  const handleSalvarSolicitacao = async (e) => {
+    e.preventDefault();
+    setEnviandoSolicitacao(true);
+    try {
+      await api.post(`/gestor/paciente/${pacienteAtivo.id}/solicitacao`, {
+        ...formSolicitacao,
+        data_solicitacao: new Date().toISOString().split('T')[0],
+      });
+      toast.success('Solicitação criada com sucesso!');
+      setModalSolicitacaoAberto(false);
+      // Recarrega o prontuário completo do paciente para atualizar os cards de exames/procedimentos
+      carregarPerfil(pacienteAtivo.id);
+    } catch (err) {
+      console.error('[PainelMedico] Erro ao salvar solicitação:', err);
+      toast.error('Erro ao criar solicitação. Verifique os campos obrigatórios.');
+    } finally {
+      setEnviandoSolicitacao(false);
+    }
+  };
+
   // Trata a busca de pacientes por CRA ou Nome
   const handleBusca = async (e) => {
     e.preventDefault();
@@ -583,7 +647,7 @@ export default function PainelMedico() {
           Painel Médico
         </h1>
         <p className="text-on-surface-variant font-semibold text-sm mt-1">
-          Busca e consulta integrada de histórico clínico de pacientes em modo de leitura protegida.
+          Busca, consulta e atendimento integrado de pacientes, com registro de evoluções, solicitações e encaminhamentos em tempo real.
         </p>
       </div>
 
@@ -924,11 +988,23 @@ export default function PainelMedico() {
               ════════════════════════════════════════════════════════════════ */}
           {abaAtiva === 'solicitacoes' && (
             <div className="space-y-6">
-              {/* Solicitações Ativas na Fila */}
-              <div>
-                <h3 className="text-sm font-extrabold text-on-surface-variant uppercase tracking-wider mb-4 select-none">
+              {/* Cabeçalho de Ações da Aba de Solicitações com botão premium de adição */}
+              <div className="flex items-center justify-between gap-4 select-none">
+                <h3 className="text-sm font-extrabold text-on-surface-variant uppercase tracking-wider">
                   Solicitações Ativas
                 </h3>
+                <button
+                  type="button"
+                  onClick={abrirModalNovaSolicitacao}
+                  className="h-10 px-4 md:h-12 md:px-6 bg-primary text-white font-bold rounded-xl md:rounded-2xl shadow-md shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all flex items-center gap-2 text-sm"
+                >
+                  <span className="material-symbols-outlined text-lg">add</span>
+                  Nova Solicitação
+                </button>
+              </div>
+
+              {/* Solicitações Ativas na Fila */}
+              <div>
                 {solicitacoesAtivas.length > 0 ? (
                   <div className="space-y-4">
                     {solicitacoesAtivas.map((sol) => (
@@ -1373,6 +1449,155 @@ export default function PainelMedico() {
                 <button type="button" onClick={() => setModalStatusAberto(false)} className="flex-1 h-12 rounded-2xl border border-outline font-bold">Cancelar</button>
                 <button type="submit" disabled={enviandoStatus} className="flex-1 h-12 rounded-2xl bg-primary text-white font-bold disabled:opacity-50">
                   {enviandoStatus ? 'Salvando...' : 'Confirmar e Salvar'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ── Modal: Nova Solicitação Clínica / Encaminhamento Externo ── */}
+      {modalSolicitacaoAberto && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fade-in">
+          <div className="absolute inset-0 bg-on-surface/40 backdrop-blur-sm" onClick={() => setModalSolicitacaoAberto(false)} />
+          <div className="relative w-full max-w-3xl bg-surface-container-lowest rounded-[2rem] shadow-2xl overflow-hidden max-h-[90vh] flex flex-col z-10">
+            <header className="p-6 md:p-8 border-b border-surface-variant flex justify-between items-center flex-shrink-0 select-none">
+              <h3 className="text-xl font-extrabold">Nova Solicitação Clínica / Encaminhamento</h3>
+              <button onClick={() => setModalSolicitacaoAberto(false)} className="w-10 h-10 rounded-full hover:bg-surface-container-low flex items-center justify-center">
+                <span className="material-symbols-outlined">close</span>
+              </button>
+            </header>
+            <form onSubmit={handleSalvarSolicitacao} className="p-6 md:p-8 space-y-5 overflow-y-auto">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-bold text-on-surface-variant">Tipo de Solicitação*</label>
+                  <select required value={formSolicitacao.tipo} onChange={e => setFormSolicitacao(p => ({ ...p, tipo: e.target.value }))}
+                    className="w-full h-12 px-4 bg-surface-container-high border-none rounded-xl outline-none font-medium">
+                    <option value="exame">Exame</option>
+                    <option value="consulta">Consulta Especializada</option>
+                    <option value="procedimento">Procedimento</option>
+                    <option value="cirurgia">Cirurgia</option>
+                  </select>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-bold text-on-surface-variant">Grau de Prioridade</label>
+                  <select value={formSolicitacao.prioridade} onChange={e => setFormSolicitacao(p => ({ ...p, prioridade: e.target.value }))}
+                    className="w-full h-12 px-4 bg-surface-container-high border-none rounded-xl outline-none font-medium">
+                    <option value="rotina">Rotina (Baixa)</option>
+                    <option value="prioritario">Prioritário (Média)</option>
+                    <option value="urgente">Urgente (Alta)</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Combobox com autocomplete do catálogo de procedimentos */}
+              <div className="space-y-2 relative">
+                <label className="text-sm font-bold text-on-surface-variant">
+                  Procedimento / Especialidade (Busca no Catálogo)*
+                </label>
+                <input
+                  required
+                  placeholder="Ex: Hemograma completo, Ortopedia, Tomografia... busque ou escreva"
+                  value={buscaCatalogo}
+                  onChange={async (e) => {
+                    const val = e.target.value;
+                    setBuscaCatalogo(val);
+                    setFormSolicitacao(p => ({ ...p, descricao_interna: val, catalogo_id: null }));
+                    if (val.length >= 2) {
+                      try {
+                        const { data } = await api.get(`/gestor/catalogo-procedimentos?q=${encodeURIComponent(val)}`);
+                        setCatalogoSugestoes(data);
+                        setMostrarSugestoes(true);
+                      } catch { setCatalogoSugestoes([]); }
+                    } else {
+                      setMostrarSugestoes(false);
+                    }
+                  }}
+                  onBlur={() => setTimeout(() => setMostrarSugestoes(false), 150)}
+                  onFocus={() => { if (catalogoSugestoes.length > 0) setMostrarSugestoes(true); }}
+                  className="w-full h-12 px-4 bg-surface-container-high border-none rounded-xl outline-none font-medium"
+                />
+                {/* Dropdown de sugestões */}
+                {mostrarSugestoes && catalogoSugestoes.length > 0 && (
+                  <div className="absolute z-50 top-full left-0 right-0 bg-surface-container-lowest border border-surface-variant rounded-xl shadow-lg max-h-48 overflow-y-auto mt-1">
+                    {catalogoSugestoes.map(item => (
+                      <button
+                        key={item.id}
+                        type="button"
+                        onMouseDown={() => {
+                          setBuscaCatalogo(item.nome);
+                          setFormSolicitacao(p => ({
+                            ...p,
+                            descricao_interna: item.nome,
+                            catalogo_id: item.id,
+                          }));
+                          setMostrarSugestoes(false);
+                        }}
+                        className="w-full text-left px-4 py-3 hover:bg-surface-container-low text-sm border-b border-surface-variant last:border-0 font-semibold"
+                      >
+                        <span className="font-bold text-on-background">{item.nome}</span>
+                        {item.especialidade && (
+                          <span className="text-xs text-on-surface-variant ml-2">— {item.especialidade}</span>
+                        )}
+                        {item.tipo_unidade && (
+                          <span className="text-xs font-bold text-primary ml-2 bg-primary/10 px-1.5 py-0.5 rounded uppercase">
+                            {item.tipo_unidade}
+                          </span>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-bold text-on-surface-variant">Explicação Simplificada para o Paciente*</label>
+                <input required placeholder="Ex: Retorno clínico ou orientações do exame em linguagem simples" value={formSolicitacao.descricao_paciente}
+                  onChange={e => setFormSolicitacao(p => ({ ...p, descricao_paciente: e.target.value }))}
+                  className="w-full h-12 px-4 bg-surface-container-high border-none rounded-xl outline-none font-medium" />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-bold text-on-surface-variant">Data Prevista (Opcional)</label>
+                  <input type="date" value={formSolicitacao.data_prevista} onChange={e => setFormSolicitacao(p => ({ ...p, data_prevista: e.target.value }))}
+                    className="w-full h-12 px-4 bg-surface-container-high border-none rounded-xl outline-none font-medium" />
+                </div>
+
+                {/* Local de atendimento / Unidade Externa */}
+                <div className="space-y-2">
+                  <label className="text-sm font-bold text-on-surface-variant">
+                    Unidade Destino (Encaminhamento CROSS/Externo)
+                  </label>
+                  <select
+                    value={formSolicitacao.unidade_externa_id ?? ''}
+                    onChange={e => {
+                      const val = e.target.value ? Number(e.target.value) : null;
+                      const unidade = unidadesExternas.find(u => u.id === val);
+                      setFormSolicitacao(p => ({
+                        ...p,
+                        unidade_externa_id: val,
+                        local_executor: unidade ? unidade.nome : '',
+                      }));
+                    }}
+                    className="w-full h-12 px-4 bg-surface-container-high border-none rounded-xl outline-none font-medium"
+                  >
+                    <option value="">Na própria UBS (Interno)</option>
+                    {unidadesExternas.map(u => (
+                      <option key={u.id} value={u.id}>{u.nome} ({u.tipo})</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              
+              <p className="text-xs text-on-surface-variant italic">
+                Nota: Se uma Unidade Destino externa for selecionada, o sistema realizará automaticamente o encaminhamento regulado (CROSS) para a fila da regulação externa.
+              </p>
+
+              <div className="flex gap-3 pt-2 select-none">
+                <button type="button" onClick={() => setModalSolicitacaoAberto(false)} className="flex-1 h-12 rounded-2xl border border-outline font-bold">Cancelar</button>
+                <button type="submit" disabled={enviandoSolicitacao} className="flex-1 h-12 rounded-2xl bg-primary text-white font-bold disabled:opacity-50">
+                  {enviandoSolicitacao ? 'Criando Solicitação...' : 'Confirmar e Criar'}
                 </button>
               </div>
             </form>
