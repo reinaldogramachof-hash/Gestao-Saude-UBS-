@@ -198,7 +198,14 @@ router.get('/todas-solicitacoes', async (req, res) => {
   try {
     const solicitacoes = await knex('solicitacoes')
       .where({ paciente_id: req.user.id })
-      .select(CAMPOS_SOLICITACAO_PACIENTE)
+      .select([
+        ...CAMPOS_SOLICITACAO_PACIENTE,
+        knex.raw(`
+          (SELECT status FROM encaminhamentos
+           WHERE solicitacao_id = solicitacoes.id
+           ORDER BY id DESC LIMIT 1) AS encaminhamento_status
+        `)
+      ])
       .orderByRaw(`
         CASE status
           WHEN 'concluido'  THEN 2

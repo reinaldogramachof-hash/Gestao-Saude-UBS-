@@ -294,12 +294,19 @@ router.put('/encaminhamento/:id/concluir', validateBody(feedbackSchema), async (
             atualizado_em: trx.fn.now(),
           });
 
+        // GAP 2B: Define o status e a observação amigáveis (linguagem simples) para a timeline do paciente.
+        // O status_novo visual vira 'retorno_ubs_pendente' (cancelamento) ou 'retorno_ubs_concluido' (conclusão normal).
+        const statusNovoHistorico = ehCancelamento ? 'retorno_ubs_pendente' : 'retorno_ubs_concluido';
+        const observacaoHistorico = ehCancelamento
+          ? 'Seu encaminhamento foi devolvido pela unidade externa. Sua UBS irá reavaliá-lo em breve.'
+          : `Seu atendimento foi realizado com sucesso. Conduta: ${req.body.feedback_conduta}`;
+
         await trx('historico_status').insert({
           solicitacao_id: encaminhamento.solicitacao_id,
           gestor_id:      null, // Ação disparada pela Unidade Externa
           status_anterior: solicitacao?.status || null,
-          status_novo:     statusNovoSolicitacao,
-          observacao:     `[Retorno Rede Externa - ${req.body.feedback_tipo}] Conduta: ${req.body.feedback_conduta}`,
+          status_novo:     statusNovoHistorico,
+          observacao:     observacaoHistorico,
         });
       }
     });
@@ -328,6 +335,33 @@ router.put('/encaminhamento/:id/concluir', validateBody(feedbackSchema), async (
       entidade: 'encaminhamentos',
       entidade_id: encaminhamento.id
     });
+
+    // GAP 1: Verifica prioridade urgente para disparo de alerta imediato ao gestor e push ao paciente
+    if (encaminhamento.solicitacao_id && !ehCancelamento) {
+      const solicitacaoRetorno = await knex('solicitacoes')
+        .where({ id: encaminhamento.solicitacao_id })
+        .select('prioridade', 'id')
+        .first();
+
+      if (solicitacaoRetorno?.prioridade === 'urgente') {
+        // Dispara alerta vermelho pulsante no sino do gestor com rota para agendamentos
+        await gestorNotificationService.criarNotificacao(encaminhamento.ubs_id, {
+          tipo_evento: 'urgencia_escalada',
+          titulo: 'Retorno URGENTE — Agendar imediatamente',
+          mensagem: `Paciente #${encaminhamento.paciente_id} retornou da rede externa com prioridade URGENTE. Providencie agendamento imediato na UBS.`,
+          rota_destino: '/agendamentos',
+          entidade: 'encaminhamentos',
+          entidade_id: encaminhamento.id
+        });
+
+        // Push direto ao paciente urgente informando que ele deve retornar à UBS
+        pushService.enviar(encaminhamento.paciente_id, 'paciente', {
+          titulo: 'Retorno à sua UBS necessário',
+          corpo:  'Seu atendimento externo foi concluído. Por ser prioritário, sua UBS irá agendar seu retorno em breve. Fique atento ao portal.',
+          url:    `/paciente/solicitacao/${encaminhamento.solicitacao_id}`,
+        }).catch(() => {});
+      }
+    }
 
     // Notifica o paciente de acordo com o resultado real do procedimento externo.
     // Feito fora da transação — falha no push não desfaz a gravação dos dados.

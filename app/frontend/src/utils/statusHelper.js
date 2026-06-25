@@ -16,6 +16,8 @@ export const STATUS_LABELS = {
   cancelado:             'Cancelado',
   // Evento especial: prioridade elevada para urgente pela equipe gestora
   urgente_escalado:      'Pedido escalado para urgente pela equipe',
+  retorno_ubs_pendente:  'Retornando para reavaliação na UBS',
+  retorno_ubs_concluido: 'Atendimento externo finalizado',
 };
 
 export const STATUS_CORES = {
@@ -28,6 +30,8 @@ export const STATUS_CORES = {
   cancelado:             'bg-gray-100 text-gray-500',
   // Cor vermelha para reforçar a urgência na timeline do paciente
   urgente_escalado:      'bg-red-100 text-red-800',
+  retorno_ubs_pendente:  'bg-orange-100 text-orange-800',
+  retorno_ubs_concluido: 'bg-green-100 text-green-800',
 };
 
 // ─────────────────────────────────────────────────────────────────────────────

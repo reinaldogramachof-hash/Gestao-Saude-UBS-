@@ -30,7 +30,24 @@ export default function DetalheSolicitacao() {
       .finally(() => setLoading(false));
   };
 
-  useEffect(() => { carregar(); }, [id]);
+  useEffect(() => {
+    // Carga inicial: exibe o skeleton de carregamento animado
+    carregar();
+  }, [id]);
+
+  useEffect(() => {
+    // Polling silencioso: consulta a API em segundo plano a cada 20 segundos
+    // para atualizar a timeline sem reverter para o estado de loading
+    if (!sol) return; // não inicia o intervalo antes que a carga inicial preencha os dados
+
+    const intervalo = setInterval(() => {
+      api.get(`/paciente/solicitacao/${id}`)
+        .then(r => setSol(r.data))
+        .catch(() => {}); // falha silenciosa em caso de perda temporária de rede
+    }, 20000);
+
+    return () => clearInterval(intervalo);
+  }, [id, sol?.id]); // depende de sol?.id para iniciar estritamente após a carga inicial
 
   // Skeleton de carregamento enquanto aguarda a API
   if (loading) {
@@ -107,7 +124,7 @@ export default function DetalheSolicitacao() {
         </div>
 
         {/* ── Seção de Encaminhamento Externo (se houver agendamento) ── */}
-        {sol.encaminhamento && (sol.encaminhamento.data_agendamento || sol.encaminhamento.data_procedimento_unidade) && (
+        {sol.encaminhamento && sol.encaminhamento.data_procedimento_unidade && (
           <div className="mb-8 bg-surface-container-low border border-surface-variant rounded-2xl p-5 shadow-sm">
             <h3 className="text-sm font-extrabold text-on-background uppercase tracking-wider mb-4 flex items-center gap-2">
               <span className="material-symbols-outlined text-primary text-xl">share_location</span>
@@ -123,7 +140,7 @@ export default function DetalheSolicitacao() {
               <div>
                 <p className="text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-1">Data e Horário</p>
                 <p className="font-bold text-on-background">
-                  {formatarDataBR(sol.encaminhamento.data_agendamento || sol.encaminhamento.data_procedimento_unidade)}
+                  {formatarDataBR(sol.encaminhamento.data_procedimento_unidade)}
                 </p>
               </div>
 

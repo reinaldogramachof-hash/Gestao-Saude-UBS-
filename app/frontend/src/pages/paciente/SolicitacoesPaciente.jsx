@@ -24,8 +24,41 @@ const FLUXO = [
   'aguardando_regulacao',
   'autorizado',
   'data_marcada',
+  'encaminhado_externo',   // fase virtual — não existe em solicitacoes.status
+  'retorno_ubs',           // fase virtual — não existe em solicitacoes.status
   'concluido',
 ];
+
+const FLUXO_LABELS = [
+  'Análise',
+  'Regulação',
+  'Autorizado',
+  'Agendado',
+  'Na unidade',
+  'Retorno',
+  'Concluído',
+];
+
+// Mapeia o status real + encaminhamento_status para a posição no FLUXO estendido
+function calcularPosicaoFluxo(sol) {
+  if (sol.status === 'concluido') return 6;
+  if (sol.status === 'cancelado') return -1; // stepper oculto
+
+  // Se tem encaminhamento externo, reflete a fase real
+  const encStatus = sol.encaminhamento_status;
+  if (encStatus === 'RETORNO_UBS') return 5;
+  if (['AGUARDANDO_CONFIRMACAO', 'CONFIRMADO_PACIENTE', 'AGENDADO'].includes(encStatus)) return 4;
+  if (['AGUARDANDO_VAGA', 'RECEBIDO'].includes(encStatus)) return 4;
+
+  // Sem encaminhamento — usa posição normal no fluxo original
+  const mapa = {
+    'em_analise': 0,
+    'aguardando_regulacao': 1,
+    'autorizado': 2,
+    'data_marcada': 3,
+  };
+  return mapa[sol.status] ?? 0;
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // COMPONENTE: CardSolicitacao
@@ -73,28 +106,47 @@ function CardSolicitacao({ sol, navigate }) {
           <span className="text-[11px] font-extrabold text-on-surface-variant/80">{formatarDataBR(sol.atualizado_em || sol.criado_em)}</span>
         </div>
       </div>
-      {/* Mini-stepper de progresso da solicitacao */}
+      {/* Mini-stepper de progresso da solicitacao estendido */}
       {(() => {
-        const idx = FLUXO.indexOf(sol.status);
-        if (sol.status === 'cancelado') return null;
+        const idx = calcularPosicaoFluxo(sol);
+        if (idx === -1) return null;
         return (
-          <div className="flex items-center gap-1 mb-2">
-            {FLUXO.map((etapa, i) => (
-              <div key={etapa} className="flex items-center gap-1 flex-1">
-                <div
-                  className={`w-2.5 h-2.5 rounded-full flex-shrink-0 transition-colors ${
-                    i < idx
-                      ? 'bg-primary'
-                      : i === idx
-                      ? 'bg-primary ring-2 ring-primary/30'
-                      : 'bg-surface-container-high'
+          <div className="mb-4">
+            <div className="flex items-center gap-1">
+              {FLUXO.map((etapa, i) => (
+                <div key={etapa} className="flex items-center gap-1 flex-1">
+                  <div
+                    className={`w-2.5 h-2.5 rounded-full flex-shrink-0 transition-colors ${
+                      i < idx
+                        ? 'bg-primary'
+                        : i === idx
+                        ? 'bg-primary ring-2 ring-primary/30'
+                        : 'bg-surface-container-high'
+                    }`}
+                  />
+                  {i < FLUXO.length - 1 && (
+                    <div className={`h-0.5 flex-1 ${i < idx ? 'bg-primary' : 'bg-surface-container-high'}`} />
+                  )}
+                </div>
+              ))}
+            </div>
+            {/* Labels visuais com fonte de 7px para caber perfeitamente no mobile */}
+            <div className="flex justify-between mt-1 px-[2px]">
+              {FLUXO_LABELS.map((label, i) => (
+                <span
+                  key={i}
+                  className={`text-[7px] font-bold leading-none select-none transition-colors w-[42px] text-center ${
+                    i === idx
+                      ? 'text-primary font-extrabold'
+                      : i < idx
+                      ? 'text-on-surface-variant'
+                      : 'text-on-surface-variant/40'
                   }`}
-                />
-                {i < FLUXO.length - 1 && (
-                  <div className={`h-0.5 flex-1 ${i < idx ? 'bg-primary' : 'bg-surface-container-high'}`} />
-                )}
-              </div>
-            ))}
+                >
+                  {label}
+                </span>
+              ))}
+            </div>
           </div>
         );
       })()}
