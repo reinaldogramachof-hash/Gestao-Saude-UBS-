@@ -260,12 +260,12 @@ export default function DashboardGestor() {
         <div className="flex items-center justify-between mb-5 flex-wrap gap-4">
           <div className="flex items-center gap-4">
             <div className={`w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0 border transition-all duration-300 ${
-              stats?.encaminhamentos_pendentes > 0 
+              stats?.encaminhamentos_pendentes > 0 || stats?.retornos_ubs_pendentes > 0
                 ? 'bg-amber-500/15 text-amber-800 border-amber-500/20 animate-pulse' 
                 : 'bg-emerald-500/15 text-emerald-800 border-emerald-500/20'
             }`}>
               <span className="material-symbols-outlined">
-                {stats?.encaminhamentos_pendentes > 0 ? 'warning' : 'check_circle'}
+                {stats?.encaminhamentos_pendentes > 0 || stats?.retornos_ubs_pendentes > 0 ? 'warning' : 'check_circle'}
               </span>
             </div>
             <div>
@@ -273,15 +273,35 @@ export default function DashboardGestor() {
               <p className="text-sm text-on-surface-variant font-semibold">Regulação com Hospitais, CAPS e AMEs</p>
             </div>
           </div>
-          <div className="text-right">
-            <span className={`text-3xl font-black ${
-              stats?.encaminhamentos_pendentes > 0 ? 'text-amber-600' : 'text-emerald-600'
-            }`}>
-              {stats?.encaminhamentos_pendentes || 0}
-            </span>
-            <div className="text-[10px] font-extrabold text-on-surface-variant/80 uppercase tracking-widest mt-0.5">
-              Fila de Encaminhamento
+          <div className="text-right flex flex-col items-end gap-2">
+            {/* Encaminhamentos ativos na rede */}
+            <div>
+              <span className={`text-3xl font-black ${
+                stats?.encaminhamentos_pendentes > 0 ? 'text-amber-600' : 'text-emerald-600'
+              }`}>
+                {stats?.encaminhamentos_pendentes || 0}
+              </span>
+              <div className="text-[10px] font-extrabold text-on-surface-variant/80 uppercase tracking-widest mt-0.5">
+                Em andamento na rede
+              </div>
             </div>
+
+            {/* Retornos aguardando ação — só aparece quando há retornos */}
+            {stats?.retornos_ubs_pendentes > 0 && (
+              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-orange-500/10 border border-orange-500/20">
+                <span className="material-symbols-outlined text-orange-700 text-base animate-pulse">
+                  assignment_return
+                </span>
+                <div>
+                  <span className="text-lg font-black text-orange-700">
+                    {stats.retornos_ubs_pendentes}
+                  </span>
+                  <span className="text-[10px] font-extrabold text-orange-700/80 uppercase tracking-widest ml-1.5">
+                    Retorno aguardando UBS
+                  </span>
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
