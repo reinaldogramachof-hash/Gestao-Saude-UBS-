@@ -21,6 +21,7 @@ import api from '../../services/api';
 // formatarDataBR: corrige bug de fuso horário em strings de data sem horário (UTC-3)
 import { formatarDataBR } from '../../utils/statusHelper';
 import GestorLayout from '../../components/gestor/GestorLayout';
+import { useAuth } from '../../contexts/AuthContext';
 
 // Mapa de cores e classes de estilo de alta fidelidade para cada status de solicitação.
 // Cada chave mapeia um objeto contendo a classe do contêiner (translúcida e com borda fina)
@@ -283,6 +284,7 @@ function CardSolicitacao({
 export default function PerfilPaciente() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [paciente, setPaciente] = useState(null);
   const [loading, setLoading] = useState(true);
   const [modalSolicitacaoAberto, setModalSolicitacaoAberto] = useState(false);
@@ -339,6 +341,13 @@ export default function PerfilPaciente() {
   // ── Estado da aba ativa (navegação por tabs) ──
   // Valores: 'dados' | 'solicitacoes' | 'linha_do_tempo'
   const [abaAtiva, setAbaAtiva] = useState('dados');
+
+  // ── Estados para Excluir / Transferir Paciente (Admin) ──
+  const [modalTransferirAberto, setModalTransferirAberto] = useState(false);
+  const [transferindo, setTransferindo] = useState(false);
+  const [novaUbsId, setNovaUbsId] = useState('');
+  const [listaUbs, setListaUbs] = useState([]);
+  const [excluindo, setExcluindo] = useState(false);
 
   const carregarPaciente = () => {
     setLoading(true);
@@ -584,6 +593,57 @@ export default function PerfilPaciente() {
     }
   };
 
+  // ── FUNÇÕES ADMIN: Transferir e Excluir Paciente ──
+  const carregarListaUbs = async () => {
+    try {
+      // Endpoint que retorna lista de UBS (assumindo que existe /externa/ubs ou /gestor/ubs)
+      // Como o paciente e o gestor já consultam UBSs, o endpoint externo é público
+      const res = await api.get('/externa/ubs');
+      setListaUbs(res.data);
+    } catch {
+      toast.error('Erro ao carregar lista de UBS.');
+    }
+  };
+
+  const abrirModalTransferir = () => {
+    carregarListaUbs();
+    setNovaUbsId('');
+    setModalTransferirAberto(true);
+  };
+
+  const handleTransferirPaciente = async (e) => {
+    e.preventDefault();
+    if (!novaUbsId || novaUbsId == paciente.ubs_id) {
+      toast.error('Selecione uma UBS diferente da atual.');
+      return;
+    }
+    setTransferindo(true);
+    try {
+      await api.put(`/gestor/paciente/${id}/transferir`, { nova_ubs_id });
+      toast.success('Paciente transferido com sucesso!');
+      setModalTransferirAberto(false);
+      navigate('/gestor/pacientes'); // Volta pra lista, pois ele não é mais desta UBS
+    } catch {
+      toast.error('Erro ao transferir paciente.');
+    } finally {
+      setTransferindo(false);
+    }
+  };
+
+  const handleExcluirPaciente = async () => {
+    if (!window.confirm('ATENÇÃO: A exclusão inativará este paciente e mascarará seus dados pessoais (LGPD). Confirma?')) return;
+    if (!window.confirm('Tem certeza absoluta? Esta ação não pode ser desfeita.')) return;
+    setExcluindo(true);
+    try {
+      await api.delete(`/gestor/paciente/${id}/excluir`);
+      toast.success('Paciente inativado e anonimizado com sucesso.');
+      navigate('/gestor/pacientes');
+    } catch {
+      toast.error('Erro ao excluir paciente.');
+      setExcluindo(false);
+    }
+  };
+
   if (loading) {
     return (
       <GestorLayout>
@@ -642,6 +702,29 @@ export default function PerfilPaciente() {
             </div>
           </div>
         </div>
+
+        {/* ── Botões Admin ── */}
+        {user?.perfil === 'admin' && (
+          <div className="flex gap-2 w-full md:w-auto mt-4 md:mt-0">
+            <button
+              onClick={abrirModalTransferir}
+              className="flex-1 md:flex-none flex items-center justify-center gap-1.5 px-4 py-2 bg-primary/10 text-primary border border-primary/20 rounded-xl font-bold text-sm hover:bg-primary/20 transition-colors shadow-sm"
+              title="Transferir paciente para outra UBS"
+            >
+              <span className="material-symbols-outlined text-[18px]">swap_horiz</span>
+              Transferir
+            </button>
+            <button
+              onClick={handleExcluirPaciente}
+              disabled={excluindo}
+              className="flex-1 md:flex-none flex items-center justify-center gap-1.5 px-4 py-2 bg-red-500/10 text-red-700 border border-red-500/20 rounded-xl font-bold text-sm hover:bg-red-500/20 disabled:opacity-50 transition-colors shadow-sm"
+              title="Inativar e anonimizar paciente"
+            >
+              <span className="material-symbols-outlined text-[18px]">delete_forever</span>
+              {excluindo ? 'Inativando...' : 'Excluir'}
+            </button>
+          </div>
+        )}
       </div>
 
       {/* ── Abas de Navegação Premium (Pílula Deslizante) ── */}
@@ -1468,6 +1551,50 @@ export default function PerfilPaciente() {
           </div>
         </div>
       )}
+
+      {/* ── MODAL: Transferir Paciente (Admin) ── */}
+      {modalTransferirAberto && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4">
+          <div className="bg-surface-container-lowest w-full max-w-sm rounded-3xl p-6 shadow-xl animate-scale-up">
+            <h2 className="text-xl font-black text-on-background">Transferir Paciente</h2>
+            <p className="text-sm font-medium text-on-surface-variant mt-1">
+              Selecione a nova UBS de destino. O paciente e todas as suas solicitações ativas serão movidos.
+            </p>
+
+            <form onSubmit={handleTransferirPaciente} className="mt-6 space-y-4">
+              <div className="space-y-2">
+                <label className="text-sm font-bold text-on-surface-variant">Nova UBS</label>
+                <select
+                  value={novaUbsId}
+                  onChange={e => setNovaUbsId(e.target.value)}
+                  className="w-full h-12 px-4 bg-surface-container-high border-none rounded-xl outline-none font-medium text-on-surface"
+                  required
+                >
+                  <option value="">Selecione...</option>
+                  {listaUbs.map(ubs => (
+                    <option key={ubs.id} value={ubs.id} disabled={ubs.id == paciente.ubs_id}>
+                      {ubs.nome} {ubs.id == paciente.ubs_id ? '(Atual)' : ''}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Botões */}
+              <div className="flex gap-3 pt-2">
+                <button type="button" onClick={() => setModalTransferirAberto(false)}
+                  className="flex-1 h-12 rounded-2xl border border-outline font-bold text-on-surface hover:bg-surface-container-low transition-colors">
+                  Cancelar
+                </button>
+                <button type="submit" disabled={transferindo || !novaUbsId}
+                  className="flex-1 h-12 rounded-2xl bg-primary text-white font-bold hover:bg-primary-dark transition-colors disabled:opacity-50">
+                  {transferindo ? 'Transferindo...' : 'Transferir'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
     </GestorLayout>
   );
 }

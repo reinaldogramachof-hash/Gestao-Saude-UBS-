@@ -11,6 +11,7 @@
  *   /api/gestor/*   → rotas protegidas do Portal do Gestor (exige JWT tipo gestor)
  *   /api/paciente/* → rotas protegidas do Portal do Paciente (exige JWT tipo paciente)
  *   /api/ping       → rota de teste de saúde da API
+ *   /health         → alias público para monitoramento externo
  * ─────────────────────────────────────────────────────────────────────────────
  */
 const express = require('express');
@@ -93,6 +94,20 @@ app.use(express.json({ limit: '100kb' }));   // Permite JSON no corpo sem aceita
 // Útil para monitorar se a API está no ar sem precisar autenticar
 app.get('/api/ping', (req, res) => {
   res.json({ status: 'ok', message: 'API Gestão Saúde UBS+ funcionando!' });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ROTA: GET /health
+// FUNÇÃO: Disponibiliza um endpoint público e estável para serviços de
+//         monitoramento externo, sem exigir autenticação e sem expor dados
+//         internos do sistema.
+// ─────────────────────────────────────────────────────────────────────────────
+app.get('/health', (req, res) => {
+  res.status(200).json({
+    status: 'ok',
+    message: 'API Gestão Saúde UBS+ funcionando!',
+    timestamp: new Date().toISOString(),
+  });
 });
 
 // ─── Rotas públicas (sem autenticação) ───────────────────────────────────────

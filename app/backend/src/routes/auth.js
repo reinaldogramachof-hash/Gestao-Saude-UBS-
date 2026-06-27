@@ -119,7 +119,7 @@ router.post('/login-paciente', loginRateLimiter, validateBody(loginPacienteSchem
     const { cra, data_nascimento } = req.body;
 
     const paciente = await knex('pacientes')
-      .where({ cra, ativo: true })
+      .where({ cra })
       .whereRaw('data_nascimento = ?', [data_nascimento])
       .first();
 
@@ -138,6 +138,7 @@ router.post('/login-paciente', loginRateLimiter, validateBody(loginPacienteSchem
       nome: paciente.nome,
       ubs_id: paciente.ubs_id,
       tipo: 'paciente',
+      ativo: paciente.ativo,
       token_version: paciente.token_version || 0,
     };
 
@@ -290,9 +291,9 @@ router.post('/cadastro-paciente', cadastroRateLimiter, async (req, res) => {
         data_nascimento,
         telefone: telefone || null,
         email: email || null,
-        ativo: true,
+        ativo: false,
       })
-      .returning(['id', 'cra', 'nome', 'ubs_id']);
+      .returning(['id', 'ubs_id', 'cra', 'nome']);
 
     // Comunicado individual de boas-vindas: aparece no portal do paciente logo no
     // primeiro acesso, sem depender de aprovacao manual do gestor.

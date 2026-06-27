@@ -46,7 +46,7 @@ import EncaminhamentosExterna from './pages/externa/EncaminhamentosExterna';
 // ─── Componente de Rota Protegida ─────────────────────────────────────────
 // Impede acesso direto por URL sem autenticação e garante que o tipo de
 // usuário bate com a rota (gestor não acessa rotas de paciente e vice-versa).
-const ProtectedRoute = ({ children, tipo }) => {
+const ProtectedRoute = ({ children, tipo, requireActive = false }) => {
   const { isAuthenticated, user, loading } = useAuth();
   if (loading) return null; // Aguarda restauração da sessão do localStorage
   if (!isAuthenticated || user.tipo !== tipo) {
@@ -54,6 +54,12 @@ const ProtectedRoute = ({ children, tipo }) => {
     if (tipo === 'externa') return <Navigate to="/login-externa" replace />;
     return <Navigate to="/login-paciente" replace />;
   }
+
+  // Novo bloqueio: Pacientes inativos (pendentes) só acessam rotas que não exigem requireActive
+  if (tipo === 'paciente' && user.ativo === false && requireActive) {
+    return <Navigate to="/paciente/agendamentos" replace />;
+  }
+
   return children;
 };
 
@@ -80,13 +86,13 @@ export default function App() {
           <Route path="/cadastro-paciente" element={<CadastroPaciente />} />
 
           {/* ── Portal do Paciente (autenticado) ── */}
-          <Route path="/paciente/dashboard"       element={<ProtectedRoute tipo="paciente"><DashboardPaciente /></ProtectedRoute>} />
-          <Route path="/paciente/medicamentos"    element={<ProtectedRoute tipo="paciente"><Medicamentos /></ProtectedRoute>} />
-          <Route path="/paciente/solicitacao/:id" element={<ProtectedRoute tipo="paciente"><DetalheSolicitacao /></ProtectedRoute>} />
-          <Route path="/paciente/comunicados"     element={<ProtectedRoute tipo="paciente"><ComunicadosPaciente /></ProtectedRoute>} />
+          <Route path="/paciente/dashboard"       element={<ProtectedRoute tipo="paciente" requireActive><DashboardPaciente /></ProtectedRoute>} />
+          <Route path="/paciente/medicamentos"    element={<ProtectedRoute tipo="paciente" requireActive><Medicamentos /></ProtectedRoute>} />
+          <Route path="/paciente/solicitacao/:id" element={<ProtectedRoute tipo="paciente" requireActive><DetalheSolicitacao /></ProtectedRoute>} />
+          <Route path="/paciente/comunicados"     element={<ProtectedRoute tipo="paciente" requireActive><ComunicadosPaciente /></ProtectedRoute>} />
           <Route path="/paciente/agendamentos"    element={<ProtectedRoute tipo="paciente"><AgendamentosPaciente /></ProtectedRoute>} />
-          <Route path="/paciente/solicitacoes"    element={<ProtectedRoute tipo="paciente"><SolicitacoesPaciente /></ProtectedRoute>} />
-          <Route path="/paciente/perfil"          element={<ProtectedRoute tipo="paciente"><PerfilPacientePaciente /></ProtectedRoute>} />
+          <Route path="/paciente/solicitacoes"    element={<ProtectedRoute tipo="paciente" requireActive><SolicitacoesPaciente /></ProtectedRoute>} />
+          <Route path="/paciente/perfil"          element={<ProtectedRoute tipo="paciente" requireActive><PerfilPacientePaciente /></ProtectedRoute>} />
 
           {/* ── Portal do Gestor (autenticado) ── */}
           <Route path="/gestor/dashboard"     element={<ProtectedRoute tipo="gestor"><DashboardGestor /></ProtectedRoute>} />

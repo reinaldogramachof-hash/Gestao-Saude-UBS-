@@ -5,6 +5,9 @@ app/backend/node_modules/
 
 # Variáveis de ambiente — nunca versionar arquivos .env com senhas reais
 .env
+.env.local
+.env.production
+.env*.local
 app/frontend/.env
 app/backend/.env
 

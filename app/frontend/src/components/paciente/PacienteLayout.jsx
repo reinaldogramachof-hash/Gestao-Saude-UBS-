@@ -94,6 +94,7 @@ export default function PacienteLayout({ children, semNav = false }) {
           <HeaderPaciente 
             onOpenDrawer={() => setDrawerAberto(true)} 
             unreadCount={unreadCount} 
+            hideMenu={user?.ativo === false}
           />
         )}
 
@@ -106,7 +107,7 @@ export default function PacienteLayout({ children, semNav = false }) {
         </div>
 
         {/* Drawer lateral oculto/deslizante */}
-        {!semNav && (
+        {!semNav && user?.ativo !== false && (
           <DrawerPaciente
             aberto={drawerAberto}
             onClose={() => setDrawerAberto(false)}
@@ -117,7 +118,7 @@ export default function PacienteLayout({ children, semNav = false }) {
         )}
 
         {/* Bottom Navigation fixa inferior de 3 botões */}
-        {!semNav && <BottomNavSimples />}
+        {!semNav && user?.ativo !== false && <BottomNavSimples />}
 
       </div>
     </div>
