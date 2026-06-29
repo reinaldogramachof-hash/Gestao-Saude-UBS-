@@ -21,6 +21,8 @@
 const express = require('express');
 const bcrypt = require('bcrypt');
 const knex = require('../db/knex');
+const auditMiddleware = require('../middleware/auditMiddleware');
+const MENSAGENS = require('../utils/mensagens');
 
 const router = express.Router();
 // 'medico' adicionado para suportar o Painel Médico (acesso read-only ao prontuário)
@@ -28,16 +30,18 @@ const PERFIS_VALIDOS = ['recepcionista', 'gestor', 'admin', 'medico'];
 const CAMPOS_PUBLICOS = ['id', 'nome', 'email', 'perfil', 'ativo', 'criado_em'];
 
 // Bloqueia recepcionistas e gestores mesmo quando possuem um JWT válido.
+// Contrato funcional: acesso exclusivo para administradores da UBS.
 const somenteAdmin = (req, res, next) => {
   if (req.user?.perfil !== 'admin') {
     return res.status(403).json({
-      error: 'Acesso exclusivo para administradores da UBS.',
+      error: MENSAGENS.AUTH.ACESSO_NEGADO,
     });
   }
   next();
 };
 
 router.use(somenteAdmin);
+router.use(auditMiddleware({ modulo: 'admin' }));
 
 // Confirma a existência do usuário dentro da UBS do admin. Centralizar esta
 // consulta evita que alguma rota esqueça o filtro de isolamento entre unidades.
@@ -58,7 +62,7 @@ router.get('/usuarios', async (req, res) => {
     return res.json(usuarios);
   } catch (err) {
     console.error('[GET /admin/usuarios]', err);
-    return res.status(500).json({ error: 'Erro ao buscar usuários da unidade.' });
+    return res.status(500).json({ error: MENSAGENS.GERAL.ERRO_INTERNO });
   }
 });
 
@@ -70,14 +74,14 @@ router.post('/usuario', async (req, res) => {
 
     if (!nome || !email || !senha || !perfil) {
       return res.status(400).json({
-        error: 'Nome, e-mail, senha e perfil são obrigatórios.',
+        error: MENSAGENS.PACIENTE.DADOS_INVALIDOS,
       });
     }
     if (senha.length < 6) {
-      return res.status(400).json({ error: 'A senha deve ter no mínimo 6 caracteres.' });
+      return res.status(400).json({ error: MENSAGENS.PACIENTE.DADOS_INVALIDOS });
     }
     if (!PERFIS_VALIDOS.includes(perfil)) {
-      return res.status(400).json({ error: 'Perfil de usuário inválido.' });
+      return res.status(400).json({ error: MENSAGENS.PACIENTE.DADOS_INVALIDOS });
     }
 
     const emailNormalizado = email.trim().toLowerCase();
@@ -86,7 +90,7 @@ router.post('/usuario', async (req, res) => {
       .first();
 
     if (emailExistente) {
-      return res.status(409).json({ error: 'E-mail já cadastrado no sistema.' });
+      return res.status(409).json({ error: MENSAGENS.AUTH.EMAIL_JA_CADASTRADO });
     }
 
     // O custo 12 equilibra segurança e tempo de resposta para uma operação rara.
@@ -106,9 +110,9 @@ router.post('/usuario', async (req, res) => {
   } catch (err) {
     console.error('[POST /admin/usuario]', err);
     if (err.code === '23505') {
-      return res.status(409).json({ error: 'E-mail já cadastrado no sistema.' });
+      return res.status(409).json({ error: MENSAGENS.AUTH.EMAIL_JA_CADASTRADO });
     }
-    return res.status(500).json({ error: 'Erro ao cadastrar usuário.' });
+    return res.status(500).json({ error: MENSAGENS.GERAL.ERRO_INTERNO });
   }
 });
 
@@ -117,20 +121,21 @@ router.post('/usuario', async (req, res) => {
 // pela interface. A desativação continua exclusiva do DELETE lógico.
 router.patch('/usuario/:id', async (req, res) => {
   try {
+    // Impede que o administrador altere o proprio perfil por esta rota.
     if (Number(req.params.id) === Number(req.user.id)) {
       return res.status(403).json({
-        error: 'Não é permitido alterar o próprio perfil por esta tela.',
+        error: MENSAGENS.AUTH.ACESSO_NEGADO,
       });
     }
 
     const existente = await buscarUsuarioDaUbs(req.params.id, req.user.ubs_id);
     if (!existente) {
-      return res.status(404).json({ error: 'Usuário não encontrado nesta UBS.' });
+      return res.status(404).json({ error: MENSAGENS.GERAL.NAO_ENCONTRADO });
     }
 
     const { nome, email, perfil, ativo } = req.body;
     if (perfil !== undefined && !PERFIS_VALIDOS.includes(perfil)) {
-      return res.status(400).json({ error: 'Perfil de usuário inválido.' });
+      return res.status(400).json({ error: MENSAGENS.PACIENTE.DADOS_INVALIDOS });
     }
 
     const emailNormalizado = email?.trim().toLowerCase();
@@ -140,7 +145,7 @@ router.patch('/usuario/:id', async (req, res) => {
         .whereNot({ id: req.params.id })
         .first();
       if (emailEmUso) {
-        return res.status(409).json({ error: 'E-mail já cadastrado no sistema.' });
+        return res.status(409).json({ error: MENSAGENS.AUTH.EMAIL_JA_CADASTRADO });
       }
     }
 
@@ -152,7 +157,7 @@ router.patch('/usuario/:id', async (req, res) => {
     if (typeof ativo === 'boolean') alteracoes.ativo = ativo;
 
     if (Object.keys(alteracoes).length === 0) {
-      return res.status(400).json({ error: 'Nenhum campo válido foi informado.' });
+      return res.status(400).json({ error: MENSAGENS.PACIENTE.DADOS_INVALIDOS });
     }
 
     await knex('usuarios_gestores')
@@ -164,9 +169,9 @@ router.patch('/usuario/:id', async (req, res) => {
   } catch (err) {
     console.error('[PATCH /admin/usuario/:id]', err);
     if (err.code === '23505') {
-      return res.status(409).json({ error: 'E-mail já cadastrado no sistema.' });
+      return res.status(409).json({ error: MENSAGENS.AUTH.EMAIL_JA_CADASTRADO });
     }
-    return res.status(500).json({ error: 'Erro ao atualizar usuário.' });
+    return res.status(500).json({ error: MENSAGENS.GERAL.ERRO_INTERNO });
   }
 });
 
@@ -175,20 +180,21 @@ router.patch('/usuario/:id', async (req, res) => {
 router.patch('/usuario/:id/senha', async (req, res) => {
   try {
     const { nova_senha } = req.body;
+    // A troca exige no minimo 6 caracteres para manter o contrato de seguranca.
     if (!nova_senha || nova_senha.length < 6) {
       return res.status(400).json({
-        error: 'A nova senha deve ter no mínimo 6 caracteres.',
+        error: MENSAGENS.PACIENTE.DADOS_INVALIDOS,
       });
     }
     if (Number(req.params.id) === Number(req.user.id)) {
       return res.status(403).json({
-        error: 'Use o fluxo da própria conta para alterar sua senha.',
+        error: MENSAGENS.AUTH.ACESSO_NEGADO,
       });
     }
 
     const existente = await buscarUsuarioDaUbs(req.params.id, req.user.ubs_id);
     if (!existente) {
-      return res.status(404).json({ error: 'Usuário não encontrado nesta UBS.' });
+      return res.status(404).json({ error: MENSAGENS.GERAL.NAO_ENCONTRADO });
     }
 
     const senhaHash = await bcrypt.hash(nova_senha, 12);
@@ -199,7 +205,7 @@ router.patch('/usuario/:id/senha', async (req, res) => {
     return res.json({ mensagem: 'Senha atualizada com sucesso.' });
   } catch (err) {
     console.error('[PATCH /admin/usuario/:id/senha]', err);
-    return res.status(500).json({ error: 'Erro ao atualizar senha.' });
+    return res.status(500).json({ error: MENSAGENS.GERAL.ERRO_INTERNO });
   }
 });
 
@@ -208,12 +214,12 @@ router.patch('/usuario/:id/senha', async (req, res) => {
 router.delete('/usuario/:id', async (req, res) => {
   try {
     if (Number(req.params.id) === Number(req.user.id)) {
-      return res.status(403).json({ error: 'Não é permitido desativar a própria conta.' });
+      return res.status(403).json({ error: MENSAGENS.AUTH.ACESSO_NEGADO });
     }
 
     const existente = await buscarUsuarioDaUbs(req.params.id, req.user.ubs_id);
     if (!existente) {
-      return res.status(404).json({ error: 'Usuário não encontrado nesta UBS.' });
+      return res.status(404).json({ error: MENSAGENS.GERAL.NAO_ENCONTRADO });
     }
 
     await knex('usuarios_gestores')
@@ -223,7 +229,7 @@ router.delete('/usuario/:id', async (req, res) => {
     return res.json({ mensagem: 'Usuário desativado.' });
   } catch (err) {
     console.error('[DELETE /admin/usuario/:id]', err);
-    return res.status(500).json({ error: 'Erro ao desativar usuário.' });
+    return res.status(500).json({ error: MENSAGENS.GERAL.ERRO_INTERNO });
   }
 });
 

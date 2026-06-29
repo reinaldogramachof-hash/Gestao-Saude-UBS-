@@ -10,6 +10,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
+import FontSizeControl from './FontSizeControl';
 
 export default function HeaderPaciente({ onOpenDrawer, unreadCount = 0, hideMenu = false }) {
   const navigate = useNavigate();
@@ -38,8 +39,9 @@ export default function HeaderPaciente({ onOpenDrawer, unreadCount = 0, hideMenu
         </div>
       </div>
 
-      {/* ── Notificações (Sino com badge) ── */}
-      <div className="h-14 flex items-center">
+      {/* ── Acessibilidade & Notificações ── */}
+      <div className="h-14 flex items-center gap-2">
+        <FontSizeControl />
         {!hideMenu && (
           <button
             onClick={() => navigate('/paciente/comunicados')}

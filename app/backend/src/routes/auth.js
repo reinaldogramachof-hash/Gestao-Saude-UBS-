@@ -15,12 +15,15 @@ const jwt = require('jsonwebtoken');
 const rateLimit = require('express-rate-limit');
 const knex = require('../db/knex');
 const validateBody = require('../middleware/validateBody');
+const auditMiddleware = require('../middleware/auditMiddleware');
 const { registrarAuditoria } = require('../services/auditService');
 const pushService = require('../services/pushService');
 const gestorNotificationService = require('../services/gestorNotificationService');
 const { loginGestorSchema, loginPacienteSchema, loginExternaSchema } = require('../validators/securitySchemas');
+const MENSAGENS = require('../utils/mensagens');
 
 const router = express.Router();
+router.use(['/login-gestor', '/login-paciente', '/login-externa', '/cadastro-paciente'], auditMiddleware({ modulo: 'auth' }));
 
 function gerarJwtSeguro(payload, options) {
   if (process.env.NODE_ENV === 'production' && (!process.env.JWT_SECRET || process.env.JWT_SECRET.length < 64)) {
@@ -66,7 +69,7 @@ router.post('/login-gestor', loginRateLimiter, validateBody(loginGestorSchema), 
         entidade: 'usuarios_gestores',
         metadata: { email },
       });
-      return res.status(401).json({ error: 'Credenciais invalidas.' });
+      return res.status(401).json({ error: MENSAGENS.AUTH.CREDENCIAIS_INVALIDAS });
     }
 
     const senhaValida = await bcrypt.compare(senha, gestor.senha_hash);
@@ -82,7 +85,7 @@ router.post('/login-gestor', loginRateLimiter, validateBody(loginGestorSchema), 
         escopo_ubs_id: gestor.ubs_id,
         metadata: { email },
       });
-      return res.status(401).json({ error: 'Credenciais invalidas.' });
+      return res.status(401).json({ error: MENSAGENS.AUTH.CREDENCIAIS_INVALIDAS });
     }
 
     const payload = {
@@ -110,7 +113,7 @@ router.post('/login-gestor', loginRateLimiter, validateBody(loginGestorSchema), 
     return res.json({ token, ...payload });
   } catch (err) {
     console.error('[login-gestor]', err);
-    return res.status(500).json({ error: 'Erro interno do servidor.' });
+    return res.status(500).json({ error: MENSAGENS.GERAL.ERRO_INTERNO });
   }
 });
 
@@ -130,7 +133,7 @@ router.post('/login-paciente', loginRateLimiter, validateBody(loginPacienteSchem
         entidade: 'pacientes',
         metadata: { cra },
       });
-      return res.status(401).json({ error: 'CRA ou data de nascimento nao conferem.' });
+      return res.status(401).json({ error: MENSAGENS.AUTH.CREDENCIAIS_INVALIDAS });
     }
 
     const payload = {
@@ -157,7 +160,7 @@ router.post('/login-paciente', loginRateLimiter, validateBody(loginPacienteSchem
     return res.json({ token, ...payload });
   } catch (err) {
     console.error('[login-paciente]', err);
-    return res.status(500).json({ error: 'Erro interno do servidor.' });
+    return res.status(500).json({ error: MENSAGENS.GERAL.ERRO_INTERNO });
   }
 });
 
@@ -213,7 +216,7 @@ router.post('/login-externa', loginRateLimiter, validateBody(loginExternaSchema)
     return res.json({ token, ...payload });
   } catch (err) {
     console.error('[login-externa]', err);
-    return res.status(500).json({ error: 'Erro interno do servidor.' });
+    return res.status(500).json({ error: MENSAGENS.GERAL.ERRO_INTERNO });
   }
 });
 
@@ -227,7 +230,7 @@ router.get('/ubs', async (req, res) => {
     return res.json(ubs);
   } catch (err) {
     console.error('[GET /auth/ubs]', err);
-    return res.status(500).json({ error: 'Erro ao buscar unidades de saude.' });
+    return res.status(500).json({ error: MENSAGENS.GERAL.ERRO_INTERNO });
   }
 });
 
@@ -238,13 +241,13 @@ router.post('/cadastro-paciente', cadastroRateLimiter, async (req, res) => {
 
     if (!nome || !data_nascimento || !ubsId || !bairro) {
       return res.status(400).json({
-        error: 'Nome completo, data de nascimento, unidade de saude e bairro sao obrigatorios.',
+        error: MENSAGENS.PACIENTE.DADOS_INVALIDOS,
       });
     }
 
     const ubs = await knex('ubs').where({ id: ubsId, ativa: true }).first();
     if (!ubs) {
-      return res.status(404).json({ error: 'Unidade de saude nao encontrada ou inativa.' });
+      return res.status(404).json({ error: MENSAGENS.GERAL.NAO_ENCONTRADO });
     }
 
     let cpfLimpo = null;
@@ -252,12 +255,12 @@ router.post('/cadastro-paciente', cadastroRateLimiter, async (req, res) => {
       cpfLimpo = cpf.replace(/[^\d]/g, '');
 
       if (cpfLimpo.length !== 11 || /^(\d)\1{10}$/.test(cpfLimpo)) {
-        return res.status(400).json({ error: 'CPF invalido.' });
+        return res.status(400).json({ error: MENSAGENS.PACIENTE.DADOS_INVALIDOS });
       }
 
       const cpfExiste = await knex('pacientes').where({ cpf: cpfLimpo }).first();
       if (cpfExiste) {
-        return res.status(409).json({ error: 'CPF ja cadastrado no sistema.' });
+        return res.status(409).json({ error: MENSAGENS.PACIENTE.DADOS_INVALIDOS });
       }
     }
 
@@ -279,7 +282,7 @@ router.post('/cadastro-paciente', cadastroRateLimiter, async (req, res) => {
     }
 
     if (!craUnico) {
-      return res.status(500).json({ error: 'Nao foi possivel gerar CRA unico. Tente novamente.' });
+      return res.status(500).json({ error: MENSAGENS.GERAL.ERRO_INTERNO });
     }
 
     const [paciente] = await knex('pacientes')
@@ -350,9 +353,9 @@ router.post('/cadastro-paciente', cadastroRateLimiter, async (req, res) => {
   } catch (err) {
     console.error('[POST /auth/cadastro-paciente]', err.message);
     if (err.code === '23505') {
-      return res.status(409).json({ error: 'Dados ja cadastrados. Tente novamente.' });
+      return res.status(409).json({ error: MENSAGENS.PACIENTE.DADOS_INVALIDOS });
     }
-    return res.status(500).json({ error: 'Erro ao realizar cadastro.' });
+    return res.status(500).json({ error: MENSAGENS.GERAL.ERRO_INTERNO });
   }
 });
 
@@ -394,7 +397,7 @@ router.get('/buscar-bairro', async (req, res) => {
     return res.json(resultados);
   } catch (err) {
     console.error('[GET /auth/buscar-bairro]', err);
-    return res.status(500).json({ error: 'Erro ao buscar bairro.' });
+    return res.status(500).json({ error: MENSAGENS.GERAL.ERRO_INTERNO });
   }
 });
 

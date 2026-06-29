@@ -39,8 +39,10 @@ const knex         = require('../db/knex');
 const pushService  = require('../services/pushService');
 const { requireTipo, requirePerfil, soNaoMedico } = require('../middleware/authorization');
 const validateBody = require('../middleware/validateBody');
+const auditMiddleware = require('../middleware/auditMiddleware');
 const { registrarAuditoria } = require('../services/auditService');
 const gestorNotificationService = require('../services/gestorNotificationService');
+const MENSAGENS = require('../utils/mensagens');
 const {
   statusSolicitacaoSchema,
   atendimentoSchema,
@@ -59,6 +61,7 @@ const soGestor = requireTipo('gestor');
 
 // Aplica o middleware em todas as rotas deste arquivo
 router.use(soGestor);
+router.use(auditMiddleware({ modulo: 'gestor' }));
 
 const CAMPOS_PACIENTE_GESTOR = [
   'pacientes.id',
@@ -418,7 +421,7 @@ router.get('/solicitacao/:id/historico', async (req, res) => {
       .first();
 
     if (!solicitacao) {
-      return res.status(404).json({ error: 'Solicitação não encontrada.' });
+      return res.status(404).json({ error: MENSAGENS.GERAL.NAO_ENCONTRADO });
     }
 
     // LEFT JOIN preserva eventos automáticos ou antigos cujo gestor tenha sido
@@ -456,7 +459,7 @@ router.get('/paciente/:id', async (req, res) => {
       .first();
 
     if (!paciente) {
-      return res.status(404).json({ error: 'Paciente não encontrado.' });
+      return res.status(404).json({ error: MENSAGENS.PACIENTE.NAO_ENCONTRADO });
     }
 
     // Remove o CPF da resposta por segurança (LGPD — exibição mínima necessária)
@@ -526,7 +529,7 @@ router.put('/paciente/:id/transferir', requirePerfil(['admin']), async (req, res
     if (!nova_ubs_id) return res.status(400).json({ error: 'A nova UBS é obrigatória.' });
 
     const paciente = await knex('pacientes').where({ id: req.params.id }).first();
-    if (!paciente) return res.status(404).json({ error: 'Paciente não encontrado.' });
+    if (!paciente) return res.status(404).json({ error: MENSAGENS.PACIENTE.NAO_ENCONTRADO });
 
     await knex.transaction(async (trx) => {
       // Move o paciente
@@ -612,7 +615,7 @@ router.put('/solicitacao/:id/status', validateBody(statusSolicitacaoSchema), asy
     });
 
     if (resultado.tipo === 'nao_encontrada') {
-      return res.status(404).json({ error: 'Solicitação não encontrada.' });
+      return res.status(404).json({ error: MENSAGENS.GERAL.NAO_ENCONTRADO });
     }
 
     await registrarAuditoria(req, {
@@ -707,7 +710,7 @@ router.patch('/solicitacao/:id/escalar', async (req, res) => {
     });
 
     if (resultado.tipo === 'nao_encontrada') {
-      return res.status(404).json({ error: 'Solicitação não encontrada.' });
+      return res.status(404).json({ error: MENSAGENS.GERAL.NAO_ENCONTRADO });
     }
     if (resultado.tipo === 'ja_urgente') {
       return res.status(409).json({ error: 'Esta solicitação já possui prioridade urgente.' });

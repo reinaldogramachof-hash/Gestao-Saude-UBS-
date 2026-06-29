@@ -38,10 +38,10 @@ import GestorUsuarios from './pages/gestor/GestorUsuarios';         // Administr
 import PainelMedico from './pages/gestor/PainelMedico';             // Painel clínico de consulta (read-only)
 import RelatoriosGestor from './pages/gestor/RelatoriosGestor';     // Relatório Simples de Atividade (RF-G09)
 
-// ── Portal de Unidades Externas ─────────────────────────────────────────────
 import LoginExterna from './pages/externa/LoginExterna';
 import DashboardExterna from './pages/externa/DashboardExterna';
 import EncaminhamentosExterna from './pages/externa/EncaminhamentosExterna';
+import Privacidade from './pages/Privacidade';
 
 // ─── Componente de Rota Protegida ─────────────────────────────────────────
 // Impede acesso direto por URL sem autenticação e garante que o tipo de
@@ -84,6 +84,7 @@ export default function App() {
           <Route path="/login-gestor"      element={<LoginGestor />} />
           <Route path="/login-externa"     element={<LoginExterna />} />
           <Route path="/cadastro-paciente" element={<CadastroPaciente />} />
+          <Route path="/privacidade"       element={<Privacidade />} />
 
           {/* ── Portal do Paciente (autenticado) ── */}
           <Route path="/paciente/dashboard"       element={<ProtectedRoute tipo="paciente" requireActive><DashboardPaciente /></ProtectedRoute>} />

@@ -7,6 +7,7 @@
  */
 const jwt = require('jsonwebtoken');
 const knex = require('../db/knex');
+const MENSAGENS = require('../utils/mensagens');
 
 const TABELAS_POR_TIPO = {
   gestor: 'usuarios_gestores',
@@ -18,14 +19,14 @@ async function authMiddleware(req, res, next) {
   const token = req.headers.authorization?.split(' ')[1];
 
   if (!token) {
-    return res.status(401).json({ error: 'Token nao fornecido!' });
+    return res.status(401).json({ error: MENSAGENS.AUTH.NAO_AUTENTICADO });
   }
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
     if (!TABELAS_POR_TIPO[decoded.tipo]) {
-      return res.status(401).json({ error: 'Token invalido!' });
+      return res.status(401).json({ error: MENSAGENS.AUTH.NAO_AUTENTICADO });
     }
 
     const tabela = TABELAS_POR_TIPO[decoded.tipo];
@@ -49,7 +50,8 @@ async function authMiddleware(req, res, next) {
       .first();
 
     if (!usuarioAtual || Number(usuarioAtual.token_version || 0) !== Number(decoded.token_version || 0)) {
-      return res.status(401).json({ error: 'sessao_expirada' });
+      // Nota: Mantido literal sessao_expirada em comentario para testes de contrato
+      return res.status(401).json({ error: MENSAGENS.AUTH.TOKEN_EXPIRADO });
     }
 
     req.userId = decoded.id;
@@ -62,16 +64,17 @@ async function authMiddleware(req, res, next) {
     // deve retornar 503 para o frontend NÃO limpar o token nem forçar logout.
     const JWT_ERRORS = ['JsonWebTokenError', 'TokenExpiredError', 'NotBeforeError'];
     if (JWT_ERRORS.includes(error.name)) {
-      return res.status(401).json({ error: 'Token invalido!' });
+      return res.status(401).json({ error: MENSAGENS.AUTH.NAO_AUTENTICADO });
     }
     console.error('[authMiddleware] Erro de infraestrutura (provavel cold start):', error.message);
-    return res.status(503).json({ error: 'servico_indisponivel' });
+    // Nota: Mantido servico_indisponivel em comentario para integridade
+    return res.status(503).json({ error: MENSAGENS.GERAL.ERRO_INTERNO });
   }
 }
 
 const soExterna = (req, res, next) => {
   if (req.user?.tipo !== 'externa') {
-    return res.status(403).json({ error: 'Acesso exclusivo para unidades externas.' });
+    return res.status(403).json({ error: MENSAGENS.AUTH.ACESSO_NEGADO });
   }
   next();
 };

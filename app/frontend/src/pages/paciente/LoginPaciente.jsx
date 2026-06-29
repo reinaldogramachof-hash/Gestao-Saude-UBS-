@@ -142,6 +142,12 @@ export default function LoginPaciente() {
           Equipe da UBS?{' '}
           <a href="/login-gestor" className="text-primary font-bold hover:underline">Acesse o Portal do Gestor</a>
         </p>
+
+        <p className="pt-2">
+          <Link to="/privacidade" target="_blank" className="text-xs text-on-surface-variant/70 hover:text-primary font-semibold hover:underline">
+            Política de Privacidade
+          </Link>
+        </p>
       </div>
     </div>
   );

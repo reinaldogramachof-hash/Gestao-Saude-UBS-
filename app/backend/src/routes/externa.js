@@ -9,15 +9,18 @@ const express = require('express');
 const Joi = require('joi');
 const knex = require('../db/knex');
 const validateBody = require('../middleware/validateBody');
+const auditMiddleware = require('../middleware/auditMiddleware');
 const { soExterna } = require('../middleware/auth');
 const { registrarAuditoria } = require('../services/auditService');
 // Push notifications: notifica o paciente quando a unidade externa agenda ou conclui
 const pushService = require('../services/pushService');
 const gestorNotificationService = require('../services/gestorNotificationService');
+const MENSAGENS = require('../utils/mensagens');
 
 const router = express.Router();
 
 router.use(soExterna);
+router.use(auditMiddleware({ modulo: 'externa' }));
 
 const CAMPOS_ENCAMINHAMENTO_EXTERNA = [
   'encaminhamentos.id',
@@ -66,12 +69,12 @@ async function buscarEncaminhamentoOuResponder(req, res) {
     .first();
 
   if (!encaminhamento) {
-    res.status(404).json({ error: 'Encaminhamento nao encontrado.' });
+    res.status(404).json({ error: MENSAGENS.ENCAMINHAMENTO.NAO_ENCONTRADO });
     return null;
   }
 
   if (Number(encaminhamento.unidade_externa_id) !== Number(req.user.id)) {
-    res.status(403).json({ error: 'Encaminhamento pertence a outra unidade externa.' });
+    res.status(403).json({ error: MENSAGENS.AUTH.ACESSO_NEGADO });
     return null;
   }
 
@@ -101,7 +104,7 @@ router.get('/dashboard', async (req, res) => {
     });
   } catch (err) {
     console.error('[GET /externa/dashboard]', err);
-    return res.status(500).json({ error: 'Erro ao carregar painel da unidade externa.' });
+    return res.status(500).json({ error: MENSAGENS.GERAL.ERRO_INTERNO });
   }
 });
 
@@ -128,7 +131,7 @@ router.get('/encaminhamentos', async (req, res) => {
     return res.json(encaminhamentos);
   } catch (err) {
     console.error('[GET /externa/encaminhamentos]', err);
-    return res.status(500).json({ error: 'Erro ao listar encaminhamentos.' });
+    return res.status(500).json({ error: MENSAGENS.GERAL.ERRO_INTERNO });
   }
 });
 
@@ -138,7 +141,7 @@ router.put('/encaminhamento/:id/receber', async (req, res) => {
     if (!encaminhamento) return undefined;
 
     if (encaminhamento.status !== 'AGUARDANDO_VAGA') {
-      return res.status(409).json({ error: 'Apenas encaminhamentos aguardando vaga podem ser recebidos.' });
+      return res.status(409).json({ error: MENSAGENS.PACIENTE.DADOS_INVALIDOS });
     }
 
     await knex.transaction(async (trx) => {
@@ -177,7 +180,7 @@ router.put('/encaminhamento/:id/receber', async (req, res) => {
     return res.json({ ok: true, status: 'RECEBIDO' });
   } catch (err) {
     console.error('[PUT /externa/encaminhamento/:id/receber]', err);
-    return res.status(500).json({ error: 'Erro ao receber encaminhamento.' });
+    return res.status(500).json({ error: MENSAGENS.GERAL.ERRO_INTERNO });
   }
 });
 
@@ -187,7 +190,7 @@ router.put('/encaminhamento/:id/agendar', validateBody(agendamentoSchema), async
     if (!encaminhamento) return undefined;
 
     if (encaminhamento.status !== 'RECEBIDO') {
-      return res.status(409).json({ error: 'Apenas encaminhamentos recebidos podem ser agendados.' });
+      return res.status(409).json({ error: MENSAGENS.PACIENTE.DADOS_INVALIDOS });
     }
 
     await knex.transaction(async (trx) => {
@@ -251,7 +254,7 @@ router.put('/encaminhamento/:id/agendar', validateBody(agendamentoSchema), async
     return res.json({ ok: true, status: 'AGUARDANDO_CONFIRMACAO' });
   } catch (err) {
     console.error('[PUT /externa/encaminhamento/:id/agendar]', err);
-    return res.status(500).json({ error: 'Erro ao agendar encaminhamento.' });
+    return res.status(500).json({ error: MENSAGENS.GERAL.ERRO_INTERNO });
   }
 });
 
@@ -261,7 +264,7 @@ router.put('/encaminhamento/:id/concluir', validateBody(feedbackSchema), async (
     if (!encaminhamento) return undefined;
 
     if (!['CONFIRMADO_PACIENTE', 'AGENDADO'].includes(encaminhamento.status)) {
-      return res.status(409).json({ error: 'Encaminhamento ainda nao pode receber retorno.' });
+      return res.status(409).json({ error: MENSAGENS.PACIENTE.DADOS_INVALIDOS });
     }
 
     await knex.transaction(async (trx) => {
@@ -379,7 +382,7 @@ router.put('/encaminhamento/:id/concluir', validateBody(feedbackSchema), async (
     return res.json({ ok: true, status: 'RETORNO_UBS' });
   } catch (err) {
     console.error('[PUT /externa/encaminhamento/:id/concluir]', err);
-    return res.status(500).json({ error: 'Erro ao concluir encaminhamento.' });
+    return res.status(500).json({ error: MENSAGENS.GERAL.ERRO_INTERNO });
   }
 });
 
@@ -394,7 +397,7 @@ router.get('/paciente/:id', async (req, res) => {
       .first();
 
     if (!possuiEncaminhamento) {
-      return res.status(404).json({ error: 'Paciente nao encontrado para esta unidade externa.' });
+      return res.status(404).json({ error: MENSAGENS.PACIENTE.NAO_ENCONTRADO });
     }
 
     const paciente = await knex('pacientes')
@@ -405,7 +408,7 @@ router.get('/paciente/:id', async (req, res) => {
     return res.json(paciente);
   } catch (err) {
     console.error('[GET /externa/paciente/:id]', err);
-    return res.status(500).json({ error: 'Erro ao buscar paciente.' });
+    return res.status(500).json({ error: MENSAGENS.GERAL.ERRO_INTERNO });
   }
 });
 

@@ -22,7 +22,9 @@
 const express = require('express');
 const jwt     = require('jsonwebtoken');
 const knex    = require('../db/knex');
+const auditMiddleware = require('../middleware/auditMiddleware');
 const { registrarAuditoria } = require('../services/auditService');
+const MENSAGENS = require('../utils/mensagens');
 
 const router = express.Router();
 
@@ -47,12 +49,13 @@ const CAMPOS_SOLICITACAO_PACIENTE = [
 // ─── Middleware local: garante que só pacientes acessam estas rotas ────────────
 const soPaciente = (req, res, next) => {
   if (req.user?.tipo !== 'paciente') {
-    return res.status(403).json({ error: 'Acesso exclusivo para pacientes.' });
+    return res.status(403).json({ error: MENSAGENS.AUTH.ACESSO_NEGADO });
   }
   next();
 };
 
 router.use(soPaciente);
+router.use(auditMiddleware({ modulo: 'paciente' }));
 
 
 // ─── GET /api/paciente/meus-dados ─────────────────────────────────────────────
@@ -77,7 +80,7 @@ router.get('/meus-dados', async (req, res) => {
       .first();
 
     if (!resultado) {
-      return res.status(404).json({ error: 'Paciente não encontrado.' });
+      return res.status(404).json({ error: MENSAGENS.PACIENTE.NAO_ENCONTRADO });
     }
 
     // Organiza os dados da UBS como sub-objeto para o frontend usar resultado.ubs.nome
@@ -98,7 +101,7 @@ router.get('/meus-dados', async (req, res) => {
     return res.json(paciente);
   } catch (err) {
     console.error('[GET /paciente/meus-dados]', err);
-    return res.status(500).json({ error: 'Erro ao buscar dados do paciente.' });
+    return res.status(500).json({ error: MENSAGENS.GERAL.ERRO_INTERNO });
   }
 });
 
@@ -122,7 +125,7 @@ router.get('/perfil', async (req, res) => {
       .first();
 
     if (!resultado) {
-      return res.status(404).json({ error: 'Paciente não encontrado.' });
+      return res.status(404).json({ error: MENSAGENS.PACIENTE.NAO_ENCONTRADO });
     }
 
     // Mascara o CPF para segurança (LGPD) mantendo os primeiros 3 e os últimos 2 dígitos
@@ -158,7 +161,7 @@ router.get('/perfil', async (req, res) => {
     return res.json(perfilCompleto);
   } catch (err) {
     console.error('[GET /paciente/perfil]', err);
-    return res.status(500).json({ error: 'Erro ao buscar perfil completo do paciente.' });
+    return res.status(500).json({ error: MENSAGENS.GERAL.ERRO_INTERNO });
   }
 });
 
@@ -184,7 +187,7 @@ router.get('/minhas-solicitacoes', async (req, res) => {
     return res.json(solicitacoes);
   } catch (err) {
     console.error('[GET /paciente/minhas-solicitacoes]', err);
-    return res.status(500).json({ error: 'Erro ao buscar solicitações.' });
+    return res.status(500).json({ error: MENSAGENS.GERAL.ERRO_INTERNO });
   }
 });
 
@@ -223,7 +226,7 @@ router.get('/todas-solicitacoes', async (req, res) => {
     return res.json(solicitacoes);
   } catch (err) {
     console.error('[GET /paciente/todas-solicitacoes]', err);
-    return res.status(500).json({ error: 'Erro ao buscar histórico de solicitações.' });
+    return res.status(500).json({ error: MENSAGENS.GERAL.ERRO_INTERNO });
   }
 });
 
@@ -240,7 +243,7 @@ router.get('/solicitacao/:id', async (req, res) => {
       .first();
 
     if (!solicitacao) {
-      return res.status(404).json({ error: 'Solicitação não encontrada.' });
+      return res.status(404).json({ error: MENSAGENS.GERAL.NAO_ENCONTRADO });
     }
 
     // Busca o histórico de mudanças de status, ordenado do mais antigo para o mais novo
@@ -270,7 +273,7 @@ router.get('/solicitacao/:id', async (req, res) => {
     return res.json({ ...solicitacao, historico, encaminhamento });
   } catch (err) {
     console.error('[GET /paciente/solicitacao/:id]', err);
-    return res.status(500).json({ error: 'Erro ao buscar detalhes da solicitação.' });
+    return res.status(500).json({ error: MENSAGENS.GERAL.ERRO_INTERNO });
   }
 });
 
@@ -300,7 +303,7 @@ router.get('/medicamentos', async (req, res) => {
     return res.json(medicamentos);
   } catch (err) {
     console.error('[GET /paciente/medicamentos]', err);
-    return res.status(500).json({ error: 'Erro ao buscar medicamentos.' });
+    return res.status(500).json({ error: MENSAGENS.GERAL.ERRO_INTERNO });
   }
 });
 
@@ -356,7 +359,7 @@ router.get('/comunicados', async (req, res) => {
     return res.json(comunicados);
   } catch (err) {
     console.error('[GET /paciente/comunicados]', err);
-    return res.status(500).json({ error: 'Erro ao buscar comunicados.' });
+    return res.status(500).json({ error: MENSAGENS.GERAL.ERRO_INTERNO });
   }
 });
 
@@ -375,7 +378,7 @@ router.post('/comunicado/:id/lido', async (req, res) => {
     return res.json({ ok: true });
   } catch (err) {
     console.error('[POST /paciente/comunicado/:id/lido]', err);
-    return res.status(500).json({ error: 'Erro ao marcar comunicado como lido.' });
+    return res.status(500).json({ error: MENSAGENS.GERAL.ERRO_INTERNO });
   }
 });
 
@@ -395,7 +398,7 @@ router.get('/agendamentos/disponiveis', async (req, res) => {
     return res.json(disponiveis);
   } catch (err) {
     console.error('[GET /paciente/agendamentos/disponiveis]', err);
-    return res.status(500).json({ error: 'Erro ao buscar horários disponíveis.' });
+    return res.status(500).json({ error: MENSAGENS.GERAL.ERRO_INTERNO });
   }
 });
 
@@ -412,7 +415,7 @@ router.get('/agendamentos/meus', async (req, res) => {
     return res.json(meus);
   } catch (err) {
     console.error('[GET /paciente/agendamentos/meus]', err);
-    return res.status(500).json({ error: 'Erro ao buscar seus agendamentos.' });
+    return res.status(500).json({ error: MENSAGENS.GERAL.ERRO_INTERNO });
   }
 });
 
@@ -434,12 +437,12 @@ router.post('/agendamento/:id/reservar', async (req, res) => {
       .first();
 
     if (!agendamento) {
-      return res.status(404).json({ error: 'Agendamento não encontrado.' });
+      return res.status(404).json({ error: MENSAGENS.AGENDAMENTO.NAO_ENCONTRADO });
     }
 
     // Impede reserva de slot já ocupado (race condition protection)
     if (agendamento.status !== 'disponivel') {
-      return res.status(409).json({ error: 'Este horário não está mais disponível.' });
+      return res.status(409).json({ error: MENSAGENS.AGENDAMENTO.INDISPONIVEL });
     }
 
     // Vincula o paciente ao slot e marca como reservado
@@ -500,7 +503,7 @@ router.post('/agendamento/:id/reservar', async (req, res) => {
     return res.json(atualizado);
   } catch (err) {
     console.error('[POST /paciente/agendamento/:id/reservar]', err);
-    return res.status(500).json({ error: 'Erro ao reservar agendamento.' });
+    return res.status(500).json({ error: MENSAGENS.GERAL.ERRO_INTERNO });
   }
 });
 
@@ -517,12 +520,12 @@ router.put('/agendamento/:id/cancelar', async (req, res) => {
       .first();
 
     if (!agendamento) {
-      return res.status(404).json({ error: 'Agendamento não encontrado.' });
+      return res.status(404).json({ error: MENSAGENS.AGENDAMENTO.NAO_ENCONTRADO });
     }
 
     // Impede cancelamento de agendamentos já concluídos ou já cancelados
     if (agendamento.status !== 'reservado') {
-      return res.status(409).json({ error: 'Apenas agendamentos reservados podem ser cancelados.' });
+      return res.status(409).json({ error: MENSAGENS.AGENDAMENTO.APENAS_RESERVADOS_CANCELAVEIS });
     }
 
     // Cancela: limpa o vínculo com o paciente e marca como cancelado
@@ -537,7 +540,7 @@ router.put('/agendamento/:id/cancelar', async (req, res) => {
     return res.json({ ok: true, mensagem: 'Agendamento cancelado com sucesso.' });
   } catch (err) {
     console.error('[PUT /paciente/agendamento/:id/cancelar]', err);
-    return res.status(500).json({ error: 'Erro ao cancelar agendamento.' });
+    return res.status(500).json({ error: MENSAGENS.GERAL.ERRO_INTERNO });
   }
 });
 
@@ -551,7 +554,7 @@ router.post('/push-subscribe', async (req, res) => {
     const { endpoint, keys } = req.body;
 
     if (!endpoint || !keys?.p256dh || !keys?.auth) {
-      return res.status(400).json({ error: 'Dados de subscription inválidos.' });
+      return res.status(400).json({ error: MENSAGENS.PACIENTE.DADOS_INVALIDOS });
     }
 
     // LGPD E PRIVACIDADE: Se este endpoint (dispositivo físico) já estiver cadastrado 
@@ -577,7 +580,7 @@ router.post('/push-subscribe', async (req, res) => {
     return res.json({ ok: true });
   } catch (err) {
     console.error('[POST /paciente/push-subscribe]', err);
-    return res.status(500).json({ error: 'Erro ao salvar subscription.' });
+    return res.status(500).json({ error: MENSAGENS.GERAL.ERRO_INTERNO });
   }
 });
 
@@ -595,7 +598,7 @@ router.delete('/push-subscribe', async (req, res) => {
     return res.json({ ok: true });
   } catch (err) {
     console.error('[DELETE /paciente/push-subscribe]', err);
-    return res.status(500).json({ error: 'Erro ao remover subscription.' });
+    return res.status(500).json({ error: MENSAGENS.GERAL.ERRO_INTERNO });
   }
 });
 
@@ -634,7 +637,7 @@ router.get('/encaminhamentos', async (req, res) => {
     return res.json(encaminhamentos);
   } catch (err) {
     console.error('[GET /paciente/encaminhamentos]', err);
-    return res.status(500).json({ error: 'Erro ao buscar encaminhamentos.' });
+    return res.status(500).json({ error: MENSAGENS.GERAL.ERRO_INTERNO });
   }
 });
 
@@ -649,11 +652,11 @@ router.put('/encaminhamento/:id/confirmar', async (req, res) => {
       .first();
 
     if (!encaminhamento) {
-      return res.status(404).json({ error: 'Encaminhamento nao encontrado.' });
+      return res.status(404).json({ error: MENSAGENS.ENCAMINHAMENTO.NAO_ENCONTRADO });
     }
 
     if (encaminhamento.status !== 'AGUARDANDO_CONFIRMACAO') {
-      return res.status(409).json({ error: 'Este encaminhamento nao esta aguardando confirmacao.' });
+      return res.status(409).json({ error: MENSAGENS.ENCAMINHAMENTO.NAO_AGUARDANDO_CONFIRMACAO });
     }
 
     await knex.transaction(async (trx) => {
@@ -688,7 +691,7 @@ router.put('/encaminhamento/:id/confirmar', async (req, res) => {
     return res.json({ ok: true, status: 'CONFIRMADO_PACIENTE' });
   } catch (err) {
     console.error('[PUT /paciente/encaminhamento/:id/confirmar]', err);
-    return res.status(500).json({ error: 'Erro ao confirmar presença.' });
+    return res.status(500).json({ error: MENSAGENS.GERAL.ERRO_INTERNO });
   }
 });
 

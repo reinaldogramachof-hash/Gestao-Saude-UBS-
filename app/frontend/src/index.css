@@ -29,6 +29,9 @@
   /* Offsets de conteúdo: usados no padding-top e padding-bottom do container */
   --content-top:    calc(var(--header-h) + var(--safe-top));
   --content-bottom: calc(var(--bottom-nav-h) + var(--safe-bottom));
+
+  /* Escala de fonte padrão — alterada pelo componente FontSizeControl */
+  --font-scale: 1;
 }
 
 /* Estilo global do body: fonte padrão Inter, fundo off-white da paleta */
@@ -51,3 +54,13 @@ h1, h2, h3, h4, h5, h6 {
 /* Oculta a scrollbar mantendo o scroll funcional (usado nas navbars horizontais) */
 .no-scrollbar::-webkit-scrollbar { display: none; }
 .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+/* ─────────────────────────────────────────────────────────────────────────────
+ * PORTAL DO PACIENTE — ESCALA DE FONTE
+ * FUNÇÃO: Aplica a escala de fonte configurável calculada dinamicamente
+ *         em todo o portal do paciente sem afetar o portal do gestor.
+ * ─────────────────────────────────────────────────────────────────────────────
+ */
+.portal-paciente {
+  font-size: calc(1rem * var(--font-scale));
+}

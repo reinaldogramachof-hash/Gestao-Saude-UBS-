@@ -9,7 +9,7 @@
  * ─────────────────────────────────────────────────────────────────────────────
  */
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import api from '../../services/api';
 
@@ -97,6 +97,12 @@ export default function LoginGestor() {
         <p className="text-center text-on-surface-variant text-sm font-medium mt-6">
           Paciente? {' '}
           <a href="/login-paciente" className="text-primary font-bold hover:underline">Acesse o Portal do Paciente</a>
+        </p>
+
+        <p className="text-center mt-3">
+          <Link to="/privacidade" target="_blank" className="text-xs text-on-surface-variant/70 hover:text-primary font-semibold hover:underline">
+            Política de Privacidade
+          </Link>
         </p>
       </div>
     </div>

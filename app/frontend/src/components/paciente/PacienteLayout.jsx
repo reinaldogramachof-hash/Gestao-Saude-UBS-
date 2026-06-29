@@ -78,8 +78,21 @@ export default function PacienteLayout({ children, semNav = false }) {
       .catch(() => {});
   }, [semNav, user]);
 
+  // ───────────────────────────────────────────────────────────────────────────
+  // EFEITO: Restaura a escala de fonte salva ou inicializa como padrão.
+  //         No cleanup, redefine para 1 para não impactar o portal do gestor.
+  // ───────────────────────────────────────────────────────────────────────────
+  useEffect(() => {
+    const savedScale = localStorage.getItem('ubs_font_scale') || '1';
+    document.documentElement.style.setProperty('--font-scale', savedScale);
+
+    return () => {
+      document.documentElement.style.setProperty('--font-scale', '1');
+    };
+  }, []);
+
   return (
-    <div className="h-screen bg-surface flex flex-col overflow-hidden">
+    <div className="h-screen bg-surface flex flex-col overflow-hidden portal-paciente">
       
       {/* 
         Container principal:
