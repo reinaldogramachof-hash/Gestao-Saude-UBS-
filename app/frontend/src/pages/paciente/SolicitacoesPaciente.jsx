@@ -151,7 +151,11 @@ function CardSolicitacao({ sol, navigate }) {
         );
       })()}
 
-      <div className={`rounded-xl px-3 py-2 ${STATUS_CORES[sol.status] || 'bg-surface-container-low text-on-surface'}`}>
+      <div 
+        role="status"
+        aria-label={`Status: ${STATUS_LABELS[sol.status] || 'Status em atualização'}`}
+        className={`rounded-xl px-3 py-2 ${STATUS_CORES[sol.status] || 'bg-surface-container-low text-on-surface'}`}
+      >
         <p className="text-sm font-semibold">{STATUS_LABELS[sol.status] || 'Status em atualização'}</p>
         {sol.data_prevista && (
           <p className="text-xs opacity-80 mt-0.5">Previsão: {formatarDataBR(sol.data_prevista)}</p>

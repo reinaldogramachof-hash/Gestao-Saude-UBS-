@@ -208,7 +208,7 @@ export default function DashboardPaciente() {
     return (
       <PacienteLayout>
         <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4 px-6 text-center">
-          <span className="material-symbols-outlined text-5xl text-on-surface-variant">
+          <span className="material-symbols-outlined text-5xl text-on-surface-variant" aria-hidden="true">
             wifi_off
           </span>
           <p className="font-bold text-on-surface text-lg">
@@ -237,7 +237,7 @@ export default function DashboardPaciente() {
             <p className="text-white/80 text-[11px] font-bold tracking-wider uppercase mb-0.5">Bem-vindo(a)</p>
             <h1 className="text-on-primary text-xl font-bold">{paciente.nome || 'Carregando...'}</h1>
             <div className="flex items-center gap-1.5 mt-2 bg-white/10 w-fit px-2.5 py-1 rounded-full backdrop-blur-sm">
-              <span className="material-symbols-outlined text-white text-[14px]">location_on</span>
+              <span className="material-symbols-outlined text-white text-[14px]" aria-hidden="true">location_on</span>
               <span className="text-white text-[11px] font-medium">{paciente.ubs?.nome || '...'}</span>
             </div>
           </div>
@@ -250,7 +250,7 @@ export default function DashboardPaciente() {
           <div className="bg-amber-50 border border-amber-200 rounded-2xl p-5 shadow-sm">
             <div className="flex gap-4 items-start">
               <div className="w-12 h-12 bg-amber-100 text-amber-800 rounded-2xl flex items-center justify-center flex-shrink-0">
-                <span className="material-symbols-outlined text-2xl text-amber-800">priority_high</span>
+                <span className="material-symbols-outlined text-2xl text-amber-800" aria-hidden="true">priority_high</span>
               </div>
               <div className="space-y-2 flex-1">
                 <h3 className="font-extrabold text-amber-900 text-base">Bem-vindo ao UBS+! Valide seu cadastro</h3>
@@ -260,7 +260,7 @@ export default function DashboardPaciente() {
                 </p>
                 <button
                   onClick={() => navigate('/paciente/agendamentos')}
-                  className="bg-amber-600 text-white font-bold px-5 py-2.5 rounded-xl text-sm active:scale-95 transition-transform shadow-md shadow-amber-600/25"
+                  className="bg-amber-600 text-white font-bold px-5 py-3 rounded-xl text-sm active:scale-95 transition-transform shadow-md shadow-amber-600/25"
                 >
                   Agendar agora
                 </button>
@@ -293,12 +293,12 @@ export default function DashboardPaciente() {
                 )}
               </div>
               <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center flex-shrink-0">
-                <span className="material-symbols-outlined text-white text-2xl">event</span>
+                <span className="material-symbols-outlined text-white text-2xl" aria-hidden="true">event</span>
               </div>
             </div>
             <div className="mt-3 pt-3 border-t border-white/20 flex items-center justify-between">
               <span className="text-white/80 text-xs font-medium">Toque para ver detalhes</span>
-              <span className="material-symbols-outlined text-white/80 text-base">chevron_right</span>
+              <span className="material-symbols-outlined text-white/80 text-base" aria-hidden="true">chevron_right</span>
             </div>
           </div>
         </section>
@@ -310,7 +310,7 @@ export default function DashboardPaciente() {
           <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4 shadow-sm relative overflow-hidden">
             <div className="flex gap-3 relative z-10">
               <div className="w-10 h-10 bg-blue-100 text-blue-600 rounded-xl flex items-center justify-center flex-shrink-0">
-                <span className="material-symbols-outlined text-xl">event_available</span>
+                <span className="material-symbols-outlined text-xl" aria-hidden="true">event_available</span>
               </div>
               <div className="flex-1">
                 <h3 className="font-extrabold text-blue-900 text-sm mb-1">Confirmação pendente</h3>
@@ -322,7 +322,7 @@ export default function DashboardPaciente() {
                 <button
                   onClick={() => confirmarPresenca(pend.id)}
                   disabled={confirmandoId === pend.id}
-                  className="mt-3 w-full bg-blue-600 text-white font-bold py-2.5 rounded-xl text-xs active:scale-95 transition-transform disabled:opacity-50 shadow-sm"
+                  className="mt-3 w-full h-11 bg-blue-600 text-white font-bold rounded-xl text-xs active:scale-95 transition-transform disabled:opacity-50 shadow-sm flex items-center justify-center"
                 >
                   {confirmandoId === pend.id ? 'Confirmando...' : 'Confirmar Presença'}
                 </button>
@@ -416,10 +416,10 @@ export default function DashboardPaciente() {
           <h2 className="text-lg font-extrabold text-on-surface leading-tight">Minhas Solicitações Ativas</h2>
           <button
             onClick={() => navigate('/paciente/solicitacoes')}
-            className="text-primary text-sm font-semibold flex items-center gap-0.5 hover:underline"
+            className="text-primary text-sm font-semibold flex items-center gap-0.5 hover:underline h-11"
           >
             Ver todas
-            <span className="material-symbols-outlined text-base">chevron_right</span>
+            <span className="material-symbols-outlined text-base" aria-hidden="true">chevron_right</span>
           </button>
         </div>
         <div className="space-y-4">
@@ -436,7 +436,7 @@ export default function DashboardPaciente() {
               <div className="flex justify-between items-start mb-3 gap-2">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center text-primary flex-shrink-0">
-                    <span className="material-symbols-outlined">
+                    <span className="material-symbols-outlined" aria-hidden="true">
                       {sol.tipo === 'exame' ? 'biotech' : 
                        sol.tipo === 'consulta' ? 'medical_services' :
                        sol.tipo === 'procedimento' ? 'healing' :
@@ -460,7 +460,11 @@ export default function DashboardPaciente() {
                 </div>
               </div>
               {/* O status técnico nunca é exibido diretamente ao paciente. */}
-              <div className={`rounded-xl px-3 py-2 ${STATUS_CORES[sol.status] || 'bg-surface-container-low text-on-surface'}`}>
+              <div 
+                role="status"
+                aria-label={`Status: ${STATUS_LABELS[sol.status] || 'Status em atualização'}`}
+                className={`rounded-xl px-3 py-2 ${STATUS_CORES[sol.status] || 'bg-surface-container-low text-on-surface'}`}
+              >
                 <p className="text-sm font-semibold">
                   {STATUS_LABELS[sol.status] || 'Status em atualização'}
                 </p>

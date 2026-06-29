@@ -107,17 +107,27 @@ export default function DetalheSolicitacao() {
         {/* ── Badges de tipo, prioridade e status atual ── */}
         <div className="flex gap-2 flex-wrap mt-4 mb-8">
           {sol.tipo && (
-            <span className="text-xs font-bold px-3 py-1.5 bg-surface-container-high text-on-surface-variant rounded-lg capitalize">
+            <span 
+              aria-label={`Tipo de solicitação: ${sol.tipo}`}
+              className="text-xs font-bold px-3 py-1.5 bg-surface-container-high text-on-surface-variant rounded-lg capitalize"
+            >
               {sol.tipo}
             </span>
           )}
           {sol.prioridade && (
-            <span className={`text-xs font-bold px-3 py-1.5 rounded-lg capitalize ${sol.prioridade === 'urgente' ? 'bg-red-100 text-red-600' : sol.prioridade === 'prioritario' ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-600'}`}>
+            <span 
+              aria-label={`Prioridade da solicitação: ${sol.prioridade}`}
+              className={`text-xs font-bold px-3 py-1.5 rounded-lg capitalize ${sol.prioridade === 'urgente' ? 'bg-red-100 text-red-600' : sol.prioridade === 'prioritario' ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-600'}`}
+            >
               {sol.prioridade}
             </span>
           )}
           {sol.status && (
-            <span className={`text-xs font-bold px-3 py-1.5 rounded-lg ${STATUS_CORES[sol.status] || 'bg-gray-100 text-gray-600'}`}>
+            <span 
+              role="status"
+              aria-label={`Status da solicitação: ${STATUS_LABELS[sol.status] || 'Status em atualização'}`}
+              className={`text-xs font-bold px-3 py-1.5 rounded-lg ${STATUS_CORES[sol.status] || 'bg-gray-100 text-gray-600'}`}
+            >
               {STATUS_LABELS[sol.status] || 'Status em atualização'}
             </span>
           )}
@@ -182,7 +192,11 @@ export default function DetalheSolicitacao() {
                 <p className="text-xs font-bold text-primary mb-1">
                   {formatarDataBR(h.alterado_em)}
                 </p>
-                <div className={`p-4 rounded-xl ${STATUS_CORES[h.status_novo] || 'bg-surface-container-low text-on-surface'}`}>
+                <div 
+                  role="status"
+                  aria-label={`Status histórico: ${STATUS_LABELS[h.status_novo] || 'Status em atualização'}`}
+                  className={`p-4 rounded-xl ${STATUS_CORES[h.status_novo] || 'bg-surface-container-low text-on-surface'}`}
+                >
                   <h4 className="font-bold text-sm mb-1">
                     {STATUS_LABELS[h.status_novo] || 'Status em atualização'}
                   </h4>

@@ -80,7 +80,7 @@ export default function BottomNavSimples() {
         {/* ── Botão Lateral Esquerdo: Início ── */}
         <button
           onClick={() => navigate('/paciente/dashboard')}
-          className={`flex-1 flex flex-col items-center justify-center gap-1 py-2 transition-colors ${
+          className={`flex-1 flex flex-col items-center justify-center gap-1 py-2 transition-colors focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 rounded-xl outline-none ${
             isInicioAtivo ? 'text-primary font-bold' : 'text-on-surface-variant hover:text-primary'
           }`}
         >
@@ -96,7 +96,7 @@ export default function BottomNavSimples() {
           {/* FAB real */}
           <button
             onClick={() => setFabAberto(prev => !prev)}
-            className="absolute -top-10 w-14 h-14 rounded-full bg-primary text-white shadow-lg shadow-primary/40 flex items-center justify-center active:scale-95 transition-transform select-none z-30"
+            className="absolute -top-10 w-14 h-14 rounded-full bg-primary text-white shadow-lg shadow-primary/40 flex items-center justify-center active:scale-95 transition-transform select-none z-30 focus:outline-none focus:ring-4 focus:ring-primary/50"
             aria-label="Agendar atendimento"
           >
             <span className="material-symbols-outlined text-3xl font-bold">add</span>
@@ -106,7 +106,7 @@ export default function BottomNavSimples() {
         {/* ── Botão Lateral Direito: Agenda ── */}
         <button
           onClick={() => navigate('/paciente/agendamentos')}
-          className={`flex-1 flex flex-col items-center justify-center gap-1 py-2 transition-colors ${
+          className={`flex-1 flex flex-col items-center justify-center gap-1 py-2 transition-colors focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 rounded-xl outline-none ${
             isAgendaAtivo ? 'text-primary font-bold' : 'text-on-surface-variant hover:text-primary'
           }`}
         >

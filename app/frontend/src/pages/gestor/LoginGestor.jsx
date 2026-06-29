@@ -44,8 +44,8 @@ export default function LoginGestor() {
         {/* ── Logo e título ── */}
         <div className="text-center mb-8">
           <div className="w-24 h-24 flex items-center justify-center mx-auto mb-5">
-            <img src="/logo.webp" alt="Logo" className="w-full h-full object-contain" />
-          </div>
+          <img src="/logo.webp" alt="Logotipo Gestão Saúde UBS+" className="w-full h-full object-contain" />
+        </div>
           <h1 className="text-3xl font-extrabold tracking-tight text-on-background">Gestão Saúde</h1>
           <p className="text-on-surface-variant font-medium mt-1">Portal do Gestor</p>
         </div>
@@ -59,28 +59,35 @@ export default function LoginGestor() {
           )}
 
           <div className="space-y-2">
-            <label className="text-sm font-bold text-on-surface-variant">E-mail</label>
+            <label htmlFor="email" className="text-sm font-bold text-on-surface-variant">E-mail</label>
             <input
+              id="email"
               required
               type="email"
               autoComplete="off"
               placeholder="gestor@gestaoubs.dev"
               value={email}
               onChange={e => setEmail(e.target.value)}
-              className="w-full h-12 px-4 bg-surface-container-high border-none rounded-xl outline-none font-medium focus:ring-2 focus:ring-primary/20"
+              className="w-full h-12 px-4 bg-surface-container-high border-none rounded-xl outline-none font-medium focus:ring-2 focus:ring-primary text-on-surface"
             />
           </div>
 
           <div className="space-y-2">
-            <label className="text-sm font-bold text-on-surface-variant">Senha</label>
+            <div className="flex items-center justify-between">
+              <label htmlFor="senha" className="text-sm font-bold text-on-surface-variant">Senha</label>
+              <Link to="/esqueci-senha" className="text-xs text-primary font-bold hover:underline">
+                Esqueci minha senha
+              </Link>
+            </div>
             <input
+              id="senha"
               required
               type="password"
               autoComplete="current-password"
               placeholder="••••••••"
               value={senha}
               onChange={e => setSenha(e.target.value)}
-              className="w-full h-12 px-4 bg-surface-container-high border-none rounded-xl outline-none font-medium focus:ring-2 focus:ring-primary/20"
+              className="w-full h-12 px-4 bg-surface-container-high border-none rounded-xl outline-none font-medium focus:ring-2 focus:ring-primary text-on-surface"
             />
           </div>
 

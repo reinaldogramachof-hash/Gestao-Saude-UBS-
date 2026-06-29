@@ -193,7 +193,7 @@ export default function AgendamentosPaciente() {
         {/* Banner informativo de cadastro pendente para novos pacientes inativos */}
         {!user?.ativo && (
           <div className="flex gap-3 p-4 bg-amber-50 text-amber-900 rounded-2xl border border-amber-200 shadow-sm items-start">
-            <span className="material-symbols-outlined text-amber-600 text-2xl flex-shrink-0">info</span>
+            <span className="material-symbols-outlined text-amber-600 text-2xl flex-shrink-0" aria-hidden="true">info</span>
             <p className="text-xs font-medium leading-relaxed">
               Seu cadastro está pendente de validação. Agende uma visita à UBS
               para confirmar seu acesso e liberar todos os recursos do portal.
@@ -208,7 +208,7 @@ export default function AgendamentosPaciente() {
             {/* Estado de erro com retry — exibido quando a API não responde ou retorna falha. */}
             {/* Evita que o paciente veja uma lista vazia enganosa por falha de rede. */}
             <div className="flex flex-col items-center justify-center h-64 gap-4 px-6">
-              <span className="material-symbols-outlined text-5xl text-red-400">wifi_off</span>
+              <span className="material-symbols-outlined text-5xl text-red-400" aria-hidden="true">wifi_off</span>
               <p className="text-on-surface-variant text-center text-sm">
                 Não foi possível carregar os dados.<br />Verifique sua conexão e tente novamente.
               </p>
@@ -234,7 +234,7 @@ export default function AgendamentosPaciente() {
                         <p className="text-xs text-on-surface-variant font-medium mt-0.5">{slot.duracao_minutos} min</p>
                       </div>
                       <button onClick={() => abrirModal(slot)}
-                        className="px-5 py-2.5 bg-primary text-white font-bold rounded-xl shadow-md shadow-primary/20 hover:scale-105 active:scale-95 transition-all text-sm flex-shrink-0">
+                        className="h-11 px-5 bg-primary text-white font-bold rounded-xl shadow-md shadow-primary/20 hover:scale-105 active:scale-95 transition-all text-sm flex-shrink-0 flex items-center justify-center">
                         Reservar
                       </button>
                     </div>
@@ -242,7 +242,7 @@ export default function AgendamentosPaciente() {
                 </div>
               ) : (
                 <div className="py-10 text-center text-on-surface-variant font-medium bg-surface-container-lowest rounded-2xl border border-surface-variant">
-                  <span className="material-symbols-outlined text-4xl block mb-2 opacity-30">event_busy</span>
+                  <span className="material-symbols-outlined text-4xl block mb-2 opacity-30" aria-hidden="true">event_busy</span>
                   Nenhum horário disponível no momento.
                 </div>
               )}
@@ -269,7 +269,7 @@ export default function AgendamentosPaciente() {
                           {ag.status === 'reservado' && (
                             <button
                               onClick={() => abrirConfirmacaoCancelamento(ag)}
-                              className="text-xs font-bold text-red-500 border border-red-200 px-3 py-1 rounded-xl hover:bg-red-50 transition-colors"
+                              className="text-xs font-bold text-red-500 border border-red-200 px-3 h-11 rounded-xl hover:bg-red-50 transition-colors flex items-center justify-center"
                             >
                               Cancelar
                             </button>
@@ -303,10 +303,10 @@ export default function AgendamentosPaciente() {
                 <p className="text-primary/70 text-xs font-medium">{slotSelecionado.duracao_minutos} minutos</p>
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-bold text-on-surface-variant">Observações {motivo ? '' : '(opcional)'}</label>
-                <textarea rows={3} placeholder="Ex: Tenho dificuldade de locomoção, necessito de acompanhante, trarei documentos antigos..." value={motivo}
+                <label htmlFor="observacoes" className="text-sm font-bold text-on-surface-variant">Observações {motivo ? '' : '(opcional)'}</label>
+                <textarea rows={3} id="observacoes" placeholder="Ex: Tenho dificuldade de locomoção, necessito de acompanhante, trarei documentos antigos..." value={motivo}
                   onChange={e => setMotivo(e.target.value)}
-                  className="w-full px-4 py-3 bg-surface-container-high border-none rounded-xl outline-none font-medium resize-none" />
+                  className="w-full px-4 py-3 bg-surface-container-high border-none rounded-xl outline-none font-medium resize-none focus:ring-2 focus:ring-primary" />
                 {/* Dica: quando pré-preenchido pelo FAB, lembra o paciente de complementar */}
                 {motivo && (
                   <p className="text-xs text-on-surface-variant">
@@ -337,7 +337,7 @@ export default function AgendamentosPaciente() {
             <div className="p-6 text-center">
               {/* Ícone de aviso */}
               <div className="w-14 h-14 rounded-full bg-red-100 flex items-center justify-center mx-auto mb-4">
-                <span className="material-symbols-outlined text-red-500 text-3xl">event_busy</span>
+                <span className="material-symbols-outlined text-red-500 text-3xl" aria-hidden="true">event_busy</span>
               </div>
               <h3 className="text-xl font-extrabold text-on-background mb-2">Cancelar agendamento?</h3>
               {/* Exibe data/hora do agendamento que será cancelado */}

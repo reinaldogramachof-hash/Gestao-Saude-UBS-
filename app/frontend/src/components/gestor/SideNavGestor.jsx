@@ -294,11 +294,11 @@ export default function SideNavGestor({ onFechar, retraida, onToggle }) {
           <>
             <SectionLabel label="ADMINISTRAÇÃO" retraida={retraida} />
             <NavItem
-              to="/gestor/usuarios"
+              to="/gestor/admin/ubs"
               icon="manage_accounts"
-              label="Usuários"
+              label="Administração"
               retraida={retraida}
-              activeClass={isActive('usuarios')}
+              activeClass={isActive('admin')}
               onClick={handleNavegar}
             />
           </>

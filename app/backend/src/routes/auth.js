@@ -21,6 +21,10 @@ const pushService = require('../services/pushService');
 const gestorNotificationService = require('../services/gestorNotificationService');
 const { loginGestorSchema, loginPacienteSchema, loginExternaSchema } = require('../validators/securitySchemas');
 const MENSAGENS = require('../utils/mensagens');
+const { VERSAO_ATUAL } = require('../utils/lgpd');
+
+const crypto = require('crypto');
+const emailService = require('../services/emailService');
 
 const router = express.Router();
 router.use(['/login-gestor', '/login-paciente', '/login-externa', '/cadastro-paciente'], auditMiddleware({ modulo: 'auth' }));
@@ -136,12 +140,19 @@ router.post('/login-paciente', loginRateLimiter, validateBody(loginPacienteSchem
       return res.status(401).json({ error: MENSAGENS.AUTH.CREDENCIAIS_INVALIDAS });
     }
 
+    // O aceite fica pendente quando nao existe registro anterior ou quando o
+    // paciente aceitou uma versao diferente da politica vigente no backend.
+    const lgpdPendente = !paciente.lgpd_aceite_em || paciente.lgpd_versao !== VERSAO_ATUAL;
+
     const payload = {
       id: paciente.id,
       nome: paciente.nome,
       ubs_id: paciente.ubs_id,
       tipo: 'paciente',
       ativo: paciente.ativo,
+      lgpd_aceite_em: paciente.lgpd_aceite_em,
+      lgpd_versao: paciente.lgpd_versao,
+      lgpd_pendente: lgpdPendente,
       token_version: paciente.token_version || 0,
     };
 
@@ -397,6 +408,132 @@ router.get('/buscar-bairro', async (req, res) => {
     return res.json(resultados);
   } catch (err) {
     console.error('[GET /auth/buscar-bairro]', err);
+    return res.status(500).json({ error: MENSAGENS.GERAL.ERRO_INTERNO });
+  }
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ROTA: POST /auth/reset-senha/solicitar
+// FUNÇÃO: Solicita instruções de redefinição de senha para o gestor.
+//         Gera um token criptográfico e simula/envia e-mail pelo Resend.
+// ─────────────────────────────────────────────────────────────────────────────
+router.post('/reset-senha/solicitar', async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) {
+      return res.status(400).json({ error: MENSAGENS.PACIENTE.DADOS_INVALIDOS });
+    }
+
+    const emailNormalizado = email.trim().toLowerCase();
+    
+    // Busca o gestor ativo pelo e-mail
+    const gestor = await knex('usuarios_gestores')
+      .where({ email: emailNormalizado, ativo: true })
+      .first();
+
+    // Se o gestor não for encontrado, retornamos sucesso genérico mesmo assim.
+    // Isso evita ataques de enumeração de e-mail (OWASP Top 10).
+    if (!gestor) {
+      return res.json({ mensagem: 'Se o e-mail estiver cadastrado, você receberá as instruções.' });
+    }
+
+    // Gera um token criptográfico forte e define expiração em 1 hora
+    const token = crypto.randomBytes(32).toString('hex');
+    const expiraEm = new Date(Date.now() + 60 * 60 * 1000); // 1 hora a partir de agora
+
+    // Salva o token na tabela reset_senha_tokens
+    await knex('reset_senha_tokens').insert({
+      gestor_id: gestor.id,
+      token,
+      expira_em: expiraEm,
+      usado: false,
+    });
+
+    // Monta o link para o frontend redefinir a senha
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+    const linkReset = `${frontendUrl}/reset-senha?token=${token}`;
+
+    // Dispara o envio do e-mail
+    await emailService.enviarEmailResetSenha({
+      email: emailNormalizado,
+      nome: gestor.nome,
+      linkReset,
+    });
+
+    // Registra o evento de solicitação no log de auditoria
+    await registrarAuditoria(req, {
+      ator_tipo: 'gestor',
+      ator_id: gestor.id,
+      ubs_id: gestor.ubs_id,
+      escopo_ubs_id: gestor.ubs_id,
+      acao: 'RESET_SENHA_SOLICITADO',
+      entidade: 'usuarios_gestores',
+      entidade_id: gestor.id,
+    });
+
+    return res.json({ mensagem: 'Se o e-mail estiver cadastrado, você receberá as instruções.' });
+  } catch (err) {
+    console.error('[POST /auth/reset-senha/solicitar]', err);
+    return res.status(500).json({ error: MENSAGENS.GERAL.ERRO_INTERNO });
+  }
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ROTA: POST /auth/reset-senha/confirmar
+// FUNÇÃO: Executa a redefinição de senha do gestor de fato, recebendo o token.
+// ─────────────────────────────────────────────────────────────────────────────
+router.post('/reset-senha/confirmar', async (req, res) => {
+  try {
+    const { token, nova_senha } = req.body;
+    if (!token || !nova_senha) {
+      return res.status(400).json({ error: MENSAGENS.PACIENTE.DADOS_INVALIDOS });
+    }
+
+    if (nova_senha.length < 8) {
+      return res.status(400).json({ error: MENSAGENS.PACIENTE.DADOS_INVALIDOS });
+    }
+
+    // Busca o token associado na base de dados
+    const tokenValido = await knex('reset_senha_tokens')
+      .where({ token, usado: false })
+      .andWhere('expira_em', '>', knex.fn.now())
+      .first();
+
+    if (!tokenValido) {
+      return res.status(400).json({ error: MENSAGENS.PACIENTE.DADOS_INVALIDOS });
+    }
+
+    // Faz hash com bcrypt da nova senha
+    const hash = await bcrypt.hash(nova_senha, 12);
+
+    await knex.transaction(async (trx) => {
+      // Atualiza a senha e incrementa a versão do token do gestor (desloga de outros locais)
+      await trx('usuarios_gestores')
+        .where({ id: tokenValido.gestor_id })
+        .update({
+          senha_hash: hash,
+          token_version: trx.raw('token_version + 1'),
+          atualizado_em: trx.fn.now(),
+        });
+
+      // Marca o token como usado
+      await trx('reset_senha_tokens')
+        .where({ id: tokenValido.id })
+        .update({ usado: true });
+    });
+
+    // Registra o evento de sucesso de troca de senha no log de auditoria
+    await registrarAuditoria(req, {
+      ator_tipo: 'gestor',
+      ator_id: tokenValido.gestor_id,
+      acao: 'RESET_SENHA_CONFIRMADO',
+      entidade: 'usuarios_gestores',
+      entidade_id: tokenValido.gestor_id,
+    });
+
+    return res.json({ mensagem: 'Senha atualizada com sucesso.' });
+  } catch (err) {
+    console.error('[POST /auth/reset-senha/confirmar]', err);
     return res.status(500).json({ error: MENSAGENS.GERAL.ERRO_INTERNO });
   }
 });

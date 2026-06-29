@@ -25,6 +25,7 @@ const knex    = require('../db/knex');
 const auditMiddleware = require('../middleware/auditMiddleware');
 const { registrarAuditoria } = require('../services/auditService');
 const MENSAGENS = require('../utils/mensagens');
+const { VERSAO_ATUAL } = require('../utils/lgpd');
 
 const router = express.Router();
 
@@ -56,6 +57,39 @@ const soPaciente = (req, res, next) => {
 
 router.use(soPaciente);
 router.use(auditMiddleware({ modulo: 'paciente' }));
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ROTA: POST /api/paciente/lgpd/aceite
+// FUNCAO: Persistir o aceite explicito do paciente com timestamp e versao da
+//         politica vigente, liberando o restante da navegacao no portal.
+// ─────────────────────────────────────────────────────────────────────────────
+router.post('/lgpd/aceite', async (req, res) => {
+  try {
+    await knex('pacientes')
+      .where({ id: req.user.id })
+      .update({
+        lgpd_aceite_em: knex.fn.now(),
+        lgpd_versao: VERSAO_ATUAL,
+      });
+
+    await registrarAuditoria(req, {
+      ator_tipo: 'paciente',
+      ator_id: req.user.id,
+      ator_ubs_id: req.user.ubs_id,
+      acao: 'LGPD_ACEITE',
+      entidade: 'pacientes',
+      entidade_id: req.user.id,
+      escopo_ubs_id: req.user.ubs_id,
+      resultado: 'sucesso',
+      metadata: { lgpd_versao: VERSAO_ATUAL },
+    });
+
+    return res.json({ aceito: true });
+  } catch (err) {
+    console.error('[POST /paciente/lgpd/aceite]', err);
+    return res.status(500).json({ error: MENSAGENS.GERAL.ERRO_INTERNO });
+  }
+});
 
 
 // ─── GET /api/paciente/meus-dados ─────────────────────────────────────────────

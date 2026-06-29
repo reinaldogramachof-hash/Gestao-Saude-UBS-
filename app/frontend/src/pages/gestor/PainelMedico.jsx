@@ -1622,18 +1622,18 @@ export default function PainelMedico() {
             Data: {new Date().toLocaleDateString('pt-BR')}
           </div>
           <div className="mb-8 border border-gray-400 p-4 rounded-xl">
-            <p className="text-sm uppercase tracking-wide font-bold text-gray-500 mb-1">Paciente</p>
+            <p className="text-sm uppercase tracking-wide font-bold text-gray-700 mb-1">Paciente</p>
             <p className="text-xl font-bold">{pacienteAtivo.nome}</p>
             <p className="text-sm mt-1">CRA: {pacienteAtivo.cra}</p>
           </div>
           <div className="min-h-[400px] border border-gray-400 p-4 rounded-xl">
-            <p className="text-sm uppercase tracking-wide font-bold text-gray-500 mb-4 border-b border-gray-300 pb-2">Prescrição / Atestado</p>
+            <p className="text-sm uppercase tracking-wide font-bold text-gray-700 mb-4 border-b border-gray-300 pb-2">Prescrição / Atestado</p>
           </div>
           <div className="mt-20 pt-8 flex flex-col items-center border-t border-gray-400 w-64 mx-auto">
             <p className="font-bold text-sm">Assinatura e Carimbo Médico</p>
-            <p className="text-xs text-gray-500 mt-1">{user?.nome || 'Médico Responsável'}</p>
+            <p className="text-xs text-gray-700 mt-1">{user?.nome || 'Médico Responsável'}</p>
           </div>
-          <div className="mt-8 text-center text-xs text-gray-400 italic">
+          <div className="mt-8 text-center text-xs text-gray-600 italic">
             * Este documento é um Rascunho para Impressão e não possui assinatura digital ICP-Brasil. O preenchimento e carimbo físico são obrigatórios para validade legal.
           </div>
         </div>

@@ -35,7 +35,7 @@ export default function Privacidade() {
           <h1 className="text-3xl font-extrabold text-gray-900 mt-6 tracking-tight">
             Política de Privacidade
           </h1>
-          <p className="text-sm text-gray-500 mt-2 font-medium">
+          <p className="text-sm text-gray-700 mt-2 font-medium">
             Última atualização: 29 de junho de 2026
           </p>
         </header>
@@ -149,7 +149,7 @@ export default function Privacidade() {
         </div>
 
         {/* Rodapé Interno */}
-        <footer className="border-t border-emerald-50 mt-10 pt-6 text-center text-xs text-gray-400 font-semibold">
+        <footer className="border-t border-emerald-50 mt-10 pt-6 text-center text-xs text-gray-600 font-semibold">
           <p>© 2026 Gestão Saúde UBS+ | Projeto de Extensão UFBRA</p>
           <p className="mt-1">Desenvolvido em conformidade com as diretrizes de proteção de dados de São José dos Campos (SP).</p>
         </footer>
