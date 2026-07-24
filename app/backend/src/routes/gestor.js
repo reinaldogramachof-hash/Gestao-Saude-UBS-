@@ -40,7 +40,7 @@ const pushService  = require('../services/pushService');
 const { requireTipo, requirePerfil, soNaoMedico } = require('../middleware/authorization');
 const validateBody = require('../middleware/validateBody');
 const auditMiddleware = require('../middleware/auditMiddleware');
-const { registrarAuditoria } = require('../services/auditService');
+const { registrar, registrarAuditoria } = require('../services/auditService');
 const gestorNotificationService = require('../services/gestorNotificationService');
 const MENSAGENS = require('../utils/mensagens');
 const {
@@ -470,13 +470,26 @@ router.get('/paciente/:id', async (req, res) => {
       .select(CAMPOS_SOLICITACAO_GESTOR)
       .orderBy('criado_em', 'desc');
 
-    await registrarAuditoria(req, {
-      acao: 'paciente_visualizar_matriz',
-      entidade: 'pacientes',
-      entidade_id: paciente.id,
-      escopo_ubs_id: paciente.ubs_id,
-      metadata: { origem: 'modo_matriz' },
-    });
+    // LOG DE ACESSO: registra que este gestor visualizou dados deste paciente.
+    // Chamada assíncrona não-bloqueante — falha no log não afeta a resposta.
+    registrar({
+      usuarioId: req.user.id,
+      usuarioTipo: 'gestor',
+      usuarioPerfil: req.user.perfil,
+      ubsId: req.user.ubs_id,
+      escopoUbsId: paciente.ubs_id,
+      acao: 'VISUALIZACAO_PACIENTE',
+      entidade: 'paciente',
+      entidadeId: paciente.id,
+      resultado: 'sucesso',
+      ipOrigem: req.ip,
+      httpStatus: 200,
+      detalhe: {
+        origem: 'modo_matriz',
+        contrato_legado: 'paciente_visualizar_matriz',
+        rota: '/api/gestor/paciente/:id',
+      },
+    }).catch(() => {});
 
     return res.json({ ...paciente, solicitacoes });
   } catch (err) {

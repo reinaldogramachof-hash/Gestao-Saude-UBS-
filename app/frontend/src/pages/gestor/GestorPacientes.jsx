@@ -10,9 +10,13 @@ import toast from 'react-hot-toast';
 import api from '../../services/api';
 import GestorLayout from '../../components/gestor/GestorLayout';
 import { formatarDataBR } from '../../utils/statusHelper';
+import { useAuth } from '../../hooks/useAuth';
+
+const TEXTO_CONFIRMACAO_EXCLUSAO_LGPD = 'CONFIRMAR EXCLUSÃO';
 
 export default function GestorPacientes() {
   const navigate = useNavigate();
+  const { user } = useAuth();
 
   // Aba ativa: 'ativos' (cadastros homologados) ou 'pendentes' (auto-cadastros recentes de 7 dias)
   const [aba, setAba] = useState('ativos');
@@ -29,6 +33,10 @@ export default function GestorPacientes() {
   const [modalAberto, setModalAberto] = useState(false);
   const [confirmandoRejeicao, setConfirmandoRejeicao] = useState(null); // { id, nome }
   const [confirmacaoAprovacao, setConfirmacaoAprovacao] = useState(null); // { id, nome }
+  const [confirmacaoExclusaoLgpd, setConfirmacaoExclusaoLgpd] = useState(null); // { id, nome }
+  const [textoConfirmacaoLgpd, setTextoConfirmacaoLgpd] = useState('');
+  const [erroExclusaoLgpd, setErroExclusaoLgpd] = useState('');
+  const [excluindoLgpd, setExcluindoLgpd] = useState(false);
   const [enviando, setEnviando] = useState(false);
   const [erroCRA, setErroCRA] = useState('');
   
@@ -96,6 +104,43 @@ export default function GestorPacientes() {
       fetchPendentes();
     } catch {
       toast.error('Erro ao rejeitar cadastro.');
+    }
+  };
+
+  // Abre a confirmacao dupla apenas para administradores, evitando expor uma
+  // acao irreversivel a perfis que nao possuem respaldo legal para executa-la.
+  const abrirExclusaoLgpd = (paciente) => {
+    if (user?.perfil !== 'admin') return;
+    setConfirmacaoExclusaoLgpd({ id: paciente.id, nome: paciente.nome });
+    setTextoConfirmacaoLgpd('');
+    setErroExclusaoLgpd('');
+  };
+
+  const fecharExclusaoLgpd = () => {
+    if (excluindoLgpd) return;
+    setConfirmacaoExclusaoLgpd(null);
+    setTextoConfirmacaoLgpd('');
+    setErroExclusaoLgpd('');
+  };
+
+  const handleExcluirDadosLgpd = async () => {
+    if (!confirmacaoExclusaoLgpd) return;
+
+    setExcluindoLgpd(true);
+    setErroExclusaoLgpd('');
+
+    try {
+      await api.delete(`/admin/pacientes/${confirmacaoExclusaoLgpd.id}/dados`);
+
+      // Remove o paciente da lista local imediatamente para evitar que o admin
+      // interaja novamente com um cadastro que ja nao existe no backend.
+      setPacientes((listaAtual) => listaAtual.filter((paciente) => paciente.id !== confirmacaoExclusaoLgpd.id));
+      toast.success('Dados do paciente removidos com sucesso.');
+      fecharExclusaoLgpd();
+    } catch (err) {
+      setErroExclusaoLgpd(err.response?.data?.error || 'Nao foi possivel excluir os dados do paciente.');
+    } finally {
+      setExcluindoLgpd(false);
     }
   };
 
@@ -238,6 +283,62 @@ export default function GestorPacientes() {
                 className="flex-1 h-11 px-4 bg-red-600 text-white font-bold rounded-2xl hover:bg-red-700 transition-colors text-xs shadow-md"
               >
                 Confirmar Rejeição
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Modal de Confirmação: EXCLUSÃO LGPD ── */}
+      {confirmacaoExclusaoLgpd && (
+        <div className="fixed inset-0 bg-black/55 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in">
+          <div className="bg-surface rounded-[2rem] p-6 max-w-lg w-full shadow-2xl border border-surface-variant/40">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0">
+                <span className="material-symbols-outlined text-red-700">warning</span>
+              </div>
+              <h3 className="font-extrabold text-on-background text-lg">Excluir dados (LGPD)</h3>
+            </div>
+
+            <p className="text-sm text-on-surface-variant mb-4 leading-relaxed">
+              Você está prestes a excluir permanentemente todos os dados de <strong>{confirmacaoExclusaoLgpd.nome}</strong>.
+              Esta ação é irreversível e não pode ser desfeita.
+              Os registros de auditoria serão anonimizados conforme exigência legal.
+            </p>
+
+            <div className="rounded-2xl bg-red-50 border border-red-200 p-4 mb-4">
+              <label className="block text-xs font-extrabold text-red-800 uppercase tracking-wider mb-2">
+                Digite exatamente: {TEXTO_CONFIRMACAO_EXCLUSAO_LGPD}
+              </label>
+              <input
+                type="text"
+                value={textoConfirmacaoLgpd}
+                onChange={(event) => setTextoConfirmacaoLgpd(event.target.value)}
+                placeholder={TEXTO_CONFIRMACAO_EXCLUSAO_LGPD}
+                className="w-full h-12 px-4 bg-white border border-red-200 rounded-xl outline-none font-bold text-sm focus:ring-4 focus:ring-red-500/10 focus:border-red-500 transition-all"
+              />
+            </div>
+
+            {erroExclusaoLgpd && (
+              <div className="text-sm font-bold text-red-700 bg-red-50 border border-red-200 rounded-2xl px-4 py-3 mb-4">
+                {erroExclusaoLgpd}
+              </div>
+            )}
+
+            <div className="flex gap-3">
+              <button
+                onClick={fecharExclusaoLgpd}
+                disabled={excluindoLgpd}
+                className="flex-1 h-11 px-4 border border-outline-variant text-on-surface font-bold rounded-2xl hover:bg-surface-container-low transition-colors text-xs disabled:opacity-50"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleExcluirDadosLgpd}
+                disabled={textoConfirmacaoLgpd !== TEXTO_CONFIRMACAO_EXCLUSAO_LGPD || excluindoLgpd}
+                className="flex-1 h-11 px-4 bg-red-700 text-white font-bold rounded-2xl hover:bg-red-800 transition-colors text-xs shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {excluindoLgpd ? 'Excluindo...' : 'Excluir permanentemente'}
               </button>
             </div>
           </div>
@@ -471,13 +572,23 @@ export default function GestorPacientes() {
                           </span>
                         </td>
                         <td className="p-4 md:p-5 text-right">
-                          <button
-                            onClick={() => navigate(`/gestor/paciente/${p.id}`)}
-                            className="px-3.5 py-2 bg-surface-container-high hover:bg-primary text-on-surface hover:text-white font-bold rounded-xl transition-all border border-surface-variant/60 hover:border-primary text-xs flex items-center justify-center gap-1 ml-auto shadow-sm hover:shadow-md"
-                          >
-                            Ver Ficha
-                            <span className="material-symbols-outlined text-sm">arrow_forward</span>
-                          </button>
+                          <div className="flex justify-end gap-2">
+                            {user?.perfil === 'admin' && (
+                              <button
+                                onClick={() => abrirExclusaoLgpd(p)}
+                                className="px-3.5 py-2 bg-red-50 hover:bg-red-100 text-red-700 font-bold rounded-xl transition-all border border-red-200 text-xs flex items-center justify-center gap-1 shadow-sm"
+                              >
+                                Excluir dados (LGPD)
+                              </button>
+                            )}
+                            <button
+                              onClick={() => navigate(`/gestor/paciente/${p.id}`)}
+                              className="px-3.5 py-2 bg-surface-container-high hover:bg-primary text-on-surface hover:text-white font-bold rounded-xl transition-all border border-surface-variant/60 hover:border-primary text-xs flex items-center justify-center gap-1 shadow-sm hover:shadow-md"
+                            >
+                              Ver Ficha
+                              <span className="material-symbols-outlined text-sm">arrow_forward</span>
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))

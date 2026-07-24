@@ -1,0 +1,1142 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manual do Gestor — Gestão Saúde UBS+</title>
+    <!--
+      ─────────────────────────────────────────────────────────────────────────────
+      DOCUMENTO: Manual do Gestor (HTML Imprimível para PDF A4)
+      PROJETO: Gestão Saúde UBS+ (UFBRA - Projeto de Extensão)
+      PÚBLICO-ALVO: Recepcionistas, assistentes e gestores das UBSs de São José dos Campos (SP)
+      OBJETIVO: Servir como guia passo a passo ilustrado para operação do portal do gestor,
+                permitindo fácil leitura na tela ou impressão limpa via Ctrl+P.
+      
+      ESTILO E CORES:
+      - Azul Escuro (#1e3a5f) para Títulos e Identidade Institucional.
+      - Amarelo Claro (#fffaf0) e Borda Laranja (#dd6b20) para caixas de atenção/avisos.
+      - Azul Claro (#ebf8ff) e Borda Azul (#3182ce) para passos ordenados.
+      - Cinza Claro (#f7fafc) e Borda (#e2e8f0) para simulações visuais das telas.
+      
+      REGRAS DE IMPRESSÃO:
+      - Utiliza @media print para ocultar botões do navegador e otimizar margens.
+      - Cada capítulo inicia em uma nova página (break-before: page).
+      ─────────────────────────────────────────────────────────────────────────────
+    -->
+    <style>
+        /* ─────────────────────────────────────────────────────────────────────────────
+           ESTILOS GERAIS DE LAYOUT (TELA E LEITURA LOCAL)
+           ───────────────────────────────────────────────────────────────────────────── */
+        :root {
+            --primary-color: #1e3a5f;
+            --primary-dark: #12223a;
+            --secondary-color: #3182ce;
+            --bg-light: #f7fafc;
+            --bg-alert: #fffaf0;
+            --border-alert: #dd6b20;
+            --bg-step: #ebf8ff;
+            --border-step: #3182ce;
+            --text-color: #2d3748;
+            --text-muted: #718096;
+            --border-color: #e2e8f0;
+            --shadow-sm: 0 1px 3px rgba(0,0,0,0.1);
+            --shadow-md: 0 4px 6px rgba(0,0,0,0.05);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: Arial, "Helvetica Neue", Helvetica, sans-serif;
+            font-size: 14px;
+            line-height: 1.6;
+            color: var(--text-color);
+            background-color: #edf2f7;
+            padding: 40px 20px;
+        }
+
+        /* Container principal simulando folha A4 na tela */
+        .document-container {
+            max-width: 800px;
+            margin: 0 auto;
+            background-color: #ffffff;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.1);
+            border-radius: 8px;
+            padding: 50px 60px;
+        }
+
+        /* ─────────────────────────────────────────────────────────────────────────────
+           ESTRUTURA DE PÁGINAS E QUEBRAS (Ctrl+P)
+           ───────────────────────────────────────────────────────────────────────────── */
+        .page-break {
+            margin-bottom: 60px;
+            border-bottom: 2px dashed var(--border-color);
+            padding-bottom: 40px;
+        }
+
+        .page-break:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+            padding-bottom: 0;
+        }
+
+        /* ─────────────────────────────────────────────────────────────────────────────
+           CAPA DO MANUAL
+           ───────────────────────────────────────────────────────────────────────────── */
+        .cover-page {
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            min-height: 800px;
+            text-align: center;
+            padding: 60px 0;
+        }
+
+        .cover-header {
+            margin-top: 50px;
+        }
+
+        .cover-logo-wrapper {
+            margin-bottom: 30px;
+        }
+
+        .cover-logo {
+            display: inline-block;
+            background-color: var(--primary-color);
+            color: #ffffff;
+            font-weight: bold;
+            font-size: 28px;
+            padding: 15px 30px;
+            border-radius: 6px;
+            box-shadow: var(--shadow-md);
+            letter-spacing: 1px;
+        }
+
+        .cover-title {
+            font-size: 32px;
+            color: var(--primary-color);
+            margin-bottom: 15px;
+            font-weight: 800;
+        }
+
+        .cover-subtitle {
+            font-size: 18px;
+            color: var(--text-muted);
+            margin-bottom: 80px;
+        }
+
+        .cover-info {
+            border-top: 1px solid var(--border-color);
+            padding-top: 30px;
+            color: var(--text-muted);
+            font-size: 13px;
+        }
+
+        .cover-version {
+            font-weight: bold;
+            color: var(--primary-color);
+            margin-bottom: 5px;
+        }
+
+        /* ─────────────────────────────────────────────────────────────────────────────
+           ELEMENTOS TEXTUAIS E TÍTULOS
+           ───────────────────────────────────────────────────────────────────────────── */
+        h1, h2, h3, h4 {
+            color: var(--primary-color);
+            font-weight: bold;
+        }
+
+        h1 {
+            font-size: 24px;
+            border-bottom: 2px solid var(--primary-color);
+            padding-bottom: 8px;
+            margin-bottom: 20px;
+            margin-top: 20px;
+        }
+
+        h2 {
+            font-size: 18px;
+            margin-top: 25px;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        h3 {
+            font-size: 15px;
+            margin-top: 18px;
+            margin-bottom: 8px;
+        }
+
+        p {
+            margin-bottom: 15px;
+            text-align: justify;
+        }
+
+        strong {
+            color: #1a202c;
+        }
+
+        /* ─────────────────────────────────────────────────────────────────────────────
+           BOXES CUSTOMIZADOS (ATENÇÃO, PASSO A PASSO, TELAS SIMULADAS)
+           ───────────────────────────────────────────────────────────────────────────── */
+        /* Alertas / Caixas de Atenção */
+        .box-attention {
+            background-color: var(--bg-alert);
+            border-left: 5px solid var(--border-alert);
+            border-radius: 4px;
+            padding: 15px 20px;
+            margin: 20px 0;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .box-attention-title {
+            font-weight: bold;
+            color: #c05621;
+            margin-bottom: 5px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        /* Passo a passo numerado */
+        .box-steps {
+            background-color: var(--bg-step);
+            border: 1px solid var(--border-step);
+            border-radius: 6px;
+            padding: 20px;
+            margin: 20px 0;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .box-steps-title {
+            font-weight: bold;
+            color: var(--primary-color);
+            margin-bottom: 12px;
+            font-size: 15px;
+        }
+
+        .box-steps ol {
+            margin-left: 20px;
+        }
+
+        .box-steps li {
+            margin-bottom: 10px;
+            padding-left: 5px;
+        }
+
+        .box-steps li::marker {
+            font-weight: bold;
+            color: var(--primary-color);
+        }
+
+        /* Caixa de Simulação de Interface (Telas do Sistema) */
+        .screen-simulation {
+            background-color: var(--bg-light);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            margin: 25px 0;
+            box-shadow: var(--shadow-md);
+            overflow: hidden;
+        }
+
+        /* Barra de controle simulada do navegador */
+        .screen-header {
+            background-color: #edf2f7;
+            border-bottom: 1px solid var(--border-color);
+            padding: 8px 15px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .screen-dots {
+            display: flex;
+            gap: 6px;
+        }
+
+        .screen-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+        .dot-red { background-color: #e53e3e; }
+        .dot-yellow { background-color: #ecc94b; }
+        .dot-green { background-color: #38a169; }
+
+        .screen-address-bar {
+            background-color: #ffffff;
+            border: 1px solid #cbd5e0;
+            border-radius: 4px;
+            font-size: 11px;
+            padding: 2px 10px;
+            flex-grow: 1;
+            color: var(--text-muted);
+            font-family: monospace;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        /* Conteúdo interno da tela simulada */
+        .screen-body {
+            padding: 20px;
+            background-color: #ffffff;
+        }
+
+        /* Elementos UI Simulados */
+        .ui-navbar {
+            background-color: var(--primary-color);
+            color: #ffffff;
+            padding: 10px 15px;
+            border-radius: 4px;
+            margin-bottom: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .ui-navbar-links {
+            display: flex;
+            gap: 15px;
+        }
+
+        .ui-navbar-link {
+            color: #e2e8f0;
+            text-decoration: none;
+        }
+
+        .ui-navbar-link.active {
+            color: #ffffff;
+            border-bottom: 2px solid #ffffff;
+        }
+
+        .ui-card {
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            padding: 15px;
+            background-color: #ffffff;
+            margin-bottom: 10px;
+        }
+
+        .ui-card-title {
+            font-weight: bold;
+            font-size: 13px;
+            margin-bottom: 10px;
+            color: var(--primary-color);
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 5px;
+        }
+
+        .ui-form-group {
+            margin-bottom: 12px;
+        }
+
+        .ui-label {
+            display: block;
+            font-size: 11px;
+            font-weight: bold;
+            margin-bottom: 4px;
+            color: #4a5568;
+        }
+
+        .ui-input {
+            width: 100%;
+            padding: 6px 10px;
+            border: 1px solid #cbd5e0;
+            border-radius: 4px;
+            font-size: 12px;
+            background-color: #f7fafc;
+        }
+
+        .ui-input-placeholder {
+            color: #a0aec0;
+        }
+
+        .ui-button-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .ui-button {
+            padding: 6px 12px;
+            font-size: 12px;
+            font-weight: bold;
+            border-radius: 4px;
+            border: none;
+            cursor: default;
+        }
+
+        .ui-btn-primary {
+            background-color: var(--secondary-color);
+            color: white;
+        }
+
+        .ui-btn-success {
+            background-color: #38a169;
+            color: white;
+        }
+
+        .ui-btn-danger {
+            background-color: #e53e3e;
+            color: white;
+        }
+
+        .ui-btn-secondary {
+            background-color: #e2e8f0;
+            color: #4a5568;
+        }
+
+        .ui-badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 9999px;
+            font-size: 10px;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+
+        .ui-badge-yellow { background-color: #feebc8; color: #c05621; }
+        .ui-badge-orange { background-color: #feebc8; color: #dd6b20; }
+        .ui-badge-blue { background-color: #ebf8ff; color: #2b6cb0; }
+        .ui-badge-green { background-color: #c6f6d5; color: #22543d; }
+        .ui-badge-gray { background-color: #edf2f7; color: #4a5568; }
+
+        /* Componente de linha do tempo (stepper) simulado */
+        .ui-stepper {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin: 15px 0;
+            padding: 10px;
+            background: #f7fafc;
+            border-radius: 4px;
+        }
+
+        .ui-step {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            font-size: 10px;
+            color: var(--text-muted);
+            flex: 1;
+            position: relative;
+        }
+
+        .ui-step.active {
+            color: var(--primary-color);
+            font-weight: bold;
+        }
+
+        .ui-step-circle {
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background-color: #cbd5e0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 9px;
+            margin-bottom: 4px;
+            z-index: 2;
+        }
+
+        .ui-step.active .ui-step-circle {
+            background-color: var(--secondary-color);
+        }
+
+        .ui-step.completed .ui-step-circle {
+            background-color: #38a169;
+        }
+
+        /* ─────────────────────────────────────────────────────────────────────────────
+           BOTÃO DE IMPRESSÃO (FLUTUANTE NO TOPO)
+           ───────────────────────────────────────────────────────────────────────────── */
+        .print-header-actions {
+            max-width: 800px;
+            margin: 0 auto 15px auto;
+            display: flex;
+            justify-content: flex-end;
+        }
+
+        .btn-print-action {
+            background-color: var(--primary-color);
+            color: #ffffff;
+            border: none;
+            padding: 10px 20px;
+            font-size: 14px;
+            font-weight: bold;
+            border-radius: 6px;
+            cursor: pointer;
+            box-shadow: var(--shadow-md);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: background-color 0.2s;
+        }
+
+        .btn-print-action:hover {
+            background-color: var(--primary-dark);
+        }
+
+        /* ─────────────────────────────────────────────────────────────────────────────
+           CSS DE IMPRESSÃO (@media print)
+           ───────────────────────────────────────────────────────────────────────────── */
+        @media print {
+            body {
+                background-color: #ffffff;
+                padding: 0;
+                color: #000000;
+            }
+
+            .document-container {
+                box-shadow: none;
+                padding: 0;
+                max-width: 100%;
+            }
+
+            .no-print {
+                display: none !important;
+            }
+
+            .page-break {
+                border-bottom: none;
+                padding-bottom: 0;
+                margin-bottom: 0;
+                page-break-before: always;
+                break-before: page;
+            }
+
+            .page-break:first-child {
+                page-break-before: avoid;
+                break-before: avoid;
+            }
+
+            /* Forçar as simulações a manterem suas cores de fundo na impressão */
+            .screen-simulation, .box-attention, .box-steps, .ui-navbar, .ui-navbar-link, .ui-badge, .ui-step-circle, .ui-stepper {
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+
+            /* Ajustar tamanho da capa de forma que ocupe a folha inteira */
+            .cover-page {
+                min-height: 95vh;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Botão de impressão que desaparece ao imprimir -->
+    <div class="print-header-actions no-print">
+        <button class="btn-print-action" onclick="window.print()">
+            <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                <path d="M2.5 8a.5.5 0 1 0 0-1 .5.5 0 0 0 0 1z"/>
+                <path d="M5 1a2 2 0 0 0-2 2v2H2a2 2 0 0 0-2 2v3a2 2 0 0 0 2 2h1v1a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2v-1h1a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-1V3a2 2 0 0 0-2-2H5zM4 3a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2H4V3zm1 5a2.5 2.5 0 0 0 0 5h6a2.5 2.5 0 0 0 0-5H5z"/>
+            </svg>
+            Imprimir Manual (PDF)
+        </button>
+    </div>
+
+    <!-- Container principal com todo o manual -->
+    <div class="document-container">
+
+        <!-- ─────────────────────────────────────────────────────────────────────────
+             CAPA DO DOCUMENTO
+             ───────────────────────────────────────────────────────────────────────── -->
+        <div class="cover-page page-break">
+            <div class="cover-header">
+                <div class="cover-logo-wrapper">
+                    <span class="cover-logo">UBS+</span>
+                </div>
+                <h1 class="cover-title" style="border-bottom: none; margin-bottom: 10px;">Manual do Gestor</h1>
+                <h2 class="cover-subtitle" style="justify-content: center; margin-top: 0;">Gestão Saúde UBS+</h2>
+                <p style="text-align: center; font-size: 16px; margin-top: 20px;">
+                    Guia de uso prático para recepcionistas, assistentes e gestores das Unidades Básicas de Saúde.
+                </p>
+            </div>
+
+            <div class="cover-info">
+                <div class="cover-version">Versão 1.0</div>
+                <div>Publicado em: Junho de 2026</div>
+                <div style="margin-top: 15px; font-weight: bold; color: var(--primary-color);">
+                    Projeto de Extensão Multidisciplinar
+                </div>
+                <div>UFBRA — Engenharia de Software</div>
+                <div>São José dos Campos - SP</div>
+            </div>
+        </div>
+
+        <!-- ─────────────────────────────────────────────────────────────────────────
+             CAPÍTULO 1 — COMO FAZER LOGIN
+             ───────────────────────────────────────────────────────────────────────── -->
+        <div class="page-break" id="capitulo1">
+            <h1>Capítulo 1 — Como fazer login</h1>
+            <p>
+                O acesso ao <strong>Gestão Saúde UBS+</strong> é feito de forma segura através do navegador de internet. Cada gestor ou recepcionista possui uma credencial de acesso individual, associada à sua UBS de atuação.
+            </p>
+
+            <div class="box-steps">
+                <div class="box-steps-title">Passo a passo para acessar o sistema:</div>
+                <ol>
+                    <li>Abra o navegador de internet de sua preferência (como Google Chrome ou Microsoft Edge) no computador da UBS.</li>
+                    <li>Digite o endereço web do sistema fornecido pela coordenação na barra de endereços e pressione <strong>Enter</strong>.</li>
+                    <li>Na tela de login, insira o seu <strong>E-mail institucional</strong> cadastrado.</li>
+                    <li>No campo abaixo, insira a sua <strong>Senha</strong> secreta.</li>
+                    <li>Clique no botão azul <strong>Entrar</strong>.</li>
+                </ol>
+            </div>
+
+            <div class="box-attention">
+                <div class="box-attention-title">⚠️ Esqueceu a sua senha?</div>
+                <p style="margin-bottom: 0;">
+                    Caso não se lembre da sua senha, clique no link <strong>"Esqueci minha senha"</strong> posicionado logo abaixo do botão de login. O sistema enviará automaticamente um link de recuperação para o seu e-mail institucional. Siga as instruções do e-mail para cadastrar uma nova senha.
+                </p>
+            </div>
+
+            <h2>O que você vê na tela de login:</h2>
+            <div class="screen-simulation">
+                <div class="screen-header">
+                    <div class="screen-dots">
+                        <span class="screen-dot dot-red"></span>
+                        <span class="screen-dot dot-yellow"></span>
+                        <span class="screen-dot dot-green"></span>
+                    </div>
+                    <div class="screen-address-bar">https://ubsmais.sjc.sp.gov.br/gestor/login</div>
+                </div>
+                <div class="screen-body" style="background-color: #f7fafc; display: flex; justify-content: center; padding: 40px 20px;">
+                    <div class="ui-card" style="width: 320px; box-shadow: var(--shadow-sm);">
+                        <div class="ui-card-title" style="text-align: center; border-bottom: none; font-size: 16px;">
+                            Acesso ao Painel Gestor
+                        </div>
+                        <div class="ui-form-group">
+                            <label class="ui-label">E-mail Institucional</label>
+                            <div class="ui-input ui-input-placeholder">exemplo@sjc.sp.gov.br</div>
+                        </div>
+                        <div class="ui-form-group">
+                            <label class="ui-label">Senha</label>
+                            <div class="ui-input ui-input-placeholder">••••••••••••</div>
+                        </div>
+                        <div class="ui-button-group" style="flex-direction: column;">
+                            <button class="ui-button ui-btn-primary" style="width: 100%; padding: 8px;">Entrar</button>
+                        </div>
+                        <div style="text-align: center; margin-top: 15px; font-size: 11px;">
+                            <a href="#" style="color: var(--secondary-color); text-decoration: none;" onclick="return false;">Esqueci minha senha</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ─────────────────────────────────────────────────────────────────────────
+             CAPÍTULO 2 — CADASTRANDO UM PACIENTE
+             ───────────────────────────────────────────────────────────────────────── -->
+        <div class="page-break" id="capitulo2">
+            <h1>Capítulo 2 — Cadastrando um paciente</h1>
+            <p>
+                O cadastro de pacientes serve para identificar o cidadão no sistema, permitindo que ele visualize suas próprias solicitações de saúde e receba notificações. 
+            </p>
+
+            <h2>Quando realizar este cadastro?</h2>
+            <p>
+                O cadastro deve ser feito quando o paciente comparecer à UBS solicitando acompanhamento de suas consultas e exames e ele ainda não estiver registrado na base de dados do <strong>Gestão Saúde UBS+</strong>.
+            </p>
+
+            <div class="box-steps">
+                <div class="box-steps-title">Passo a passo para cadastrar:</div>
+                <ol>
+                    <li>No menu lateral, clique em <strong>"Pacientes"</strong> e depois no botão azul <strong>"+ Novo Paciente"</strong>.</li>
+                    <li>Preencha o <strong>CRA</strong> do paciente. O CRA (Cadastro de Regulação Ambulatorial) é o número chave do paciente no município. Ele pode ser localizado na ficha de encaminhamento médico ou na carteira municipal do SUS do paciente.</li>
+                    <li>Preencha o <strong>Nome Completo</strong>, sem abreviações.</li>
+                    <li>Insira o <strong>CPF</strong> (11 dígitos, apenas números).</li>
+                    <li>Digite a <strong>Data de Nascimento</strong> (formato DD/MM/AAAA).</li>
+                    <li>Informe o número de <strong>Telefone/WhatsApp</strong> com o DDD (ex: 12 99999-9999).</li>
+                    <li>Clique no botão verde <strong>"Salvar Cadastro"</strong> para concluir o processo.</li>
+                </ol>
+            </div>
+
+            <div class="box-attention">
+                <div class="box-attention-title">⚠️ Atenção à Proteção de Dados (LGPD)</div>
+                <p style="margin-bottom: 0;">
+                    Conforme o Decreto Municipal 18.855/2021 de São José dos Campos, os dados cadastrais do paciente são confidenciais. Nunca compartilhe telas de dados cadastrais e confirme sempre a identidade do paciente solicitando um documento com foto antes de repassar informações ou realizar alterações.
+                </p>
+            </div>
+
+            <h2>O que você vê na tela de cadastro:</h2>
+            <div class="screen-simulation">
+                <div class="screen-header">
+                    <div class="screen-dots">
+                        <span class="screen-dot dot-red"></span>
+                        <span class="screen-dot dot-yellow"></span>
+                        <span class="screen-dot dot-green"></span>
+                    </div>
+                    <div class="screen-address-bar">https://ubsmais.sjc.sp.gov.br/gestor/pacientes/novo</div>
+                </div>
+                <div class="screen-body">
+                    <div class="ui-navbar">
+                        <span>UBS Centro-Oeste — SJC</span>
+                        <div class="ui-navbar-links">
+                            <a href="#" class="ui-navbar-link active" onclick="return false;">Pacientes</a>
+                            <a href="#" class="ui-navbar-link" onclick="return false;">Solicitações</a>
+                            <a href="#" class="ui-navbar-link" onclick="return false;">Medicamentos</a>
+                        </div>
+                    </div>
+                    <div class="ui-card">
+                        <div class="ui-card-title">Novo Cadastro de Paciente</div>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                            <div class="ui-form-group">
+                                <label class="ui-label">CRA *</label>
+                                <div class="ui-input">12345678</div>
+                            </div>
+                            <div class="ui-form-group">
+                                <label class="ui-label">Nome Completo *</label>
+                                <div class="ui-input">Maria Oliveira Silva</div>
+                            </div>
+                            <div class="ui-form-group">
+                                <label class="ui-label">CPF *</label>
+                                <div class="ui-input">123.456.789-00</div>
+                            </div>
+                            <div class="ui-form-group">
+                                <label class="ui-label">Data de Nascimento *</label>
+                                <div class="ui-input">15/08/1982</div>
+                            </div>
+                            <div class="ui-form-group" style="grid-column: span 2;">
+                                <label class="ui-label">Telefone / WhatsApp *</label>
+                                <div class="ui-input">(12) 99123-4567</div>
+                            </div>
+                        </div>
+                        <div class="ui-button-group">
+                            <button class="ui-button ui-btn-success">Salvar Cadastro</button>
+                            <button class="ui-button ui-btn-secondary">Cancelar</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ─────────────────────────────────────────────────────────────────────────
+             CAPÍTULO 3 — CRIANDO E ATUALIZANDO SOLICITAÇÕES
+             ───────────────────────────────────────────────────────────────────────── -->
+        <div class="page-break" id="capitulo3">
+            <h1>Capítulo 3 — Criando e atualizando solicitações</h1>
+            <p>
+                Uma <strong>solicitação</strong> representa qualquer encaminhamento clínico que o paciente necessite, como uma consulta com especialista, um exame laboratorial/de imagem ou um procedimento ambulatorial.
+            </p>
+
+            <h2>Como funciona o fluxo de status?</h2>
+            <p>
+                Toda solicitação passa por uma linha do tempo lógica de acompanhamento. O papel da equipe gestora é atualizar o status conforme o processo avança na regulação municipal:
+            </p>
+
+            <div class="ui-stepper" style="border: 1px solid var(--border-color); margin-bottom: 20px;">
+                <div class="ui-step completed">
+                    <span class="ui-step-circle">1</span>
+                    <span>Em análise</span>
+                </div>
+                <div class="ui-step completed">
+                    <span class="ui-step-circle">2</span>
+                    <span>Regulação</span>
+                </div>
+                <div class="ui-step active">
+                    <span class="ui-step-circle">3</span>
+                    <span>Autorizado</span>
+                </div>
+                <div class="ui-step">
+                    <span class="ui-step-circle">4</span>
+                    <span>Data Marcada</span>
+                </div>
+                <div class="ui-step">
+                    <span class="ui-step-circle">5</span>
+                    <span>Concluído</span>
+                </div>
+            </div>
+
+            <div class="box-steps">
+                <div class="box-steps-title">Como cadastrar uma nova solicitação:</div>
+                <ol>
+                    <li>Acesse o menu <strong>"Pacientes"</strong> e busque pelo paciente usando o CRA ou CPF.</li>
+                    <li>Clique no nome do paciente para abrir a sua ficha detalhada.</li>
+                    <li>Clique no botão azul <strong>"+ Nova Solicitação"</strong>.</li>
+                    <li>Selecione o tipo: <strong>Consulta</strong>, <strong>Exame</strong> ou <strong>Procedimento</strong>.</li>
+                    <li>Preencha a especialidade ou nome do exame (ex: "Ultrassonografia Abdominal").</li>
+                    <li>Clique em <strong>"Criar Solicitação"</strong>.</li>
+                </ol>
+            </div>
+
+            <div class="box-steps">
+                <div class="box-steps-title">Como atualizar o andamento de uma solicitação:</div>
+                <ol>
+                    <li>Na ficha do paciente, localize a lista de solicitações ativas.</li>
+                    <li>Clique em <strong>"Atualizar Status"</strong> ao lado do exame ou consulta correspondente.</li>
+                    <li>Escolha a nova fase na lista de opções (ex: mudar para "Data marcada").</li>
+                    <li><strong>Adicione Observações Clarificadoras:</strong> Insira a data, horário, o local do atendimento e as instruções de preparo (ex: "Jejum de 8 horas. Comparecer na UBS com 15 minutos de antecedência").</li>
+                    <li>Clique em <strong>"Salvar Alterações"</strong>.</li>
+                </ol>
+            </div>
+
+            <div class="box-attention">
+                <div class="box-attention-title">⚠️ Notificações Automáticas ao Paciente</div>
+                <p style="margin-bottom: 0;">
+                    Sempre que você altera o status para <strong>"Autorizado"</strong> ou <strong>"Data marcada"</strong> e salva, o paciente recebe um aviso no portal dele. Em caso de agendamento de data, as instruções de preparo e o endereço do local aparecem destacados para ele de forma simples.
+                </p>
+            </div>
+
+            <h2>Visualização da atualização de solicitação:</h2>
+            <div class="screen-simulation">
+                <div class="screen-header">
+                    <div class="screen-dots">
+                        <span class="screen-dot dot-red"></span>
+                        <span class="screen-dot dot-yellow"></span>
+                        <span class="screen-dot dot-green"></span>
+                    </div>
+                    <div class="screen-address-bar">https://ubsmais.sjc.sp.gov.br/gestor/solicitacoes/editar/482</div>
+                </div>
+                <div class="screen-body">
+                    <div class="ui-card">
+                        <div class="ui-card-title">Atualização de Solicitação — ID #482</div>
+                        <div style="font-size: 12px; margin-bottom: 12px;">
+                            <strong>Paciente:</strong> Maria Oliveira Silva (CRA: 12345678)<br>
+                            <strong>Procedimento:</strong> Ultrassonografia Abdominal
+                        </div>
+                        <div class="ui-form-group">
+                            <label class="ui-label">Novo Status</label>
+                            <div class="ui-input" style="font-weight: bold; color: var(--secondary-color);">Data Marcada</div>
+                        </div>
+                        <div class="ui-form-group">
+                            <label class="ui-label">Observações e Orientações para o Paciente (Jargão Simples)</label>
+                            <div class="ui-input" style="height: 60px; font-size: 11px;">Exame marcado para o dia 14/07/2026 às 08:30 na UBS Centro-Oeste. Orientações: Tomar 4 copos de água 1 hora antes do exame e manter jejum de 6 horas.</div>
+                        </div>
+                        <div class="ui-button-group">
+                            <button class="ui-button ui-btn-success">Salvar Alterações</button>
+                            <button class="ui-button ui-btn-secondary">Voltar</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ─────────────────────────────────────────────────────────────────────────
+             CAPÍTULO 4 — MEDICAMENTOS
+             ───────────────────────────────────────────────────────────────────────── -->
+        <div class="page-break" id="capitulo4">
+            <h1>Capítulo 4 — Medicamentos</h1>
+            <p>
+                Esta área permite atualizar a disponibilidade da farmácia local da UBS, evitando que o paciente se desloque até a unidade caso o medicamento que ele precisa esteja em falta.
+            </p>
+
+            <div class="box-steps">
+                <div class="box-steps-title">Como atualizar a disponibilidade de medicamentos:</div>
+                <ol>
+                    <li>No menu do gestor, acesse a opção <strong>"Medicamentos"</strong>.</li>
+                    <li>A tela listará os medicamentos padronizados pelo SUS que são distribuídos na sua UBS.</li>
+                    <li>Utilize a barra de pesquisa para localizar o medicamento desejado (ex: "Losartana").</li>
+                    <li>No indicador de status, marque a opção correspondente:
+                        <ul>
+                            <li><span class="ui-badge ui-badge-green" style="font-size: 9px; padding: 1px 6px;">Disponível</span> — Medicamento em estoque e pronto para retirada.</li>
+                            <li><span class="ui-badge ui-badge-danger" style="background-color: #fed7d7; color: #9b2c2c; font-size: 9px; padding: 1px 6px;">Indisponível</span> — Medicamento zerado no estoque físico da farmácia.</li>
+                        </ul>
+                    </li>
+                    <li>No campo de <strong>Instruções de Retirada</strong>, insira informações adicionais importantes (ex: "Retirada apenas com receita atualizada de até 6 meses" ou "Estoque limitado, limite de 2 caixas por paciente").</li>
+                    <li>Clique em <strong>"Atualizar Estoque"</strong>.</li>
+                </ol>
+            </div>
+
+            <div class="box-attention">
+                <div class="box-attention-title">⚠️ Integração com WhatsApp</div>
+                <p style="margin-bottom: 0;">
+                    Ao manter esta tabela atualizada, você ajuda a reduzir filas na recepção física. Os pacientes conseguem consultar se estes medicamentos estão disponíveis enviando uma mensagem no canal oficial do WhatsApp da UBS, que consome estas informações em tempo real.
+                </p>
+            </div>
+
+            <h2>Painel de Gerenciamento de Medicamentos:</h2>
+            <div class="screen-simulation">
+                <div class="screen-header">
+                    <div class="screen-dots">
+                        <span class="screen-dot dot-red"></span>
+                        <span class="screen-dot dot-yellow"></span>
+                        <span class="screen-dot dot-green"></span>
+                    </div>
+                    <div class="screen-address-bar">https://ubsmais.sjc.sp.gov.br/gestor/medicamentos</div>
+                </div>
+                <div class="screen-body">
+                    <div class="ui-card">
+                        <div class="ui-card-title">Estoque da Farmácia — Losartana Potássica 50mg</div>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 10px;">
+                            <div class="ui-form-group">
+                                <label class="ui-label">Status do Estoque</label>
+                                <div style="display: flex; gap: 10px; margin-top: 5px;">
+                                    <label style="font-size: 12px;"><input type="radio" name="med_status" checked> Disponível</label>
+                                    <label style="font-size: 12px;"><input type="radio" name="med_status"> Em falta</label>
+                                </div>
+                            </div>
+                            <div class="ui-form-group">
+                                <label class="ui-label">Última Atualização</label>
+                                <div style="font-size: 12px; margin-top: 5px; color: var(--text-muted);">29/06/2026 às 15:30 por Recepcionista João</div>
+                            </div>
+                        </div>
+                        <div class="ui-form-group">
+                            <label class="ui-label">Instruções para Retirada</label>
+                            <div class="ui-input">Disponível na farmácia central. Necessário apresentar documento com foto e receita do SUS válida (emitida há no máximo 6 meses).</div>
+                        </div>
+                        <div class="ui-button-group">
+                            <button class="ui-button ui-btn-success">Atualizar Estoque</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ─────────────────────────────────────────────────────────────────────────
+             CAPÍTULO 5 — COMUNICADOS
+             ───────────────────────────────────────────────────────────────────────── -->
+        <div class="page-break" id="capitulo5">
+            <h1>Capítulo 5 — Comunicados</h1>
+            <p>
+                Os <strong>comunicados</strong> são avisos criados pela gestão para alertar os pacientes sobre campanhas de vacinação, mudanças no horário de funcionamento ou avisos individuais urgentes.
+            </p>
+
+            <h2>Tipos de Comunicados:</h2>
+            <ul>
+                <li><strong>Comunicado Geral:</strong> Exibido no portal de todos os pacientes vinculados a esta UBS específica.</li>
+                <li><strong>Comunicado Individual:</strong> Direcionado a um único paciente específico. Muito útil para solicitar que o paciente compareça à UBS para regularizar um documento ou retirar um resultado.</li>
+                <li><strong>Comunicado Urgente:</strong> Possui destaque na cor vermelha com sinalizador de atenção piscante. Deve ser reservado para avisos críticos.</li>
+            </ul>
+
+            <div class="box-steps">
+                <div class="box-steps-title">Como criar e enviar um comunicado:</div>
+                <ol>
+                    <li>Clique na aba <strong>"Comunicados"</strong> no menu do gestor.</li>
+                    <li>Selecione o tipo de alcance: <strong>"Geral"</strong> (toda a UBS) ou <strong>"Individual"</strong> (digite o CRA do paciente).</li>
+                    <li>Caso seja um aviso crítico, marque a caixa de seleção <strong>"Marcar como Urgente"</strong>.</li>
+                    <li><strong>Segmentação Clínica:</strong> Se o aviso for específico para um grupo de saúde, selecione a comorbidade (ex: selecionar "Diabetes" para avisar apenas diabéticos sobre o mutirão de exames preventivos).</li>
+                    <li>Escreva o texto da mensagem no campo de conteúdo de forma clara e objetiva.</li>
+                    <li>Clique no botão azul <strong>"Publicar Comunicado"</strong>.</li>
+                </ol>
+            </div>
+
+            <h2>Painel de Criação de Comunicados:</h2>
+            <div class="screen-simulation">
+                <div class="screen-header">
+                    <div class="screen-dots">
+                        <span class="screen-dot dot-red"></span>
+                        <span class="screen-dot dot-yellow"></span>
+                        <span class="screen-dot dot-green"></span>
+                    </div>
+                    <div class="screen-address-bar">https://ubsmais.sjc.sp.gov.br/gestor/comunicados/novo</div>
+                </div>
+                <div class="screen-body">
+                    <div class="ui-card">
+                        <div class="ui-card-title">Novo Comunicado</div>
+                        <div class="ui-form-group">
+                            <label class="ui-label">Alcance</label>
+                            <select class="ui-input" style="background-color: #ffffff;">
+                                <option>Geral (Todos os pacientes desta UBS)</option>
+                                <option>Individual (Apenas um paciente)</option>
+                            </select>
+                        </div>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                            <div class="ui-form-group">
+                                <label class="ui-label">Segmentar por Comorbidade (Opcional)</label>
+                                <select class="ui-input" style="background-color: #ffffff;">
+                                    <option>Nenhuma (Todos)</option>
+                                    <option>Diabetes</option>
+                                    <option>Hipertensão</option>
+                                    <option>Gestantes</option>
+                                </select>
+                            </div>
+                            <div class="ui-form-group" style="display: flex; align-items: center; padding-top: 15px;">
+                                <label style="font-size: 12px; font-weight: bold; color: #e53e3e;">
+                                    <input type="checkbox" checked> 🚨 Marcar como URGENTE
+                                </label>
+                            </div>
+                        </div>
+                        <div class="ui-form-group">
+                            <label class="ui-label">Mensagem do Comunicado</label>
+                            <div class="ui-input" style="height: 50px;">Atenção: A UBS estará fechada nesta quinta-feira (02/07) no período da tarde para dedetização interna. Casos de urgência devem procurar a UPA mais próxima.</div>
+                        </div>
+                        <div class="ui-button-group">
+                            <button class="ui-button ui-btn-primary">Publicar Comunicado</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ─────────────────────────────────────────────────────────────────────────
+             CAPÍTULO 6 — AGENDA DE ATENDIMENTO
+             ───────────────────────────────────────────────────────────────────────── -->
+        <div class="page-break" id="capitulo6">
+            <h1>Capítulo 6 — Agenda de atendimento</h1>
+            <p>
+                Os pacientes podem agendar através do portal deles um atendimento presencial administrativo com a equipe de gestão da UBS para tirar dúvidas complexas, regularizar pendências ou resolver problemas de cadastro.
+            </p>
+
+            <div class="box-steps">
+                <div class="box-steps-title">Como disponibilizar horários na agenda (Criar slots):</div>
+                <ol>
+                    <li>Acesse o menu <strong>"Agenda da Gestão"</strong>.</li>
+                    <li>Clique em <strong>"Configurar Disponibilidade"</strong>.</li>
+                    <li>Escolha o dia da semana e o intervalo de horas (ex: Segundas-feiras, das 14:00 às 16:00, com atendimentos a cada 20 minutos).</li>
+                    <li>Clique em <strong>"Gerar Slots de Horário"</strong>. O sistema criará as vagas de agendamento na agenda pública da sua UBS no portal do paciente.</li>
+                </ol>
+            </div>
+
+            <div class="box-steps">
+                <div class="box-steps-title">Como gerenciar os agendamentos confirmados:</div>
+                <ol>
+                    <li>Na tela inicial do menu <strong>"Agenda da Gestão"</strong>, você verá a lista de horários agendados por pacientes.</li>
+                    <li>A listagem mostra a data/hora reservada, o nome do paciente, seu CRA e o motivo do atendimento.</li>
+                    <li>No dia do atendimento:
+                        <ul>
+                            <li>Caso o paciente compareça e o atendimento seja concluído, clique em <strong>"Confirmar Conclusão"</strong> para registrar no histórico.</li>
+                            <li>Se houver um imprevisto técnico na UBS ou ausência do gestor, você poderá clicar em <strong>"Cancelar Horário"</strong>. O sistema abrirá um campo de texto obrigatório pedindo o motivo do cancelamento, que será exibido imediatamente na tela do paciente.</li>
+                        </ul>
+                    </li>
+                </ol>
+            </div>
+
+            <h2>Painel de Visualização de Agendamento Recebido:</h2>
+            <div class="screen-simulation">
+                <div class="screen-header">
+                    <div class="screen-dots">
+                        <span class="screen-dot dot-red"></span>
+                        <span class="screen-dot dot-yellow"></span>
+                        <span class="screen-dot dot-green"></span>
+                    </div>
+                    <div class="screen-address-bar">https://ubsmais.sjc.sp.gov.br/gestor/agenda</div>
+                </div>
+                <div class="screen-body">
+                    <div class="ui-card">
+                        <div class="ui-card-title">Agendamento Confirmado — 30/06/2026 (Amanhã)</div>
+                        <div style="font-size: 12px; margin-bottom: 12px;">
+                            <strong>Horário:</strong> 14:20h às 14:40h<br>
+                            <strong>Paciente:</strong> Maria Oliveira Silva (CRA: 12345678)<br>
+                            <strong>Assunto registrado:</strong> Pendência no encaminhamento de Oftalmologia
+                        </div>
+                        <div class="ui-button-group">
+                            <button class="ui-button ui-btn-success">Confirmar Presença</button>
+                            <button class="ui-button ui-btn-danger">Cancelar Agendamento</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ─────────────────────────────────────────────────────────────────────────
+             CAPÍTULO 7 — RELATÓRIOS
+             ───────────────────────────────────────────────────────────────────────── -->
+        <div class="page-break" id="capitulo7">
+            <h1>Capítulo 7 — Relatórios</h1>
+            <p>
+                Os relatórios consolidados permitem que a equipe gestora acompanhe os indicadores de atendimento, identifique gargalos e exporte dados das solicitações da UBS para discussões em reuniões regionais com a Secretaria Municipal de Saúde.
+            </p>
+
+            <div class="box-steps">
+                <div class="box-steps-title">Como acessar e usar o painel de relatórios:</div>
+                <ol>
+                    <li>Acesse o menu <strong>"Relatórios"</strong> no painel de navegação.</li>
+                    <li>No topo da tela, selecione os filtros desejados para a análise:
+                        <ul>
+                            <li><strong>Período:</strong> Data inicial e data final de criação.</li>
+                            <li><strong>Tipo de solicitação:</strong> Consultas, Exames ou Procedimentos.</li>
+                            <li><strong>Situação (Status):</strong> Todos os status ou um status específico (ex: "Aguardando regulação" para ver a fila de espera).</li>
+                        </ul>
+                    </li>
+                    <li>Clique em <strong>"Filtrar Dados"</strong> para atualizar os gráficos rápidos de contagem.</li>
+                    <li>Para exportar a tabela detalhada que foi gerada na tela, clique em:
+                        <ul>
+                            <li><strong>"Exportar PDF"</strong> — Para gerar um relatório visual estático formatado para impressão ou envio.</li>
+                            <li><strong>"Exportar Excel (.xlsx)"</strong> — Caso queira abrir os dados em formato de planilha eletrônica para aplicar cálculos ou novos filtros avançados.</li>
+                        </ul>
+                    </li>
+                </ol>
+            </div>
+
+            <h2>Painel Analítico de Relatórios:</h2>
+            <div class="screen-simulation">
+                <div class="screen-header">
+                    <div class="screen-dots">
+                        <span class="screen-dot dot-red"></span>
+                        <span class="screen-dot dot-yellow"></span>
+                        <span class="screen-dot dot-green"></span>
+                    </div>
+                    <div class="screen-address-bar">https://ubsmais.sjc.sp.gov.br/gestor/relatorios</div>
+                </div>
+                <div class="screen-body">
+                    <div class="ui-card">
+                        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 8px; margin-bottom: 12px;">
+                            <span style="font-weight: bold; font-size: 13px; color: var(--primary-color);">Filtro Ativo: Junho/2026</span>
+                            <div class="ui-button-group" style="margin-top: 0;">
+                                <button class="ui-button ui-btn-primary" style="font-size: 10px; padding: 4px 8px;">Exportar PDF</button>
+                                <button class="ui-button ui-btn-secondary" style="font-size: 10px; padding: 4px 8px;">Exportar Excel</button>
+                            </div>
+                        </div>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 15px;">
+                            <div style="background-color: #f7fafc; border: 1px dashed #cbd5e0; padding: 10px; border-radius: 4px; text-align: center;">
+                                <div style="font-size: 10px; color: var(--text-muted);">Aguardando Regulação</div>
+                                <div style="font-size: 16px; font-weight: bold; color: #dd6b20;">42</div>
+                            </div>
+                            <div style="background-color: #f7fafc; border: 1px dashed #cbd5e0; padding: 10px; border-radius: 4px; text-align: center;">
+                                <div style="font-size: 10px; color: var(--text-muted);">Data Marcada</div>
+                                <div style="font-size: 16px; font-weight: bold; color: #3182ce;">18</div>
+                            </div>
+                            <div style="background-color: #f7fafc; border: 1px dashed #cbd5e0; padding: 10px; border-radius: 4px; text-align: center;">
+                                <div style="font-size: 10px; color: var(--text-muted);">Concluídos no Mês</div>
+                                <div style="font-size: 16px; font-weight: bold; color: #38a169;">105</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ─────────────────────────────────────────────────────────────────────────
+             CAPÍTULO 8 — DÚVIDAS FREQUENTES
+             ───────────────────────────────────────────────────────────────────────── -->
+        <div class="page-break" id="capitulo8">
+            <h1>Capítulo 8 — Dúvidas frequentes</h1>
+            <p>
+                Este capítulo reúne as principais ocorrências reportadas pelas recepções das unidades de saúde e como resolvê-las rapidamente.
+            </p>
+
+            <h3 style="margin-top: 15px;">1. O paciente informa que não consegue logar no Portal do Paciente. O que fazer?</h3>
+            <p>
+                O acesso do paciente é baseado em <strong>CRA</strong> e <strong>Data de Nascimento</strong>. Caso haja erro de acesso, busque o cadastro do paciente no seu painel de gestor. Verifique se o número do CRA digitado no cadastro dele é idêntico ao do documento e se a data de nascimento está correta. Caso haja erro de digitação, corrija, salve e peça para o paciente tentar novamente.
+            </p>
+
+            <h3>2. O sistema exibe um alerta de erro ao tentar salvar um cadastro.</h3>
+            <p>
+                Geralmente isso ocorre pela falta de preenchimento de algum dos campos obrigatórios sinalizados com um asterisco vermelho (*). Revise se o CRA, Nome Completo, CPF, Data de Nascimento ou Telefone foram digitados. Certifique-se também de que o CPF possui exatamente 11 números e o CRA está completo.
+            </p>
+
+            <h3>3. O sistema está muito lento para atualizar os status.</h3>
+            <p>
+                Verifique a conexão de internet da unidade de saúde. Se a internet estiver normal, pressione a tecla <strong>F5</strong> no seu teclado (ou clique no botão de recarregar do navegador) para limpar eventuais travamentos de memória do navegador.
+            </p>
+
+            <h3>4. O paciente diz que a Losartana aparece disponível no portal, mas não há mais caixas na farmácia.</h3>
+            <p>
+                Isso acontece quando o estoque físico acaba e a recepção/farmácia esquece de atualizar o status no sistema. Vá até a aba "Medicamentos", localize o medicamento e mude para "Em falta", inserindo uma instrução de quando nova remessa deve chegar se essa informação estiver disponível.
+            </p>
+
+            <div class="box-attention" style="background-color: #ebf8ff; border-left-color: var(--primary-color);">
+                <div class="box-attention-title" style="color: var(--primary-color);">📞 Suporte Técnico de Segundo Nível</div>
+                <p style="margin-bottom: 0;">
+                    Caso enfrente algum problema técnico grave que impeça o uso completo do sistema (como tela de erro persistente, falha de conexão com o banco de dados ou erro de login geral), acione o desenvolvedor responsável pelo projeto de extensão pelo contato:<br>
+                    <strong>Reinaldo (Desenvolvedor Líder):</strong> <a href="mailto:reinaldogramachof@gmail.com" style="color: var(--primary-color); font-weight: bold;">reinaldogramachof@gmail.com</a>.
+                </p>
+            </div>
+        </div>
+
+    </div>
+</body>
+</html>

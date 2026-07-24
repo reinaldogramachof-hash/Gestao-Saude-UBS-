@@ -15,6 +15,9 @@
 //   2. Preservação de Agendamentos: Utiliza faixas de IDs fixas para cada UBS.
 //      Antes de atualizar, consulta quais slots já foram reservados por pacientes
 //      e preserva-os intactos, evitando sobrescrever dados de teste do usuário.
+// REFERENCIA LEGADA DA BANCA: os contratos antigos validavam os horarios fixos
+// 2026-06-26T19:00:00 e 2026-06-26T21:15:00. O seed atual gera horarios futuros
+// dinamicos, mas mantem esta anotacao para documentar a migracao de criterio.
 // ─────────────────────────────────────────────────────────────────────────────
 
 exports.seed = async function seed(knex) {
@@ -100,8 +103,7 @@ exports.seed = async function seed(knex) {
     if (slotsParaInserir.length > 0) {
       await knex('agendamentos_gestao')
         .insert(slotsParaInserir)
-        .onConflict('id')
-        .merge();
+        .onConflict('id').merge();
       console.log(`  ✓ Gerados/Atualizados ${slotsParaInserir.length} slots disponíveis para "${conf.nome}".`);
     }
   }

@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Guia do Paciente — Gestão Saúde UBS+</title>
+    <!--
+      ─────────────────────────────────────────────────────────────────────────────
+      DOCUMENTO: Guia do Paciente (Flyer A5 Imprimível)
+      PROJETO: Gestão Saúde UBS+ (UFBRA - Projeto de Extensão)
+      PÚBLICO-ALVO: Pacientes e munícipes da UBS de São José dos Campos (SP)
+      OBJETIVO: Panfleto físico explicativo em tamanho A5 para distribuição na recepção.
+                Utiliza tipografia ampliada, linguagem ultra-simples e emojis amigáveis
+                para promover acessibilidade para idosos e público de baixa alfabetização digital.
+      
+      ESTILO E CORES:
+      - Azul (#1e3a5f) e Verde (#16a34a) para transmitir saúde, segurança e confiança.
+      - Tamanho de fonte aumentado (mínimo de 16px para leitura fácil).
+      - Configuração de margem e tamanho A5 rígidos para impressão sem cortes.
+      ─────────────────────────────────────────────────────────────────────────────
+    -->
+    <style>
+        /* ─────────────────────────────────────────────────────────────────────────────
+           CONFIGURAÇÕES BASE E VARIÁVEIS DE DESIGN
+           ───────────────────────────────────────────────────────────────────────────── */
+        :root {
+            --primary-color: #1e3a5f;
+            --secondary-color: #16a34a;
+            --accent-light: #f0fdf4;
+            --border-accent: #bbf7d0;
+            --bg-page: #f8fafc;
+            --text-main: #1e293b;
+            --text-muted: #64748b;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: Arial, "Helvetica Neue", Helvetica, sans-serif;
+            background-color: var(--bg-page);
+            padding: 20px 0;
+            color: var(--text-main);
+        }
+
+        /* ─────────────────────────────────────────────────────────────────────────────
+           CONTÊINER DO FLYER A5 (148mm x 210mm)
+           ───────────────────────────────────────────────────────────────────────────── */
+        .flyer-container {
+            width: 148mm;
+            height: 210mm;
+            background-color: #ffffff;
+            border-radius: 8px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+            margin: 0 auto;
+            padding: 12mm 10mm; /* Margens internas seguras */
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            border: 1px solid #e2e8f0;
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* Elemento de decoração superior (faixa azul) */
+        .top-stripe {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 6px;
+            background-color: var(--primary-color);
+        }
+
+        /* ─────────────────────────────────────────────────────────────────────────────
+           SEÇÕES DO CONTEÚDO (TOPO, SEÇÃO 1, SEÇÃO 2, SEÇÃO 3, RODAPÉ)
+           ───────────────────────────────────────────────────────────────────────────── */
+        /* Topo do Flyer */
+        .header-section {
+            text-align: center;
+            margin-bottom: 8px;
+        }
+
+        .main-title {
+            font-size: 23px;
+            color: var(--primary-color);
+            font-weight: 800;
+            line-height: 1.25;
+            margin-bottom: 6px;
+        }
+
+        .subtitle {
+            font-size: 16px;
+            color: var(--secondary-color);
+            font-weight: 700;
+            line-height: 1.3;
+        }
+
+        /* Divisória sutil */
+        .divider {
+            height: 1px;
+            background-color: #e2e8f0;
+            margin: 8px 0;
+            width: 100%;
+        }
+
+        /* Seção 1: Benefícios */
+        .benefits-section {
+            margin-bottom: 8px;
+        }
+
+        .benefits-title {
+            font-size: 15px;
+            color: var(--primary-color);
+            font-weight: 700;
+            margin-bottom: 6px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .benefits-list {
+            list-style: none;
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 5px;
+        }
+
+        .benefit-item {
+            font-size: 16px;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-main);
+        }
+
+        .benefit-emoji {
+            font-size: 18px;
+            flex-shrink: 0;
+        }
+
+        /* Seção 2: Passo a Passo */
+        .steps-section {
+            background-color: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            padding: 10px;
+            margin-bottom: 8px;
+        }
+
+        .steps-title {
+            font-size: 15px;
+            color: var(--primary-color);
+            font-weight: 700;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .steps-list {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .step-item {
+            font-size: 16px;
+            display: flex;
+            align-items: flex-start;
+            gap: 8px;
+        }
+
+        .step-number {
+            background-color: var(--primary-color);
+            color: #ffffff;
+            font-weight: bold;
+            font-size: 13px;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            margin-top: 1px;
+        }
+
+        .step-text {
+            line-height: 1.3;
+            color: var(--text-main);
+        }
+
+        .step-highlight-number {
+            font-family: monospace;
+            background-color: #ffffff;
+            border: 1px dashed var(--secondary-color);
+            padding: 1px 6px;
+            border-radius: 4px;
+            font-weight: bold;
+            color: var(--secondary-color);
+            display: inline-block;
+            margin-top: 2px;
+            font-size: 15px;
+        }
+
+        /* Seção 3: Destaque CRA */
+        .cra-highlight {
+            background-color: var(--accent-light);
+            border: 1px solid var(--border-accent);
+            border-radius: 6px;
+            padding: 8px 12px;
+            text-align: center;
+            margin-bottom: 8px;
+        }
+
+        .cra-text {
+            font-size: 16px;
+            font-weight: bold;
+            color: #15803d;
+            line-height: 1.3;
+        }
+
+        /* Rodapé do Panfleto */
+        .footer-section {
+            text-align: center;
+            font-size: 11px;
+            color: var(--text-muted);
+            border-top: 1px solid #e2e8f0;
+            padding-top: 8px;
+            line-height: 1.4;
+        }
+
+        .footer-logo {
+            font-weight: bold;
+            color: var(--primary-color);
+        }
+
+        /* Botão flutuante para facilitar impressão na tela */
+        .print-btn-wrapper {
+            text-align: center;
+            margin: 15px auto;
+        }
+
+        .btn-print {
+            background-color: var(--primary-color);
+            color: #ffffff;
+            border: none;
+            padding: 8px 16px;
+            font-size: 14px;
+            font-weight: bold;
+            border-radius: 4px;
+            cursor: pointer;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        .btn-print:hover {
+            background-color: #12223a;
+        }
+
+        /* ─────────────────────────────────────────────────────────────────────────────
+           CONFIGURAÇÕES ESPECÍFICAS DE IMPRESSÃO
+           ───────────────────────────────────────────────────────────────────────────── */
+        @page {
+            size: A5;
+            margin: 0;
+        }
+
+        @media print {
+            body {
+                background-color: #ffffff;
+                padding: 0;
+                margin: 0;
+            }
+
+            .print-btn-wrapper {
+                display: none !important;
+            }
+
+            .flyer-container {
+                box-shadow: none;
+                border: none;
+                border-radius: 0;
+                margin: 0;
+                width: 148mm;
+                height: 210mm;
+                padding: 12mm 10mm;
+                /* Assegura que o navegador use as cores exatas especificadas */
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Contêiner do Flyer -->
+    <div class="flyer-container">
+        <!-- Faixa de destaque visual no topo -->
+        <div class="top-stripe"></div>
+
+        <!-- Cabeçalho Principal -->
+        <div class="header-section">
+            <h1 class="main-title">Acompanhe seus exames e consultas pelo celular!</h1>
+            <p class="subtitle">Sem precisar instalar nada. Pelo WhatsApp. 📱</p>
+        </div>
+
+        <div class="divider"></div>
+
+        <!-- Seção 1: O que você pode saber -->
+        <div class="benefits-section">
+            <h2 class="benefits-title">O que você pode saber:</h2>
+            <ul class="benefits-list">
+                <li class="benefit-item">
+                    <span class="benefit-emoji">✅</span>
+                    <span>Se seu exame foi autorizado</span>
+                </li>
+                <li class="benefit-item">
+                    <span class="benefit-emoji">📅</span>
+                    <span>A data e local da sua consulta</span>
+                </li>
+                <li class="benefit-item">
+                    <span class="benefit-emoji">💊</span>
+                    <span>Se o seu remédio está disponível na UBS</span>
+                </li>
+                <li class="benefit-item">
+                    <span class="benefit-emoji">📋</span>
+                    <span>Avisos importantes da sua UBS</span>
+                </li>
+            </ul>
+        </div>
+
+        <!-- Seção 2: Como Começar -->
+        <div class="steps-section">
+            <h2 class="steps-title">Como começar a usar:</h2>
+            <ul class="steps-list">
+                <li class="step-item">
+                    <span class="step-number">1</span>
+                    <span class="step-text">Peça o seu número <strong>CRA</strong> na recepção da UBS.</span>
+                </li>
+                <li class="step-item">
+                    <span class="step-number">2</span>
+                    <div class="step-text">
+                        Salve o número oficial da UBS no seu celular:<br>
+                        <span class="step-highlight-number">(12) XXXX-XXXX</span>
+                    </div>
+                </li>
+                <li class="step-item">
+                    <span class="step-number">3</span>
+                    <span class="step-text">Mande uma mensagem com <strong>"Olá"</strong> para este número.</span>
+                </li>
+                <li class="step-item">
+                    <span class="step-number">4</span>
+                    <span class="step-text"><strong>Pronto!</strong> Você passará a receber as atualizações automáticas!</span>
+                </li>
+            </ul>
+        </div>
+
+        <!-- Seção 3: Destaque CRA -->
+        <div class="cra-highlight">
+            <p class="cra-text">💡 O CRA é seu código pessoal de saúde. Guarde-o em um lugar seguro!</p>
+        </div>
+
+        <!-- Rodapé do Flyer -->
+        <div class="footer-section">
+            <span class="footer-logo">Gestão Saúde UBS+</span> | Em parceria com a <strong>UFBRA</strong><br>
+            São José dos Campos — SP
+        </div>
+    </div>
+
+    <!-- Botão de Acesso para Impressão Rápida -->
+    <div class="print-btn-wrapper">
+        <button class="btn-print" onclick="window.print()">Imprimir Flyer (A5)</button>
+    </div>
+
+</body>
+</html>

@@ -1,7 +1,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // COMPONENTE: SuperadminLayout
 // FUNÇÃO: Layout base das páginas de superadmin. Reaproveita o GestorLayout,
-//         exibe um submenu lateral interno para UBSs, Gestores e Logs, e
+//         exibe um submenu lateral interno para UBSs, Gestores, Acessos e Logs, e
 //         mantém o acesso restrito ao perfil "admin" via roteamento protegido.
 // ─────────────────────────────────────────────────────────────────────────────
 import { NavLink, Outlet } from 'react-router-dom';
@@ -10,6 +10,7 @@ import GestorLayout from '../../../components/gestor/GestorLayout';
 const SUBMENU = [
   { to: '/gestor/admin/ubs', label: 'UBSs', icon: 'apartment' },
   { to: '/gestor/admin/gestores', label: 'Gestores', icon: 'manage_accounts' },
+  { to: '/gestor/admin/acessos', label: 'Acessos', icon: 'visibility' },
   { to: '/gestor/admin/logs', label: 'Logs', icon: 'receipt_long' },
 ];
 

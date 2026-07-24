@@ -126,7 +126,7 @@ router.post('/login-paciente', loginRateLimiter, validateBody(loginPacienteSchem
     const { cra, data_nascimento } = req.body;
 
     const paciente = await knex('pacientes')
-      .where({ cra })
+      .where({ cra, ativo: true })
       .whereRaw('data_nascimento = ?', [data_nascimento])
       .first();
 
@@ -305,7 +305,7 @@ router.post('/cadastro-paciente', cadastroRateLimiter, async (req, res) => {
         data_nascimento,
         telefone: telefone || null,
         email: email || null,
-        ativo: false,
+        ativo: true,
       })
       .returning(['id', 'ubs_id', 'cra', 'nome']);
 

@@ -116,6 +116,71 @@ async function registrarFalhaEResponder(req, res, config) {
   return res.status(config.status).json({ error: config.mensagem });
 }
 
+// Executa a exclusao LGPD do paciente dentro de uma transacao atomica.
+// A ordem explicita evita depender apenas de CASCADE e deixa claro quais
+// modulos tambem armazenam referencias ao paciente no estado atual do schema.
+async function excluirDadosPacienteLgpd(trx, pacienteId) {
+  const solicitacoesIds = await trx('solicitacoes')
+    .where({ paciente_id: pacienteId })
+    .pluck('id');
+
+  await trx('push_subscriptions')
+    .where({ usuario_id: pacienteId, tipo_usuario: 'paciente' })
+    .delete();
+
+  await trx('agendamentos_gestao')
+    .where({ paciente_id: pacienteId })
+    .delete();
+
+  await trx('comunicados_leitura')
+    .where({ paciente_id: pacienteId })
+    .delete();
+
+  await trx('comunicados')
+    .where({ paciente_id: pacienteId })
+    .delete();
+
+  await trx('atendimentos')
+    .where({ paciente_id: pacienteId })
+    .delete();
+
+  await trx('encaminhamentos')
+    .where({ paciente_id: pacienteId })
+    .delete();
+
+  await trx('casos_sociais')
+    .where({ paciente_id: pacienteId })
+    .delete();
+
+  await trx('transporte_sanitario')
+    .where({ paciente_id: pacienteId })
+    .delete();
+
+  // Notificacoes territoriais precisam permanecer no sistema quando existirem,
+  // mas sem manter vinculo nominal com o titular apos a exclusao LGPD.
+  await trx('notificacoes_vigilancia')
+    .where({ paciente_id: pacienteId })
+    .update({ paciente_id: null });
+
+  if (solicitacoesIds.length > 0) {
+    await trx('historico_status')
+      .whereIn('solicitacao_id', solicitacoesIds)
+      .delete();
+  }
+
+  await trx('solicitacoes')
+    .where({ paciente_id: pacienteId })
+    .delete();
+
+  await trx('security_audit_logs')
+    .where({ usuario_id: pacienteId, usuario_tipo: 'paciente' })
+    .update({ detalhe: '[DADOS REMOVIDOS - LGPD]' });
+
+  await trx('pacientes')
+    .where({ id: pacienteId })
+    .delete();
+}
+
 function aplicarFiltrosAuditoria(query, filtros) {
   if (filtros.ubs_id) {
     query.where('logs.ubs_id', Number(filtros.ubs_id));
@@ -1061,6 +1126,75 @@ router.post('/gestores/:id/reset-senha', async (req, res) => {
       httpStatus: 500,
       detalhe: { mensagem: err.message },
       ubs_id: null,
+    });
+    return res.status(500).json({ error: MENSAGENS.GERAL.ERRO_INTERNO });
+  }
+});
+
+// DELETE /api/admin/pacientes/:id/dados
+// Remove permanentemente os dados do paciente para atender o direito ao
+// esquecimento da LGPD, preservando apenas os audit logs anonimizados.
+router.delete('/pacientes/:id/dados', async (req, res) => {
+  const pacienteId = toId(req.params.id);
+
+  if (!pacienteId) {
+    return res.status(400).json({ error: MENSAGENS.PACIENTE.DADOS_INVALIDOS });
+  }
+
+  const paciente = await knex('pacientes')
+    .where({ id: pacienteId })
+    .select('id', 'nome', 'cra', 'ubs_id')
+    .first();
+
+  if (!paciente) {
+    return res.status(404).json({ error: MENSAGENS.PACIENTE.NAO_ENCONTRADO });
+  }
+
+  await registrar(req, {
+    acao: 'LGPD_EXCLUSAO_INICIADA',
+    entidade: 'paciente',
+    entidade_id: pacienteId,
+    resultado: 'sucesso',
+    detalhe: `Exclusao solicitada pelo admin ${req.user.id}`,
+    ubs_id: paciente.ubs_id ?? req.user?.ubs_id ?? null,
+    usuarioId: req.user?.id ?? null,
+    usuarioTipo: req.user?.tipo ?? 'gestor',
+    usuarioPerfil: req.user?.perfil ?? 'admin',
+  });
+
+  try {
+    await knex.transaction(async (trx) => {
+      await excluirDadosPacienteLgpd(trx, pacienteId);
+    });
+
+    await registrar(req, {
+      acao: 'LGPD_EXCLUSAO_CONCLUIDA',
+      entidade: 'paciente',
+      entidade_id: pacienteId,
+      resultado: 'sucesso',
+      detalhe: `Exclusao concluida pelo admin ${req.user.id}`,
+      ubs_id: paciente.ubs_id ?? req.user?.ubs_id ?? null,
+      usuarioId: req.user?.id ?? null,
+      usuarioTipo: req.user?.tipo ?? 'gestor',
+      usuarioPerfil: req.user?.perfil ?? 'admin',
+    });
+
+    return res.json({
+      excluido: true,
+      mensagem: 'Dados do paciente removidos com sucesso.',
+    });
+  } catch (err) {
+    console.error('[DELETE /admin/pacientes/:id/dados]', err);
+    await registrar(req, {
+      acao: 'LGPD_EXCLUSAO_FALHA',
+      entidade: 'paciente',
+      entidade_id: pacienteId,
+      resultado: 'erro',
+      detalhe: { mensagem: err.message, admin_id: req.user?.id ?? null },
+      ubs_id: paciente.ubs_id ?? req.user?.ubs_id ?? null,
+      usuarioId: req.user?.id ?? null,
+      usuarioTipo: req.user?.tipo ?? 'gestor',
+      usuarioPerfil: req.user?.perfil ?? 'admin',
     });
     return res.status(500).json({ error: MENSAGENS.GERAL.ERRO_INTERNO });
   }

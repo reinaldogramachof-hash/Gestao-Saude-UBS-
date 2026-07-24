@@ -41,8 +41,8 @@ const FLUXO_LABELS = [
 
 // Mapeia o status real + encaminhamento_status para a posição no FLUXO estendido
 function calcularPosicaoFluxo(sol) {
-  if (sol.status === 'concluido') return 6;
-  if (sol.status === 'cancelado') return -1; // stepper oculto
+  if (sol.status === 'cancelado') return null; // stepper oculto
+  if (sol.status === 'concluido') return FLUXO.indexOf(sol.status);
 
   // Se tem encaminhamento externo, reflete a fase real
   const encStatus = sol.encaminhamento_status;
@@ -57,7 +57,8 @@ function calcularPosicaoFluxo(sol) {
     'autorizado': 2,
     'data_marcada': 3,
   };
-  return mapa[sol.status] ?? 0;
+  const indiceFluxoPadrao = FLUXO.indexOf(sol.status);
+  return mapa[sol.status] ?? indiceFluxoPadrao;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -109,7 +110,7 @@ function CardSolicitacao({ sol, navigate }) {
       {/* Mini-stepper de progresso da solicitacao estendido */}
       {(() => {
         const idx = calcularPosicaoFluxo(sol);
-        if (idx === -1) return null;
+        if (idx === null) return null;
         return (
           <div className="mb-4">
             <div className="flex items-center gap-1">

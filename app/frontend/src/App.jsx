@@ -35,6 +35,7 @@ import SuperadminLayout from './pages/gestor/admin/SuperadminLayout';
 import UBSAdmin from './pages/gestor/admin/UBSAdmin';
 import GestoresAdmin from './pages/gestor/admin/GestoresAdmin';
 import AuditAdmin from './pages/gestor/admin/AuditAdmin';
+import AcessosPaciente from './pages/gestor/admin/AcessosPaciente';
 
 import LoginExterna from './pages/externa/LoginExterna';
 import DashboardExterna from './pages/externa/DashboardExterna';
@@ -124,6 +125,7 @@ export default function App() {
             <Route index element={<Navigate to="ubs" replace />} />
             <Route path="ubs" element={<UBSAdmin />} />
             <Route path="gestores" element={<GestoresAdmin />} />
+            <Route path="acessos" element={<AcessosPaciente />} />
             <Route path="logs" element={<AuditAdmin />} />
           </Route>
 

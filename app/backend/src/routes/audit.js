@@ -86,31 +86,54 @@ router.get('/logs', requirePerfil(['admin']), async (req, res) => {
 router.get('/logs/paciente/:pacienteId', requerPerfilAdminOuGestor, async (req, res) => {
   try {
     const pacienteId = Number(req.params.pacienteId);
-    const query = knex('security_audit_logs')
+    const query = knex('security_audit_logs as logs')
+      .leftJoin('usuarios_gestores as gestor', 'gestor.id', 'logs.usuario_id')
+      .leftJoin('ubs', 'ubs.id', 'logs.ubs_id')
       .select(
-        'id',
-        'created_at',
-        'usuario_id',
-        'usuario_tipo',
-        'ubs_id',
-        'acao',
-        'entidade',
-        'entidade_id',
-        'resultado',
-        'detalhe',
-        'ip_origem',
-        'http_status'
+        'logs.id',
+        'logs.created_at',
+        'logs.usuario_id',
+        'logs.usuario_tipo',
+        'logs.ubs_id',
+        'logs.acao',
+        'logs.entidade',
+        'logs.entidade_id',
+        'logs.resultado',
+        'logs.detalhe',
+        'logs.ip_origem',
+        'logs.http_status',
+        'gestor.nome as usuario_nome',
+        'gestor.perfil as usuario_perfil',
+        'ubs.nome as ubs_nome'
       )
       .where((builder) => {
         builder
-          .where({ entidade: 'paciente', entidade_id: pacienteId })
-          .orWhereRaw("CAST(detalhe AS TEXT) ILIKE ?", [`%${pacienteId}%`])
-          .orWhereRaw("CAST(metadata AS TEXT) ILIKE ?", [`%${pacienteId}%`]);
+          .where(function () {
+            this.where('logs.entidade', 'paciente')
+              .where('logs.entidade_id', pacienteId)
+              .where('logs.acao', 'VISUALIZACAO_PACIENTE');
+          })
+          .orWhere(function () {
+            this.where('logs.acao', 'VISUALIZACAO_PACIENTE')
+              .whereRaw("CAST(logs.detalhe AS TEXT) ILIKE ?", [`%${pacienteId}%`]);
+          })
+          .orWhere(function () {
+            this.where('logs.acao', 'VISUALIZACAO_PACIENTE')
+              .whereRaw("CAST(logs.metadata AS TEXT) ILIKE ?", [`%${pacienteId}%`]);
+          });
       })
-      .orderBy('created_at', 'desc');
+      .orderBy('logs.created_at', 'desc');
 
     if (req.user?.perfil !== 'admin') {
-      query.andWhere('ubs_id', Number(req.user.ubs_id));
+      query.andWhere('logs.ubs_id', Number(req.user.ubs_id));
+    }
+
+    if (req.query.data_inicio) {
+      query.andWhere('logs.created_at', '>=', req.query.data_inicio);
+    }
+
+    if (req.query.data_fim) {
+      query.andWhere('logs.created_at', '<=', `${req.query.data_fim} 23:59:59`);
     }
 
     const logs = await query;

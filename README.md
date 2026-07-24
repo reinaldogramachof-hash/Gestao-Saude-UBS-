@@ -1,126 +1,169 @@
-# 🏥 Gestão Saúde UBS+
+# Gestao Saude UBS+
 
-> **Projeto de Extensão Multidisciplinar**  
-> Engenharia de Software — **UFBRA**  
-> Foco: Transparência de informação para munícipes de São José dos Campos (SP).
-
----
-
-## 📋 Sobre o Projeto
-
-O **Gestão Saúde UBS+** é uma plataforma desenvolvida com o objetivo de melhorar a comunicação entre a equipe de gestão das Unidades Básicas de Saúde (UBS) de São José dos Campos (SP) e os cidadãos (pacientes). 
-
-O sistema combate a desinformação sobre filas, andamento de exames, disponibilidade de medicamentos e agendamentos. A aplicação **não substitui** os sistemas oficiais do SUS (como e-SUS, SISREG ou CROSS), mas atua como um facilitador de transparência com alimentação de dados realizada manualmente pelos gestores da unidade.
-
-O ecossistema é composto por dois portais:
-1. **Portal do Gestor (Desktop):** Onde a equipe da UBS cadastra pacientes, medicamentos disponíveis, comunicados importantes, agenda atendimentos internos e atualiza a timeline de exames/consultas em linguagem simples.
-2. **Portal do Paciente (Mobile-First):** Onde o munícipe acessa com seu número de CRA e data de nascimento para verificar o status de suas solicitações ativas, histórico clínico, comunicados da UBS e agendamento de atendimento com a gestão.
+> Projeto de Extensao Multidisciplinar em Engenharia de Software - UFBRA
+> Transparencia de informacao para pacientes e equipes gestoras das UBSs de Sao Jose dos Campos (SP).
 
 ---
 
-## 🛠️ Stack Tecnológica Aprovada
+## Status do Projeto
 
-*   **Frontend:** React (SPA), Vite, Tailwind CSS (com padrão de design responsivo 375px mobile-first)
-*   **Backend:** Node.js, Express, Knex (Query Builder)
-*   **Banco de Dados:** PostgreSQL (hospedado no Supabase para ambiente de testes/produção)
-*   **Autenticação:** JWT (JSON Web Tokens) e criptografia com bcrypt
-*   **Deploy:** Frontend na Vercel e Backend na Vercel (serviços de serverless e API)
+O Gestao Saude UBS+ foi aprovado na banca academica e esta na Fase 4: preparacao para uso real assistido em Sao Jose dos Campos. O foco atual e estabilizar seguranca, LGPD, auditoria, documentacao operacional e monitoramento antes de ampliar o piloto em UBS real.
+
+O sistema nao substitui e-SUS, SISREG, CROSS ou outros sistemas oficiais do SUS. Ele funciona como uma camada de transparencia e acompanhamento, alimentada manualmente pela equipe da UBS, para reduzir desinformacao sobre filas, exames, consultas, medicamentos, comunicados e atendimento com a gestao.
 
 ---
 
-## 🚀 Como Executar o Projeto Localmente
+## Portais Entregues
 
-### Pré-requisitos
-*   [Node.js](https://nodejs.org/) instalado na máquina (versão LTS recomendada).
-*   Um banco de dados PostgreSQL ativo (ou usar o banco de dados remoto Supabase).
+1. **Portal do Gestor:** area operacional da UBS para cadastro e acompanhamento de pacientes, solicitacoes, medicamentos, comunicados, agendamentos, relatorios, regulacao, vigilancia, servico social e transporte sanitario.
+2. **Portal do Paciente:** experiencia mobile-first para o municipe consultar solicitacoes, comunicados, medicamentos, historico, agendamentos e aceite LGPD.
+3. **Portal de Unidades Externas:** acompanhamento de encaminhamentos e retornos de unidades parceiras.
+4. **Painel Superadmin:** administracao central de UBSs, gestores, logs de auditoria e acessos a dados sensiveis de pacientes.
 
-### Passo 1: Clonar o Repositório e Configurar Envs
-1. No backend (`app/backend/`), duplique o arquivo `.env.example` criando o arquivo `.env` e configure as chaves de acesso:
-   ```env
-   PORT=3001
-   DATABASE_URL=seu_link_de_conexao_postgres
-   JWT_SECRET=seu_segredo_jwt_super_seguro
-   ```
-2. No frontend (`app/frontend/`), configure o arquivo `.env` apontando para a API local:
-   ```env
-   VITE_API_URL=http://localhost:3001
-   ```
+---
 
-### Passo 2: Rodar o Servidor Backend
+## Funcionalidades Principais
+
+- Autenticacao com JWT e bcrypt para gestores, pacientes e unidades externas.
+- Login do paciente por CRA e data de nascimento.
+- Cadastro de paciente com orientacao de validacao presencial.
+- Timeline de solicitacoes em linguagem simples, sem jargao medico ou burocratico.
+- Comunicados gerais, individuais, urgentes e segmentados por criterio clinico.
+- Web Push para notificacoes operacionais.
+- Relatorios do gestor com indicadores operacionais.
+- Controle de acesso por perfil, incluindo medico, gestor e admin.
+- LGPD: aceite versionado, politica publica, direito ao esquecimento e auditoria de visualizacao.
+- Monitoramento: endpoint publico `/health` e integracao Sentry condicionada a producao.
+- Documentos operacionais em HTML imprimivel para treinamento e comunicacao com pacientes.
+
+---
+
+## Stack Tecnologica
+
+- **Frontend:** React, Vite, Tailwind CSS.
+- **Backend:** Node.js, Express, Knex.
+- **Banco de dados:** PostgreSQL.
+- **Autenticacao:** JWT, bcrypt e controle de versao de token.
+- **Auditoria:** logs centralizados em `security_audit_logs`.
+- **Notificacoes:** Web Push VAPID e servico interno de notificacoes do gestor.
+- **Monitoramento:** Sentry e rota de saude para monitoramento externo.
+- **Deploy academico/producao assistida:** Vercel/Railway conforme ambiente configurado.
+
+---
+
+## Como Executar Localmente
+
+### Pre-requisitos
+
+- Node.js 18 ou superior.
+- PostgreSQL acessivel por `DATABASE_URL`.
+- Variaveis de ambiente configuradas a partir dos arquivos `.env.example`.
+
+### Backend
+
 ```bash
 cd app/backend
 npm install
-# Aplicar migrations do banco
 npx knex migrate:latest
-# Popular banco com dados iniciais (UBSs de SJC e gestores padrão)
 npx knex seed:run
-# Iniciar servidor em modo de desenvolvimento
 npm run dev
-# Backend rodará na porta http://localhost:3001
 ```
 
-### Passo 3: Rodar o Aplicativo Frontend
+Por padrao, a API local roda em `http://localhost:3001`.
+
+### Frontend
+
 ```bash
 cd app/frontend
 npm install
-# Iniciar o servidor de desenvolvimento
 npm run dev
-# O aplicativo abrirá em http://localhost:5173
 ```
+
+Por padrao, o Vite abre o frontend em `http://localhost:5173`.
 
 ---
 
-## 🔑 Credenciais para Testes (Banca Examinadora)
+## Variaveis de Ambiente
 
-### 💻 1. Acesso ao Portal do Gestor
-Acesse a tela de login do gestor e utilize uma das contas pré-configuradas (senha padrão: `senha123`):
+Consulte os arquivos de exemplo antes de iniciar:
 
-| UBS de Referência | E-mail do Gestor | Perfil de Acesso |
+- `app/backend/.env.example`
+- `app/frontend/.env.example`
+
+Variaveis reais de `.env` nao devem ser versionadas. Em producao, configure os segredos no painel da plataforma de hospedagem.
+
+---
+
+## Credenciais de Teste
+
+As credenciais abaixo sao usadas em ambientes de demonstracao e desenvolvimento. Elas nao devem ser reutilizadas para operacao real com dados sensiveis.
+
+| Portal | Usuario | Observacao |
 |---|---|---|
-| **UBS Centro SJC** | `centro@gestaoubs.dev` | Administrador / Gestor |
-| **UBS Vila Industrial** | `industrial@gestaoubs.dev` | Administrador / Gestor |
-| **UBS Jardim Satélite** | `satelite@gestaoubs.dev` | Administrador / Gestor |
-
-### 📱 2. Acesso ao Portal do Paciente
-A autenticação do paciente é feita usando o número do **CRA** (Cadastro de Regulação Ambulatorial) e a sua **Data de Nascimento** (formato livre `DD/MM/AAAA` com teclado numérico nos celulares).
-
-Como testar:
-1. Faça login no **Portal do Gestor** com uma das credenciais acima.
-2. Vá até a seção **Pacientes** e cadastre um novo paciente manual (anote o CRA e a Data de Nascimento informada) **OU** use a aba "Aguardando Aprovação" para ativar um paciente que utilizou o fluxo de auto-cadastro.
-3. No portal do paciente, preencha o **CRA** e a **Data de Nascimento** correspondentes para acessar o painel de atendimento do cidadão.
+| Gestor | `centro@gestaoubs.dev` | Conta demo da UBS Centro |
+| Gestor | `industrial@gestaoubs.dev` | Conta demo da UBS Vila Industrial |
+| Gestor | `satelite@gestaoubs.dev` | Conta demo da UBS Jardim Satelite |
+| Paciente | CRA + data de nascimento | Criado pelo fluxo de cadastro ou pelos seeds de demo |
 
 ---
 
-## 📁 Estrutura de Pastas
+## Estrutura do Repositorio
 
-```
+```text
 /
-├── app/
-│   ├── frontend/             ← Aplicação React (Vite + Tailwind)
-│   │   ├── src/
-│   │   │   ├── components/   ← Componentes separados por gestor/paciente
-│   │   │   ├── pages/        ← Páginas de cada um dos portais
-│   │   │   └── utils/        ← Helpers de fuso horário, cores e status
-│   └── backend/              ← API REST Node.js (Express + Knex)
-│       └── src/
-│           ├── routes/       ← Definição de rotas públicas e autenticadas
-│           └── db/           ← Configurações e migrations de DB
-├── docs/                     ← Documentação oficial de Engenharia de Software
-├── screens/                  ← Mockups HTML estáticos originais de wireframes
-├── scripts/                  ← Scripts utilitários de setup e scaffolding arquivados
-├── AGENTS.md                 ← Documento master com regras da equipe de desenvolvimento
-└── CLAUDE.md                 ← Convenções adicionais do assistente virtual
+|-- app/
+|   |-- frontend/             # Aplicacao React
+|   |   |-- src/
+|   |   |   |-- components/   # Componentes por portal
+|   |   |   |-- pages/        # Telas do gestor, paciente, externa e admin
+|   |   |   `-- utils/        # Helpers de status, datas e regras de UI
+|   `-- backend/              # API REST Node.js
+|       |-- src/
+|       |   |-- routes/       # Rotas publicas e autenticadas
+|       |   |-- middleware/   # Autenticacao, autorizacao, validacao e auditoria
+|       |   |-- services/     # Auditoria, email, push e notificacoes
+|       |   `-- db/           # Knex, migrations e seeds
+|-- docs/                     # Documentacao tecnica e operacional
+|-- tests/                    # Testes de contrato e regressao
+|-- .Agent/                   # Briefings, tarefas e relatorios de sessao
+|-- AGENTS.md                 # Regras master para agentes de desenvolvimento
+`-- README.md                 # Visao publica do projeto
 ```
 
 ---
 
-## 📄 Documentos de Referência
+## Documentacao
 
-A documentação detalhada do projeto de Engenharia de Software está estruturada na pasta `/docs/`:
-*   [01. Descrição do Projeto](file:///c:/Users/reina/OneDrive/Desktop/Projetos/Gest%C3%A3o%20Sa%C3%BAde%20UBS+/docs/01_Descricao_do_Projeto.md) — Visão geral e escopo acadêmico.
-*   [02. Arquitetura Técnica](file:///c:/Users/reina/OneDrive/Desktop/Projetos/Gest%C3%A3o%20Sa%C3%BAde%20UBS+/docs/02_Arquitetura_Tecnica.md) — Infraestrutura e padrões técnicos.
-*   [03. Modelo de Dados](file:///c:/Users/reina/OneDrive/Desktop/Projetos/Gest%C3%A3o%20Sa%C3%BAde%20UBS+/docs/03_Modelo_de_Dados.md) — Esquema de tabelas do PostgreSQL e ER diagram.
-*   [04. Requisitos Funcionais](file:///c:/Users/reina/OneDrive/Desktop/Projetos/Gest%C3%A3o%20Sa%C3%BAde%20UBS+/docs/04_Requisitos_Funcionais.md) — Detalhamento de casos de uso do sistema.
-*   [05. Roadmap de Entregas](file:///c:/Users/reina/OneDrive/Desktop/Projetos/Gest%C3%A3o%20Sa%C3%BAde%20UBS+/docs/05_Roadmap.md) — Histórico de fases e plano futuro pós-apresentação.
-*   [06. Arquivos de Configuração](file:///c:/Users/reina/OneDrive/Desktop/Projetos/Gest%C3%A3o%20Sa%C3%BAde%20UBS+/docs/06_Configuracoes.md) — Guia rápido de dependências e ambientes.
-*   [07. Convenções de Código](file:///c:/Users/reina/OneDrive/Desktop/Projetos/Gest%C3%A3o%20Sa%C3%BAde%20UBS+/docs/07_Convencoes_Codigo.md) — Estilo de nomenclatura e semântica de commits.
+- [Descricao do Projeto](docs/01_Descricao_do_Projeto.md)
+- [Arquitetura Tecnica](docs/02_Arquitetura_Tecnica.md)
+- [Modelo de Dados](docs/03_Modelo_de_Dados.md)
+- [Requisitos Funcionais](docs/04_Requisitos_Funcionais.md)
+- [Roadmap](docs/05_Roadmap.md)
+- [Configuracoes](docs/06_Configuracoes.md)
+- [Convencoes de Codigo](docs/07_Convencoes_Codigo.md)
+- [Manual do Gestor](docs/Manual_Gestor.html)
+- [Guia do Paciente](docs/Guia_Paciente.html)
+
+---
+
+## Validacao
+
+Comandos principais:
+
+```bash
+node --test tests\*.test.mjs
+cd app/frontend
+npm run build
+```
+
+Antes de qualquer publicacao, separe os resultados dos testes focados das verificacoes de prontidao geral do repositorio.
+
+---
+
+## Principios de Produto
+
+- LGPD em primeiro lugar: nenhum dado sensivel deve ser exposto sem autenticacao e autorizacao.
+- Linguagem simples para pacientes.
+- Mobile-first no portal do paciente.
+- Registro de auditoria para acoes sensiveis.
+- Sem integracao direta com e-SUS, SISREG ou CROSS no escopo atual.
