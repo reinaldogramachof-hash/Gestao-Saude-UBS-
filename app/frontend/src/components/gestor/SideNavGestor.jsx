@@ -335,6 +335,24 @@ export default function SideNavGestor({ onFechar, retraida, onToggle }) {
           </button>
         )}
 
+        <Link
+          to="/gestor/minha-conta"
+          onClick={handleNavegar}
+          className={`group relative w-full flex items-center gap-3 px-4 py-3 ${retraida ? 'lg:px-0 lg:justify-center' : ''} rounded-xl font-semibold text-sm transition-all ${
+            pathname.includes('/gestor/minha-conta')
+              ? 'bg-primary/10 text-primary'
+              : 'text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface'
+          }`}
+        >
+          <span className="material-symbols-outlined text-xl flex-shrink-0">account_circle</span>
+          <span className={retraida ? 'lg:hidden' : ''}>Minha conta</span>
+          {retraida && (
+            <div className="hidden lg:group-hover:flex absolute left-full ml-3 px-3 py-2 bg-gray-900 text-white text-xs font-bold rounded-lg whitespace-nowrap z-[100] pointer-events-none shadow-xl">
+              Minha conta
+            </div>
+          )}
+        </Link>
+
         <button
           onClick={handleSair}
           className={`group relative w-full flex items-center gap-3 px-4 py-3 ${retraida ? 'lg:px-0 lg:justify-center' : ''} rounded-xl font-semibold text-sm text-on-surface-variant hover:bg-red-50 hover:text-red-600 transition-all`}

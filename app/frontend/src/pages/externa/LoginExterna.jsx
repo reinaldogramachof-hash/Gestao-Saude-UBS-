@@ -14,6 +14,7 @@ import api from '../../services/api';
 export default function LoginExterna() {
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
+  const [mostrarSenha, setMostrarSenha] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const { login } = useAuth();
@@ -70,15 +71,39 @@ export default function LoginExterna() {
 
           <div className="space-y-2">
             <label className="text-sm font-bold text-on-surface-variant">Senha</label>
+            <div className="relative">
             <input
               required
-              type="password"
+              type={mostrarSenha ? 'text' : 'password'}
               autoComplete="current-password"
               placeholder="••••••••"
               value={senha}
               onChange={e => setSenha(e.target.value)}
-              className="w-full h-12 px-4 bg-surface-container-high border-none rounded-xl outline-none font-medium focus:ring-2 focus:ring-primary/20"
+              className="w-full h-12 pl-4 pr-12 bg-surface-container-high border-none rounded-xl outline-none font-medium focus:ring-2 focus:ring-primary/20"
             />
+            {/* Alterna a visualizacao local da senha sem alterar o valor enviado ao backend. */}
+            <button
+              type="button"
+              onClick={() => setMostrarSenha((valorAtual) => !valorAtual)}
+              aria-label={mostrarSenha ? 'Ocultar senha' : 'Mostrar senha'}
+              title={mostrarSenha ? 'Ocultar senha' : 'Mostrar senha'}
+              className="absolute inset-y-0 right-0 w-12 flex items-center justify-center text-on-surface-variant hover:text-primary focus:outline-none focus:ring-2 focus:ring-primary rounded-r-xl"
+            >
+              {mostrarSenha ? (
+                <svg aria-hidden="true" className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M17.94 17.94A10.94 10.94 0 0 1 12 20C7 20 2.73 16.89 1 12a19.77 19.77 0 0 1 5.06-6.94" />
+                  <path d="M9.9 4.24A10.45 10.45 0 0 1 12 4c5 0 9.27 3.11 11 8a19.84 19.84 0 0 1-2.2 3.45" />
+                  <path d="M14.12 14.12A3 3 0 0 1 9.88 9.88" />
+                  <path d="M1 1l22 22" />
+                </svg>
+              ) : (
+                <svg aria-hidden="true" className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8S1 12 1 12z" />
+                  <circle cx="12" cy="12" r="3" />
+                </svg>
+              )}
+            </button>
+            </div>
           </div>
 
           <button

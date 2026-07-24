@@ -9,7 +9,7 @@
 //         avançada em chips de clique tátil (Wow Factor).
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
 import api from '../../services/api';
 import GestorLayout from '../../components/gestor/GestorLayout';
@@ -22,6 +22,12 @@ const FORM_CRIACAO_INICIAL = {
   senha: '',
   confirmarSenha: '',
   perfil: 'recepcionista',
+};
+
+const FILTROS_INICIAIS = {
+  busca: '',
+  perfil: 'todos',
+  status: 'todos',
 };
 
 // Badges translúcidos elegantes por perfil com bolinha sólida no início (Paleta HSL)
@@ -59,6 +65,7 @@ export default function GestorUsuarios() {
   const [formCriacao, setFormCriacao] = useState(FORM_CRIACAO_INICIAL);
   const [formEdicao, setFormEdicao] = useState({ nome: '', email: '', perfil: 'gestor' });
   const [novaSenha, setNovaSenha] = useState('');
+  const [filtros, setFiltros] = useState(FILTROS_INICIAIS);
 
   // Carrega a listagem de funcionários vinculados à UBS
   const carregarUsuarios = async () => {
@@ -188,6 +195,25 @@ export default function GestorUsuarios() {
   };
 
   // Bloqueio preventivo de segurança se o usuário logado não possuir perfil de administrador
+  // Aplica filtros em memoria para manter a tabela responsiva sem nova chamada
+  // ao backend a cada tecla digitada.
+  const usuariosFiltrados = useMemo(() => {
+    const busca = filtros.busca.trim().toLowerCase();
+
+    return usuarios.filter((usuario) => {
+      const textoUsuario = `${usuario.nome} ${usuario.email}`.toLowerCase();
+      const passaBusca = !busca || textoUsuario.includes(busca);
+      const passaPerfil = filtros.perfil === 'todos' || usuario.perfil === filtros.perfil;
+      const passaStatus = filtros.status === 'todos'
+        || (filtros.status === 'ativos' && usuario.ativo)
+        || (filtros.status === 'inativos' && !usuario.ativo);
+
+      return passaBusca && passaPerfil && passaStatus;
+    });
+  }, [usuarios, filtros]);
+
+  const filtrosAtivos = filtros.busca || filtros.perfil !== 'todos' || filtros.status !== 'todos';
+
   if (user?.perfil !== 'admin') {
     return (
       <GestorLayout>
@@ -281,6 +307,68 @@ export default function GestorUsuarios() {
       </div>
 
       {/* ── LISTAGEM DE USUÁRIOS (TABELA DE ALTA FIDELIDADE) ── */}
+      {/* Filtros operacionais para localizar rapidamente contas com perda de senha ou status incorreto. */}
+      <section className="bg-surface-container-lowest rounded-3xl border border-surface-variant/45 shadow-sm p-4 md:p-5 mb-6">
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_220px_180px_auto] gap-3 items-end">
+          <label className="space-y-2">
+            <span className="text-xs font-black uppercase tracking-wider text-on-surface-variant">Buscar colaborador</span>
+            <div className="relative">
+              <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-xl">search</span>
+              <input
+                type="search"
+                value={filtros.busca}
+                onChange={(event) => setFiltros((prev) => ({ ...prev, busca: event.target.value }))}
+                placeholder="Nome ou e-mail"
+                className="w-full h-12 pl-11 pr-4 bg-surface-container-high/75 border border-surface-variant/20 rounded-xl outline-none font-semibold focus:border-primary/50 focus:bg-surface-container-lowest focus:ring-2 focus:ring-primary/20 transition-all text-sm"
+              />
+            </div>
+          </label>
+
+          <label className="space-y-2">
+            <span className="text-xs font-black uppercase tracking-wider text-on-surface-variant">Perfil</span>
+            <select
+              value={filtros.perfil}
+              onChange={(event) => setFiltros((prev) => ({ ...prev, perfil: event.target.value }))}
+              className="w-full h-12 px-4 bg-surface-container-high/75 border border-surface-variant/20 rounded-xl outline-none font-bold focus:border-primary/50 focus:ring-2 focus:ring-primary/20 transition-all text-sm"
+            >
+              <option value="todos">Todos os perfis</option>
+              <option value="admin">Administradores</option>
+              <option value="gestor">Gestores</option>
+              <option value="medico">Medicos</option>
+              <option value="recepcionista">Recepcao</option>
+            </select>
+          </label>
+
+          <label className="space-y-2">
+            <span className="text-xs font-black uppercase tracking-wider text-on-surface-variant">Status</span>
+            <select
+              value={filtros.status}
+              onChange={(event) => setFiltros((prev) => ({ ...prev, status: event.target.value }))}
+              className="w-full h-12 px-4 bg-surface-container-high/75 border border-surface-variant/20 rounded-xl outline-none font-bold focus:border-primary/50 focus:ring-2 focus:ring-primary/20 transition-all text-sm"
+            >
+              <option value="todos">Todos</option>
+              <option value="ativos">Ativos</option>
+              <option value="inativos">Inativos</option>
+            </select>
+          </label>
+
+          <button
+            type="button"
+            onClick={() => setFiltros(FILTROS_INICIAIS)}
+            disabled={!filtrosAtivos}
+            className="h-12 px-5 rounded-xl border border-surface-variant/50 font-bold text-sm text-on-surface-variant hover:bg-surface-container-high disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
+          >
+            <span className="material-symbols-outlined text-lg">filter_alt_off</span>
+            Limpar
+          </button>
+        </div>
+
+        <div className="mt-4 flex items-center justify-between gap-3 text-xs font-bold text-on-surface-variant">
+          <span>{usuariosFiltrados.length} de {usuarios.length} contas exibidas</span>
+          {filtrosAtivos && <span className="text-primary">Filtros aplicados</span>}
+        </div>
+      </section>
+
       {erro && !loading ? (
         <section className="bg-surface-container-lowest rounded-3xl border border-red-500/15 p-10 text-center max-w-md mx-auto shadow-sm">
           <span className="material-symbols-outlined text-red-500 text-5xl">error</span>
@@ -316,8 +404,8 @@ export default function GestorUsuarios() {
                       </td>
                     </tr>
                   ))
-                ) : usuarios.length > 0 ? (
-                  usuarios.map((usuario) => {
+                ) : usuariosFiltrados.length > 0 ? (
+                  usuariosFiltrados.map((usuario) => {
                     const proprioUsuario = Number(usuario.id) === Number(user.id);
                     return (
                       <tr key={usuario.id} className="hover:bg-surface-container-low/40 transition-colors">
@@ -399,7 +487,7 @@ export default function GestorUsuarios() {
                 ) : (
                   <tr>
                     <td colSpan="5" className="px-6 py-16 text-center text-on-surface-variant font-semibold text-sm">
-                      Nenhum colaborador registrado nesta unidade.
+                      {filtrosAtivos ? 'Nenhum colaborador encontrado com os filtros atuais.' : 'Nenhum colaborador registrado nesta unidade.'}
                     </td>
                   </tr>
                 )}

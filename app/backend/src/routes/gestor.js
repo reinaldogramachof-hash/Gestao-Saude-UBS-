@@ -35,6 +35,7 @@
  * ─────────────────────────────────────────────────────────────────────────────
  */
 const express      = require('express');
+const bcrypt       = require('bcrypt');
 const knex         = require('../db/knex');
 const pushService  = require('../services/pushService');
 const { requireTipo, requirePerfil, soNaoMedico } = require('../middleware/authorization');
@@ -62,6 +63,167 @@ const soGestor = requireTipo('gestor');
 // Aplica o middleware em todas as rotas deste arquivo
 router.use(soGestor);
 router.use(auditMiddleware({ modulo: 'gestor' }));
+
+// GET /api/gestor/minha-conta
+// Retorna somente os dados publicos do gestor autenticado. O id vem do JWT,
+// nunca da URL ou do body, para evitar acesso lateral a contas de terceiros.
+router.get('/minha-conta', async (req, res) => {
+  try {
+    const usuario = await knex('usuarios_gestores as gestor')
+      .leftJoin('ubs', 'ubs.id', 'gestor.ubs_id')
+      .where('gestor.id', req.user.id)
+      .select(
+        'gestor.id',
+        'gestor.nome',
+        'gestor.email',
+        'gestor.perfil',
+        'gestor.ativo',
+        'gestor.ubs_id',
+        'gestor.criado_em',
+        'ubs.nome as ubs_nome'
+      )
+      .first();
+
+    if (!usuario) {
+      return res.status(404).json({ error: MENSAGENS.GERAL.NAO_ENCONTRADO });
+    }
+
+    await registrar(req, {
+      acao: 'GESTOR_MINHA_CONTA_VISUALIZADA_SUCESSO',
+      entidade: 'usuarios_gestores',
+      entidadeId: usuario.id,
+      httpStatus: 200,
+    });
+
+    return res.json(usuario);
+  } catch (err) {
+    console.error('[GET /gestor/minha-conta]', err);
+    await registrar(req, {
+      acao: 'GESTOR_MINHA_CONTA_VISUALIZADA_ERRO',
+      entidade: 'usuarios_gestores',
+      entidadeId: req.user?.id ?? null,
+      resultado: 'erro',
+      httpStatus: 500,
+      detalhe: { mensagem: err.message },
+    });
+    return res.status(500).json({ error: MENSAGENS.GERAL.ERRO_INTERNO });
+  }
+});
+
+// PATCH /api/gestor/minha-conta
+// Permite ao gestor atualizar os proprios dados cadastrais basicos. Perfil,
+// UBS, status e senha nao sao aceitos aqui por seguranca.
+router.patch('/minha-conta', async (req, res) => {
+  try {
+    const nome = String(req.body?.nome || '').trim();
+    const email = String(req.body?.email || '').trim().toLowerCase();
+
+    if (!nome || !email) {
+      return res.status(400).json({ error: MENSAGENS.PACIENTE.DADOS_INVALIDOS });
+    }
+
+    const emailEmUso = await knex('usuarios_gestores')
+      .where({ email })
+      .whereNot({ id: req.user.id })
+      .first();
+
+    if (emailEmUso) {
+      return res.status(409).json({ error: MENSAGENS.AUTH.EMAIL_JA_CADASTRADO });
+    }
+
+    await knex('usuarios_gestores')
+      .where({ id: req.user.id })
+      .update({ nome, email });
+
+    const usuario = await knex('usuarios_gestores')
+      .where({ id: req.user.id })
+      .select('id', 'nome', 'email', 'perfil', 'ubs_id', 'ativo')
+      .first();
+
+    await registrar(req, {
+      acao: 'GESTOR_MINHA_CONTA_ATUALIZADA_SUCESSO',
+      entidade: 'usuarios_gestores',
+      entidadeId: req.user.id,
+      httpStatus: 200,
+      detalhe: { campos: ['nome', 'email'] },
+    });
+
+    return res.json(usuario);
+  } catch (err) {
+    console.error('[PATCH /gestor/minha-conta]', err);
+    await registrar(req, {
+      acao: 'GESTOR_MINHA_CONTA_ATUALIZADA_ERRO',
+      entidade: 'usuarios_gestores',
+      entidadeId: req.user?.id ?? null,
+      resultado: 'erro',
+      httpStatus: 500,
+      detalhe: { mensagem: err.message },
+    });
+    return res.status(500).json({ error: MENSAGENS.GERAL.ERRO_INTERNO });
+  }
+});
+
+// PATCH /api/gestor/minha-conta/senha
+// Troca a propria senha exigindo a senha atual. Ao incrementar token_version,
+// sessoes antigas sao revogadas e o usuario continua seguro apos a mudanca.
+router.patch('/minha-conta/senha', async (req, res) => {
+  try {
+    const { senha_atual, nova_senha } = req.body || {};
+    if (!senha_atual || !nova_senha || String(nova_senha).length < 8) {
+      return res.status(400).json({ error: MENSAGENS.PACIENTE.DADOS_INVALIDOS });
+    }
+
+    const usuario = await knex('usuarios_gestores')
+      .where({ id: req.user.id, ativo: true })
+      .select('id', 'senha_hash')
+      .first();
+
+    if (!usuario) {
+      return res.status(404).json({ error: MENSAGENS.GERAL.NAO_ENCONTRADO });
+    }
+
+    const senhaAtualValida = await bcrypt.compare(senha_atual, usuario.senha_hash);
+    if (!senhaAtualValida) {
+      await registrar(req, {
+        acao: 'GESTOR_MINHA_CONTA_SENHA_ATUALIZADA_FALHA',
+        entidade: 'usuarios_gestores',
+        entidadeId: req.user.id,
+        resultado: 'falha',
+        httpStatus: 401,
+        detalhe: { motivo: 'senha_atual_invalida' },
+      });
+      return res.status(401).json({ error: MENSAGENS.AUTH.CREDENCIAIS_INVALIDAS });
+    }
+
+    const senhaHash = await bcrypt.hash(nova_senha, 12);
+    await knex('usuarios_gestores')
+      .where({ id: req.user.id })
+      .update({
+        senha_hash: senhaHash,
+        token_version: knex.raw('COALESCE(token_version, 0) + 1'),
+      });
+
+    await registrar(req, {
+      acao: 'GESTOR_MINHA_CONTA_SENHA_ATUALIZADA_SUCESSO',
+      entidade: 'usuarios_gestores',
+      entidadeId: req.user.id,
+      httpStatus: 200,
+    });
+
+    return res.json({ mensagem: 'Senha atualizada com sucesso. Entre novamente com a nova senha.' });
+  } catch (err) {
+    console.error('[PATCH /gestor/minha-conta/senha]', err);
+    await registrar(req, {
+      acao: 'GESTOR_MINHA_CONTA_SENHA_ATUALIZADA_ERRO',
+      entidade: 'usuarios_gestores',
+      entidadeId: req.user?.id ?? null,
+      resultado: 'erro',
+      httpStatus: 500,
+      detalhe: { mensagem: err.message },
+    });
+    return res.status(500).json({ error: MENSAGENS.GERAL.ERRO_INTERNO });
+  }
+});
 
 const CAMPOS_PACIENTE_GESTOR = [
   'pacientes.id',

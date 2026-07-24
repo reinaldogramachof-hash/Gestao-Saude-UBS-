@@ -29,6 +29,7 @@ import AgendamentosGestor from './pages/gestor/AgendamentosGestor';
 import RegulacaoGestor from './pages/gestor/RegulacaoGestor';
 import VigilanciaGestor from './pages/gestor/VigilanciaGestor';
 import GestorUsuarios from './pages/gestor/GestorUsuarios';
+import MinhaContaGestor from './pages/gestor/MinhaContaGestor';
 import PainelMedico from './pages/gestor/PainelMedico';
 import RelatoriosGestor from './pages/gestor/RelatoriosGestor';
 import SuperadminLayout from './pages/gestor/admin/SuperadminLayout';
@@ -112,6 +113,7 @@ export default function App() {
           <Route path="/gestor/regulacao" element={<ProtectedRoute tipo="gestor"><RegulacaoGestor /></ProtectedRoute>} />
           <Route path="/gestor/vigilancia" element={<ProtectedRoute tipo="gestor"><VigilanciaGestor /></ProtectedRoute>} />
           <Route path="/gestor/usuarios" element={<ProtectedRoute tipo="gestor"><GestorUsuarios /></ProtectedRoute>} />
+          <Route path="/gestor/minha-conta" element={<ProtectedRoute tipo="gestor"><MinhaContaGestor /></ProtectedRoute>} />
           <Route path="/gestor/medico" element={<ProtectedRoute tipo="gestor"><PainelMedico /></ProtectedRoute>} />
           <Route path="/gestor/relatorios" element={<ProtectedRoute tipo="gestor"><RelatoriosGestor /></ProtectedRoute>} />
           <Route
