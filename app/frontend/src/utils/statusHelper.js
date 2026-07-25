@@ -50,12 +50,26 @@ export const STATUS_CORES = {
 // ─────────────────────────────────────────────────────────────────────────────
 export function formatarDataBR(iso, opcoes) {
   if (!iso) return '—';
-  const dataCorrigida = iso.includes('T') ? new Date(iso) : new Date(iso + 'T12:00:00');
-  return dataCorrigida.toLocaleDateString('pt-BR', opcoes || {
+  const opcoesFormatacao = opcoes || {
     day: '2-digit',
     month: '2-digit',
     year: 'numeric',
-  });
+  };
+
+  // Datas de agenda vindas do banco podem chegar como "2026-08-10" ou como
+  // "2026-08-10T00:00:00.000Z". Em ambos os casos o valor representa uma data
+  // civil escolhida no formulario, nao um instante global; por isso montamos a
+  // data em horario local para impedir que o fuso exiba 09/08 no Brasil.
+  if (typeof iso === 'string') {
+    const dataCivil = iso.match(/^(\d{4})-(\d{2})-(\d{2})(?:T00:00:00(?:\.000)?Z?)?$/);
+    if (dataCivil) {
+      const [, ano, mes, dia] = dataCivil;
+      return new Date(Number(ano), Number(mes) - 1, Number(dia), 12)
+        .toLocaleDateString('pt-BR', opcoesFormatacao);
+    }
+  }
+
+  return new Date(iso).toLocaleDateString('pt-BR', opcoesFormatacao);
 }
 
 // Vite HMR trigger: 1

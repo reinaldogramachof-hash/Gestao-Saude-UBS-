@@ -14,6 +14,7 @@ import React, { useState, useEffect } from 'react';
 import ExternaLayout from '../../components/externa/ExternaLayout';
 import api from '../../services/api';
 import toast from 'react-hot-toast';
+import { formatarDataBR } from '../../utils/statusHelper';
 
 const STATUS_LABELS = {
   TODOS:                  'Todos',
@@ -255,7 +256,7 @@ export default function EncaminhamentosExterna() {
     const bateStatus = filtroStatus === 'TODOS' || e.status === filtroStatus;
     const termo = busca.trim().toLowerCase();
     const bateBusca = !termo ||
-      e.paciente_nome.toLowerCase().includes(termo) ||
+      (e.paciente_nome || '').toLowerCase().includes(termo) ||
       (e.paciente_cra && e.paciente_cra.toLowerCase().includes(termo));
     const batePrioridade = filtroPrioridade === 'TODAS' || e.prioridade === filtroPrioridade;
     const bateUbs = filtroUbs === 'TODAS' || e.ubs_nome === filtroUbs;
@@ -278,7 +279,7 @@ export default function EncaminhamentosExterna() {
       return new Date(b.data_solicitacao) - new Date(a.data_solicitacao); // LIFO
     }
     if (ordenacao === 'nome') {
-      return a.paciente_nome.localeCompare(b.paciente_nome, 'pt-BR');
+      return (a.paciente_nome || '').localeCompare(b.paciente_nome || '', 'pt-BR');
     }
     return 0;
   });
@@ -286,7 +287,7 @@ export default function EncaminhamentosExterna() {
   return (
     <ExternaLayout>
       {/* ── CABEÇALHO ── */}
-      <div className="mb-8 animate-fade-in">
+      <div className="mb-6 lg:mb-8 animate-fade-in">
         <h1 className="text-2xl md:text-4xl font-extrabold tracking-tight text-on-background">
           Fila de Atendimento
         </h1>
@@ -296,7 +297,7 @@ export default function EncaminhamentosExterna() {
       </div>
 
       {/* ── CHIPS DE FILTRO RÁPIDO DE STATUS ── */}
-      <div className="flex gap-2 overflow-x-auto pb-3.5 mb-6 border-b border-surface-variant/40 animate-slide-up no-scrollbar">
+      <div className="flex gap-2 overflow-x-auto xl:flex-wrap pb-3.5 mb-5 lg:mb-6 border-b border-surface-variant/40 animate-slide-up no-scrollbar">
         {Object.entries(STATUS_LABELS).map(([key, label]) => (
           <button
             key={key}
@@ -313,8 +314,8 @@ export default function EncaminhamentosExterna() {
       </div>
 
       {/* ── BARRA DE BUSCA E FILTROS AVANÇADOS ── */}
-      <div className="bg-surface-container-lowest border border-surface-variant/45 p-4 rounded-3xl mb-6 shadow-sm grid grid-cols-1 md:grid-cols-4 gap-4 animate-slide-up">
-        <div className="relative md:col-span-2">
+      <div className="bg-surface-container-lowest border border-surface-variant/45 p-4 lg:p-5 rounded-3xl mb-5 lg:mb-6 shadow-sm grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3 lg:gap-4 animate-slide-up">
+        <div className="relative md:col-span-2 xl:col-span-2">
           <span className="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-on-surface-variant text-lg">search</span>
           <input
             type="text"
@@ -356,7 +357,7 @@ export default function EncaminhamentosExterna() {
       </div>
 
       {/* ── [NOVA FUNÇÃO] ABAS DE ORDENAÇÃO DINÂMICA ── */}
-      <div className="flex items-center gap-2 mb-6 bg-surface-container-low/45 border border-surface-variant/25 p-1.5 rounded-2xl self-start w-max max-w-full overflow-x-auto no-scrollbar animate-slide-up">
+      <div className="flex items-center gap-2 mb-6 bg-surface-container-low/45 border border-surface-variant/25 p-1.5 rounded-2xl self-start w-max max-w-full overflow-x-auto xl:flex-wrap no-scrollbar animate-slide-up">
         <span className="text-[10px] font-black text-on-surface-variant uppercase tracking-wider pl-3.5 pr-1 flex items-center gap-1">
           <span className="material-symbols-outlined text-sm">sort</span>
           Ordenar por:
@@ -415,11 +416,11 @@ export default function EncaminhamentosExterna() {
               <div
                 key={enc.id}
                 onClick={() => setExpandidoId(isExpandido ? null : enc.id)}
-                className={`bg-surface-container-lowest p-5 rounded-3xl border shadow-sm flex flex-col gap-4 hover:shadow-md hover:border-primary/20 transition-all duration-250 cursor-pointer ${prioridadeBorda}`}
+                className={`bg-surface-container-lowest p-4 sm:p-5 lg:p-6 rounded-3xl border shadow-sm flex flex-col gap-4 hover:shadow-md hover:border-primary/20 transition-all duration-250 cursor-pointer ${prioridadeBorda}`}
               >
                 {/* Linha 1: Nome, CRA, Procedimento e Badges de Status */}
-                <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
-                  <div>
+                <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-4">
+                  <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2">
                       <h3 className="font-extrabold text-on-background text-base md:text-lg">{enc.paciente_nome}</h3>
                       <span className="text-xs font-bold font-mono bg-surface-container-high px-2 py-0.5 rounded-lg text-on-surface-variant border border-surface-variant/40">
@@ -438,7 +439,7 @@ export default function EncaminhamentosExterna() {
                   </div>
 
                   {/* Badges do Lado Direito */}
-                  <div className="flex items-center gap-2 mt-2 sm:mt-0 flex-wrap" onClick={(e) => e.stopPropagation()}>
+                  <div className="flex items-center gap-2 mt-2 lg:mt-0 flex-wrap lg:justify-end lg:max-w-[42%]" onClick={(e) => e.stopPropagation()}>
                     {/* Botão de Consulta Clínica Prontuário Seguro (LGPD) */}
                     <button
                       onClick={(e) => abrirProntuario(e, enc.paciente_id)}
@@ -485,15 +486,15 @@ export default function EncaminhamentosExterna() {
                       </p>
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-on-surface-variant font-semibold pl-1">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-on-surface-variant font-semibold pl-1">
                       <p className="flex items-center gap-1">
                         <span className="material-symbols-outlined text-sm">schedule</span>
-                        Solicitado em: <strong>{enc.data_solicitacao ? new Date(enc.data_solicitacao).toLocaleDateString('pt-BR') : 'N/I'}</strong>
+                        Solicitado em: <strong>{formatarDataBR(enc.data_solicitacao)}</strong>
                       </p>
                       {enc.data_procedimento_unidade && (
                         <p className="text-primary font-bold flex items-center gap-1">
                           <span className="material-symbols-outlined text-sm">event_available</span>
-                          Procedimento agendado para: <strong>{new Date(enc.data_procedimento_unidade).toLocaleDateString('pt-BR')}</strong>
+                          Procedimento agendado para: <strong>{formatarDataBR(enc.data_procedimento_unidade)}</strong>
                         </p>
                       )}
                     </div>
@@ -501,8 +502,8 @@ export default function EncaminhamentosExterna() {
                 )}
 
                 {/* Linha 3: Ações e Botões de Operação no Rodapé do Card */}
-                <div className="flex flex-wrap items-center justify-between gap-4 pt-3.5 border-t border-surface-variant/30" onClick={(e) => e.stopPropagation()}>
-                  <div className="text-xs text-on-surface-variant/80 font-bold flex items-center gap-1.5">
+                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 pt-3.5 border-t border-surface-variant/30" onClick={(e) => e.stopPropagation()}>
+                  <div className="text-xs text-on-surface-variant/80 font-bold flex items-center gap-1.5 min-w-0">
                     <span className="material-symbols-outlined text-base">info</span>
                     {status === 'RETORNO_UBS' && enc.feedback_tipo ? (
                       <span>Resultado enviado: <strong>{FEEDBACK_LABELS[enc.feedback_tipo] || enc.feedback_tipo}</strong></span>
@@ -513,12 +514,12 @@ export default function EncaminhamentosExterna() {
                     )}
                   </div>
 
-                  <div className="w-full sm:w-auto flex justify-end">
+                  <div className="w-full md:w-auto flex justify-end">
                     {/* Ação 1: Confirmar Recebimento */}
                     {status === 'AGUARDANDO_VAGA' && (
                       <button
                         onClick={() => confirmarRecebimento(enc.id)}
-                        className="w-full sm:w-auto px-5 py-2.5 h-11 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-black flex items-center justify-center gap-1.5 shadow-md shadow-emerald-650/15 hover:-translate-y-0.5 active:scale-[0.98] transition-all"
+                        className="w-full md:w-auto px-5 py-2.5 h-11 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-black flex items-center justify-center gap-1.5 shadow-md shadow-emerald-650/15 hover:-translate-y-0.5 active:scale-[0.98] transition-all"
                       >
                         <span className="material-symbols-outlined text-base font-bold">check_circle</span>
                         Confirmar Recebimento
@@ -570,7 +571,7 @@ export default function EncaminhamentosExterna() {
                       ) : (
                         <button
                           onClick={(e) => iniciarAgendamento(e, enc)}
-                          className="w-full sm:w-auto px-5 py-2.5 h-11 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-extrabold flex items-center justify-center gap-1.5 shadow-sm shadow-blue-600/10 hover:-translate-y-0.5 active:scale-[0.98] transition-all"
+                          className="w-full md:w-auto px-5 py-2.5 h-11 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-extrabold flex items-center justify-center gap-1.5 shadow-sm shadow-blue-600/10 hover:-translate-y-0.5 active:scale-[0.98] transition-all"
                         >
                           <span className="material-symbols-outlined text-base">event</span>
                           Agendar Atendimento
@@ -578,14 +579,14 @@ export default function EncaminhamentosExterna() {
                       )
                     )}
                     {enc.status === 'AGUARDANDO_CONFIRMACAO' && (
-                      <span className="px-4 py-2 bg-gray-100 text-gray-600 rounded-xl text-xs font-bold text-center w-full sm:w-auto block border border-gray-200">
+                      <span className="px-4 py-2 bg-gray-100 text-gray-600 rounded-xl text-xs font-bold text-center w-full md:w-auto block border border-gray-200">
                         Aguardando Resposta do Paciente
                       </span>
                     )}
                     {['AGENDADO', 'CONFIRMADO_PACIENTE'].includes(enc.status) && (
                       <button
                         onClick={(e) => abrirModalRetorno(e, enc)}
-                        className="w-full sm:w-auto px-5 py-2.5 h-11 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-extrabold flex items-center justify-center gap-1.5 shadow-sm shadow-purple-600/10 hover:-translate-y-0.5 active:scale-[0.98] transition-all"
+                        className="w-full md:w-auto px-5 py-2.5 h-11 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-extrabold flex items-center justify-center gap-1.5 shadow-sm shadow-purple-600/10 hover:-translate-y-0.5 active:scale-[0.98] transition-all"
                       >
                         <span className="material-symbols-outlined text-base">assignment_turned_in</span>
                         Registrar Retorno
@@ -681,7 +682,7 @@ export default function EncaminhamentosExterna() {
                     <div>
                       <h3 className="text-lg font-black text-on-background leading-tight">{pacienteProntuario.nome}</h3>
                       <p className="text-[10px] text-on-surface-variant font-extrabold tracking-wider uppercase mt-1">
-                        CRA: {pacienteProntuario.cra || 'Sem Registro'} • Nasc: {new Date(pacienteProntuario.data_nascimento).toLocaleDateString('pt-BR')}
+                        CRA: {pacienteProntuario.cra || 'Sem Registro'} • Nasc: {formatarDataBR(pacienteProntuario.data_nascimento)}
                       </p>
                     </div>
                   </div>

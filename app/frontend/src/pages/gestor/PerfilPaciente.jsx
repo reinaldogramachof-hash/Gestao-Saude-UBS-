@@ -339,8 +339,10 @@ export default function PerfilPaciente() {
   });
 
   // ── Estado da aba ativa (navegação por tabs) ──
-  // Valores: 'dados' | 'solicitacoes' | 'linha_do_tempo'
+  // Valores: 'dados' | 'solicitacoes' | 'linha_do_tempo' | 'notificacoes'
   const [abaAtiva, setAbaAtiva] = useState('dados');
+  const [logsNotificacoes, setLogsNotificacoes] = useState([]);
+  const [loadingLogsNotificacoes, setLoadingLogsNotificacoes] = useState(false);
 
   // ── Estados para Excluir / Transferir Paciente (Admin) ──
   const [modalTransferirAberto, setModalTransferirAberto] = useState(false);
@@ -356,6 +358,26 @@ export default function PerfilPaciente() {
       .catch(() => toast.error('Erro ao carregar dados do paciente.'))
       .finally(() => setLoading(false));
   };
+
+  const carregarLogsNotificacoes = async () => {
+    setLoadingLogsNotificacoes(true);
+    try {
+      const res = await api.get(`/gestor/pacientes/${id}/notificacoes-log`);
+      setLogsNotificacoes(res.data);
+    } catch (err) {
+      console.error('Erro ao carregar log de notificações:', err);
+      toast.error('Erro ao carregar histórico de notificações do paciente.');
+    } finally {
+      setLoadingLogsNotificacoes(false);
+    }
+  };
+
+  useEffect(() => {
+    if (abaAtiva === 'notificacoes') {
+      carregarLogsNotificacoes();
+    }
+  }, [abaAtiva, id]);
+
 
   useEffect(() => {
     carregarPaciente();
@@ -728,12 +750,14 @@ export default function PerfilPaciente() {
       </div>
 
       {/* ── Abas de Navegação Premium (Pílula Deslizante) ── */}
-      <div className="flex bg-surface-container-high/50 backdrop-blur-md p-1 rounded-xl max-w-md mb-6 border border-surface-variant/30 select-none">
+      <div className="flex bg-surface-container-high/50 backdrop-blur-md p-1 rounded-xl max-w-xl mb-6 border border-surface-variant/30 select-none overflow-x-auto">
         {[
-          { id: 'dados',          label: 'Dados Clínicos',  icon: 'person' },
-          { id: 'solicitacoes',   label: 'Solicitações',    icon: 'receipt_long' },
-          { id: 'linha_do_tempo', label: 'Linha do Tempo',  icon: 'timeline' },
+          { id: 'dados',          label: 'Dados Clínicos',        icon: 'person' },
+          { id: 'solicitacoes',   label: 'Solicitações',          icon: 'receipt_long' },
+          { id: 'linha_do_tempo', label: 'Linha do Tempo',        icon: 'timeline' },
+          { id: 'notificacoes',   label: 'Auditoria Notificações',icon: 'notifications_active' },
         ].map(tab => (
+
           <button
             key={tab.id}
             onClick={() => setAbaAtiva(tab.id)}
@@ -1042,7 +1066,7 @@ export default function PerfilPaciente() {
             <div>
               <h2 className="text-lg md:text-2xl font-extrabold text-on-background">Linha do Tempo</h2>
               <p className="text-xs text-on-surface-variant mt-0.5">
-                Atendimentos em qualquer unidade — UBS, AME, CAPS, hospital, especialidades
+                Atendimentos e movimentações auditáveis do processo do paciente
               </p>
             </div>
             <button
@@ -1067,6 +1091,7 @@ export default function PerfilPaciente() {
           {!loadingAtendimentos && atendimentos.length > 0 && (
             <div className="relative before:absolute before:inset-y-2 before:left-4 md:before:left-6 before:w-0.5 before:bg-dashed before:border-l-2 before:border-dashed before:border-surface-variant/65 pl-10 md:pl-16 space-y-6">
               {atendimentos.map(at => {
+                const isEventoProcesso = at.origem_linha_tempo === 'processo';
                 // Seleciona ícone e cor correspondente ao tipo de unidade (caps, hospital, ubs)
                 const unitIcon = TIPO_UNIDADE_ICON[at.tipo_unidade] || 'local_hospital';
                 const colorTheme = 
@@ -1100,19 +1125,26 @@ export default function PerfilPaciente() {
                                 {TIPO_UNIDADE_LABEL[at.tipo_unidade] || at.tipo_unidade}
                               </span>
                             )}
+                            {isEventoProcesso && (
+                              <span className="text-[10px] px-2.5 py-0.5 bg-blue-500/10 text-blue-800 rounded-full font-extrabold uppercase tracking-wider border border-blue-500/20">
+                                Processo UBS+
+                              </span>
+                            )}
                           </div>
                           <h3 className="font-extrabold text-on-background text-base md:text-lg truncate">
                             {at.unidade}
                           </h3>
                           {at.especialidade && (
                             <p className="text-xs md:text-sm font-semibold text-on-surface-variant mt-0.5">
-                              Especialidade: <strong className="text-on-surface">{at.especialidade}</strong>
+                              {isEventoProcesso ? 'Status: ' : 'Especialidade: '}
+                              <strong className="text-on-surface">{STATUS_LABEL[at.especialidade] || at.especialidade}</strong>
                               {at.profissional ? ` • Responsável: Dr(a). ${at.profissional}` : ''}
                             </p>
                           )}
                         </div>
                         
                         {/* Ações do atendimento */}
+                        {!isEventoProcesso && (
                         <div className="flex gap-1.5 flex-shrink-0">
                           <button
                             onClick={() => abrirModalEditarAtendimento(at)}
@@ -1132,6 +1164,7 @@ export default function PerfilPaciente() {
                             </span>
                           </button>
                         </div>
+                        )}
                       </div>
 
                       {/* CID-10 em destaque */}
@@ -1185,10 +1218,94 @@ export default function PerfilPaciente() {
           {!loadingAtendimentos && atendimentos.length === 0 && (
             <div className="text-center py-12">
               <span className="material-symbols-outlined text-4xl text-on-surface-variant mb-3">timeline</span>
-              <p className="text-on-surface-variant font-medium">Nenhum atendimento registrado ainda.</p>
+              <p className="text-on-surface-variant font-medium">Nenhum evento registrado ainda.</p>
               <p className="text-xs text-on-surface-variant mt-1">
-                Clique em "Registrar Atendimento" para adicionar o primeiro registro clínico.
+                Eventos de atendimento e movimentações da solicitação aparecerão aqui.
               </p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {abaAtiva === 'notificacoes' && (
+        <div className="bg-surface-container-lowest rounded-2xl md:rounded-3xl border border-surface-variant p-5 md:p-8 mb-6">
+          <div className="flex flex-wrap items-center justify-between gap-4 mb-6 border-b border-surface-variant/40 pb-4">
+            <div>
+              <h2 className="text-lg md:text-xl font-extrabold text-on-background flex items-center gap-2">
+                <span className="material-symbols-outlined text-primary">gavel</span>
+                Auditoria de Notificações & Entrega (12 Meses)
+              </h2>
+              <p className="text-xs md:text-sm text-on-surface-variant mt-1">
+                Registro imutável de mensagens disparadas para comprovação jurídica de envio, entrega e leitura.
+              </p>
+            </div>
+            <button
+              onClick={carregarLogsNotificacoes}
+              className="px-3 py-1.5 border border-outline-variant text-on-surface text-xs font-bold rounded-xl hover:bg-surface-container-high flex items-center gap-1 shrink-0"
+            >
+              <span className="material-symbols-outlined text-sm">refresh</span>
+              Atualizar Logs
+            </button>
+          </div>
+
+          {loadingLogsNotificacoes ? (
+            <div className="space-y-3">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="h-20 bg-surface-container-low rounded-xl animate-pulse" />
+              ))}
+            </div>
+          ) : logsNotificacoes.length > 0 ? (
+            <div className="space-y-3">
+              {logsNotificacoes.map((log) => {
+                let badgeClass = 'bg-gray-100 text-gray-700 border-gray-300';
+                let labelText = 'Disparado';
+                if (log.status_envio === 'ENTREGUE') {
+                  badgeClass = 'bg-blue-50 text-blue-800 border-blue-200';
+                  labelText = 'Entregue no Dispositivo';
+                } else if (log.status_envio === 'LIDO') {
+                  badgeClass = 'bg-emerald-50 text-emerald-800 border-emerald-200';
+                  labelText = 'Lido pelo Paciente';
+                } else if (log.status_envio === 'FALHA_DISPOSITIVO') {
+                  badgeClass = 'bg-red-50 text-red-800 border-red-200';
+                  labelText = 'Falha de Entrega';
+                }
+
+                return (
+                  <div key={log.id} className="p-4 rounded-xl border border-surface-variant bg-surface-container-low/30 space-y-2">
+                    <div className="flex items-start justify-between gap-2 flex-wrap">
+                      <div>
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-primary bg-primary/10 px-2 py-0.5 rounded mr-2">
+                          {log.canal} • {log.categoria}
+                        </span>
+                        <h3 className="font-extrabold text-on-background text-sm md:text-base inline-block mt-1">
+                          {log.titulo}
+                        </h3>
+                      </div>
+                      <span className={`text-xs font-bold px-2.5 py-1 rounded-full border ${badgeClass}`}>
+                        {labelText}
+                      </span>
+                    </div>
+                    <p className="text-xs md:text-sm text-on-surface-variant leading-relaxed">
+                      {log.corpo_mensagem}
+                    </p>
+                    {log.detalhe_erro && (
+                      <p className="text-xs text-red-600 bg-red-50 p-2 rounded border border-red-100 font-mono">
+                        Erro: {log.detalhe_erro}
+                      </p>
+                    )}
+                    <div className="flex flex-wrap gap-4 text-[11px] text-on-surface-variant/70 pt-2 border-t border-surface-variant/30">
+                      <span>Disparo: {new Date(log.disparado_em).toLocaleString('pt-BR')}</span>
+                      {log.entregue_em && <span>Entrega: {new Date(log.entregue_em).toLocaleString('pt-BR')}</span>}
+                      {log.lido_em && <span className="font-bold text-emerald-700">Leitura: {new Date(log.lido_em).toLocaleString('pt-BR')}</span>}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="py-12 text-center text-on-surface-variant">
+              <span className="material-symbols-outlined text-4xl block mb-2 opacity-40">gavel</span>
+              Nenhuma notificação registrada no histórico de auditoria deste paciente nos últimos 12 meses.
             </div>
           )}
         </div>

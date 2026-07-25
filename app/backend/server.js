@@ -127,7 +127,9 @@ app.get('/health', (req, res) => {
 });
 
 // Rotas publicas (sem autenticacao).
+const rotasPublicas = require('./src/routes/publico');
 app.use('/api/auth', rotasAuth);
+app.use('/api/public', rotasPublicas);
 
 // Rotas protegidas (exigem JWT valido).
 // O authMiddleware verifica o token antes de qualquer rota abaixo.
@@ -136,6 +138,7 @@ app.use('/api/paciente', authMiddleware, rotasPaciente);
 app.use('/api/externa', authMiddleware, rotasExterna);
 app.use('/api/admin', authMiddleware, adminRouter);
 app.use('/api/audit', authMiddleware, auditRouter);
+
 
 // -----------------------------------------------------------------------------
 // SENTRY - Handler de erros do Express

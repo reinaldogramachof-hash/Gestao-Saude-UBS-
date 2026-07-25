@@ -15,6 +15,7 @@ export default function ExternaLayout({ children }) {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const nomeUnidade = user?.nome || user?.unidade || 'Unidade Externa';
 
   const handleLogout = () => {
     logout();
@@ -35,14 +36,14 @@ export default function ExternaLayout({ children }) {
           </div>
           <div className="w-px h-6 bg-white/30 hidden sm:block"></div>
           {/* Mostra a unidade do usuário, fallback para 'Unidade Externa' */}
-          <span className="text-sm font-medium opacity-90 hidden sm:block">
-            {user?.unidade || 'Unidade Externa'}
+          <span className="text-sm font-medium opacity-90 hidden sm:block truncate max-w-[42vw]">
+            {nomeUnidade}
           </span>
         </Link>
 
         <div className="flex items-center gap-3">
-          <span className="text-sm font-medium opacity-90 sm:hidden">
-            {user?.unidade || 'Unidade'}
+          <span className="text-sm font-medium opacity-90 sm:hidden truncate max-w-[42vw]">
+            {nomeUnidade}
           </span>
           <button
             onClick={handleLogout}
@@ -56,7 +57,7 @@ export default function ExternaLayout({ children }) {
 
       {/* Sub-header de Navegação Fixo - Altura 48px - top-[56px] */}
       <div className="h-[48px] bg-surface-container-lowest border-b border-surface-variant fixed top-[56px] left-0 right-0 z-40 shadow-sm flex items-center justify-center">
-        <div className="max-w-4xl w-full h-full px-4 flex items-center gap-2">
+        <div className="max-w-7xl w-full h-full px-4 sm:px-6 lg:px-8 flex items-center gap-2 overflow-x-auto no-scrollbar">
           <Link
             to="/externa/dashboard"
             className={`h-full px-4 flex items-center gap-2 text-xs font-extrabold uppercase tracking-wider transition-all border-b-2 relative active:scale-[0.98] ${
@@ -90,7 +91,7 @@ export default function ExternaLayout({ children }) {
 
       {/* Conteúdo Central - Espaço para compensar o header de 56px + sub-header de 48px = pt-[104px] */}
       <main className="flex-1 pt-[104px]">
-        <div className="max-w-4xl mx-auto p-4 md:p-6 lg:p-8">
+        <div className="max-w-7xl mx-auto p-4 md:p-6 lg:p-8">
           {children}
         </div>
       </main>

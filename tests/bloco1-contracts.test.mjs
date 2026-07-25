@@ -106,3 +106,12 @@ test('paginas do paciente usam helper compartilhado e nao exibem descricao tecni
   assert.doesNotMatch(detalhe, /sol\.descricao(?!_paciente)/);
   assert.doesNotMatch(detalhe, /observacao_gestor/);
 });
+
+test('helper de data preserva data civil quando backend retorna meia-noite UTC', async () => {
+  const helper = await read('app/frontend/src/utils/statusHelper.js');
+
+  assert.match(helper, /T00:00:00/);
+  assert.match(helper, /dataCivil/);
+  assert.match(helper, /Number\(mes\) - 1/);
+  assert.match(helper, /Number\(dia\), 12/);
+});

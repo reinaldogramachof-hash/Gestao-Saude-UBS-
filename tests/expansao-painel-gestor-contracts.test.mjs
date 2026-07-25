@@ -67,6 +67,22 @@ test('perfil permite editar dados e consultar historico expansivel', async () =>
   assert.match(source, /gestor_nome/);
 });
 
+test('linha do tempo do gestor agrega eventos de processo para auditoria', async () => {
+  const backend = await read('app/backend/src/routes/gestor.js');
+  const frontend = await read('app/frontend/src/pages/gestor/PerfilPaciente.jsx');
+  const route = backend.match(/router\.get\('\/paciente\/:id\/atendimentos'[\s\S]*?\n\}\);/)?.[0] || '';
+
+  assert.match(route, /historico_status/);
+  assert.match(route, /join\('solicitacoes as sol_linha_tempo'/);
+  assert.match(route, /sol_linha_tempo\.ubs_id', req\.user\.ubs_id/);
+  assert.match(route, /origem_linha_tempo: 'processo'/);
+  assert.match(route, /pode_editar: false/);
+  assert.match(route, /linhaDoTempo/);
+  assert.match(frontend, /isEventoProcesso/);
+  assert.match(frontend, /Processo UBS\+/);
+  assert.match(frontend, /!isEventoProcesso && \(/);
+});
+
 test('lista de pacientes exibe badges e paginacao de vinte itens', async () => {
   const source = await read('app/frontend/src/pages/gestor/GestorPacientes.jsx');
 

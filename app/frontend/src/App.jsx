@@ -131,6 +131,7 @@ export default function App() {
             <Route path="logs" element={<AuditAdmin />} />
           </Route>
 
+          <Route path="/externa" element={<Navigate to="/externa/dashboard" replace />} />
           <Route path="/externa/dashboard" element={<ProtectedRoute tipo="externa"><DashboardExterna /></ProtectedRoute>} />
           <Route path="/externa/encaminhamentos" element={<ProtectedRoute tipo="externa"><EncaminhamentosExterna /></ProtectedRoute>} />
         </Routes>

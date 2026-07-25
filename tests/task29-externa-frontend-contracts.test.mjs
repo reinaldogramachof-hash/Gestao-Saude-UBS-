@@ -13,7 +13,7 @@ const read = (path) => readFile(new URL(`../${path}`, import.meta.url), 'utf8');
 test('frontend externo usa endpoints reais receber, agendar e concluir', async () => {
   const source = await read('app/frontend/src/pages/externa/EncaminhamentosExterna.jsx');
 
-  assert.doesNotMatch(source, /\/status/);
+  assert.doesNotMatch(source, /api\.(put|post|patch)\([^)]*\/status/);
   assert.match(source, /executarAcao\(id,\s*['"]receber['"]\)/);
   assert.match(source, /executarAcao\(enc\.id,\s*['"]agendar['"]/);
   assert.match(source, /executarAcao\(encRetorno\.id,\s*['"]concluir['"]/);
@@ -35,6 +35,16 @@ test('frontend externo trata CONFIRMADO_PACIENTE como pronto para retorno', asyn
   assert.match(source, /CONFIRMADO_PACIENTE:\s*['"]Paciente confirmado['"]/);
   assert.match(source, /enc\.status === ['"]CONFIRMADO_PACIENTE['"]/);
   assert.match(source, /\[['"]AGENDADO['"],\s*['"]CONFIRMADO_PACIENTE['"]\]\.includes\(enc\.status\)/);
+});
+
+test('portal externo usa helper de data e largura responsiva de tablet desktop', async () => {
+  const fila = await read('app/frontend/src/pages/externa/EncaminhamentosExterna.jsx');
+  const layout = await read('app/frontend/src/components/externa/ExternaLayout.jsx');
+
+  assert.match(fila, /import \{ formatarDataBR \}/);
+  assert.match(fila, /formatarDataBR\(enc\.data_procedimento_unidade\)/);
+  assert.match(layout, /max-w-7xl/);
+  assert.match(layout, /nomeUnidade/);
 });
 
 test('dashboard externo calcula concluidosHoje pelo feedback_data_retorno retornado pelo backend', async () => {

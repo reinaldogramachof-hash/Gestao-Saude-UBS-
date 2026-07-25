@@ -266,8 +266,8 @@ router.get('/todas-solicitacoes', async (req, res) => {
 
 
 // ─── GET /api/paciente/solicitacao/:id ────────────────────────────────────────
-// Retorna o detalhe completo de UMA solicitação + o histórico de mudanças de
-// status (a "linha do tempo" exibida na tela de detalhe do paciente).
+// Retorna o detalhe completo de UMA solicitação + a custódia atual + o histórico de
+// mudanças de status ordenado do mais RECENTE para o mais ANTIGO (decrescente).
 // Verifica se a solicitação pertence ao paciente logado (segurança).
 router.get('/solicitacao/:id', async (req, res) => {
   try {
@@ -280,16 +280,13 @@ router.get('/solicitacao/:id', async (req, res) => {
       return res.status(404).json({ error: MENSAGENS.GERAL.NAO_ENCONTRADO });
     }
 
-    // Busca o histórico de mudanças de status, ordenado do mais antigo para o mais novo
-    // Isso cria a linha do tempo cronológica exibida na tela de detalhe
+    // Busca o histórico de mudanças de status, ordenado do mais RECENTE para o mais ANTIGO (desc)
+    // Exibe o status atual no topo da linha do tempo
     const historico = await knex('historico_status')
       .where({ solicitacao_id: req.params.id })
-      .orderBy('alterado_em', 'asc');
+      .orderBy('alterado_em', 'desc');
 
     // Busca encaminhamento vinculado, se existir (criado pelo gestor via Regulação).
-    // Retorna os campos necessários para o DetalheSolicitacao.jsx exibir a seção
-    // "Encaminhamento Externo" com status, data agendada e conduta pós-procedimento.
-    // feedback_conduta é retornado como "conduta" para simplificar o contrato de UI.
     const encaminhamento = await knex('encaminhamentos')
       .where({ solicitacao_id: req.params.id, paciente_id: req.user.id })
       .select(
@@ -304,12 +301,71 @@ router.get('/solicitacao/:id', async (req, res) => {
       )
       .first() || null;
 
-    return res.json({ ...solicitacao, historico, encaminhamento });
+    // Regra de custódia atual: determina de forma clara com quem está a ação no momento
+    let custodia_atual = {
+      tipo: 'UBS',
+      titulo: 'Ação sob responsabilidade da sua UBS',
+      descricao: 'Sua unidade de saúde acompanha o pedido e fará a próxima atualização quando houver novidade.',
+      unidade_nome: null,
+    };
+
+    const statusConcluido = solicitacao.status === 'concluido' || encaminhamento?.status === 'RETORNO_UBS';
+
+    if (statusConcluido) {
+      custodia_atual = {
+        tipo: 'CONCLUIDO',
+        titulo: 'Concluído — sob acompanhamento da sua UBS',
+        descricao: 'O atendimento foi realizado e a UBS acompanha o retorno ou a conduta registrada.',
+        unidade_nome: solicitacao.local_executor || (encaminhamento ? encaminhamento.destino : null),
+      };
+    } else if (
+      encaminhamento &&
+      ['AGUARDANDO_CONFIRMACAO', 'CONFIRMADO_PACIENTE', 'RECEBIDO', 'AGENDADO', 'ENCAMINHADO'].includes(encaminhamento.status)
+    ) {
+      custodia_atual = {
+        tipo: 'UNIDADE_EXTERNA',
+        titulo: 'Ação sob responsabilidade da unidade externa',
+        descricao: 'O pedido está com a unidade responsável pelo atendimento especializado.',
+        unidade_nome: encaminhamento.destino || solicitacao.local_executor || 'Unidade Especializada',
+      };
+    } else {
+      custodia_atual = {
+        tipo: 'UBS',
+        titulo: 'Ação sob responsabilidade da sua UBS',
+        descricao: 'Sua unidade de saúde acompanha o pedido e fará a próxima atualização quando houver novidade.',
+        unidade_nome: null,
+      };
+    }
+
+    // Enriquece os eventos do histórico com o indicador de origem (UBS vs Unidade Externa)
+    const historicoEnriquecido = historico.map((h) => {
+      const ehExterno = ['autorizado', 'data_marcada', 'aguardando_resultado'].includes(h.status_novo) &&
+        (solicitacao.local_executor || encaminhamento);
+
+      return {
+        ...h,
+        origem_evento: ehExterno ? {
+          tipo: 'UNIDADE_EXTERNA',
+          label: encaminhamento?.destino || solicitacao.local_executor || 'Unidade Externa',
+        } : {
+          tipo: 'UBS',
+          label: 'UBS de referência',
+        },
+      };
+    });
+
+    return res.json({
+      ...solicitacao,
+      custodia_atual,
+      historico: historicoEnriquecido,
+      encaminhamento,
+    });
   } catch (err) {
     console.error('[GET /paciente/solicitacao/:id]', err);
     return res.status(500).json({ error: MENSAGENS.GERAL.ERRO_INTERNO });
   }
 });
+
 
 
 // ─── GET /api/paciente/medicamentos ──────────────────────────────────────────
@@ -399,7 +455,7 @@ router.get('/comunicados', async (req, res) => {
 
 
 // ─── POST /api/paciente/comunicado/:id/lido ──────────────────────────────────
-// Épico 2: Marca o comunicado como lido pelo paciente logado.
+// Épico 2: Marca o comunicado como lido pelo paciente logado e atualiza auditoria.
 router.post('/comunicado/:id/lido', async (req, res) => {
   try {
     // Insere ignorando conflito (se já leu, não faz nada)
@@ -409,12 +465,54 @@ router.post('/comunicado/:id/lido', async (req, res) => {
       ON CONFLICT (comunicado_id, paciente_id) DO NOTHING
     `, [req.params.id, req.user.id]);
 
+    // Atualiza log de auditoria se existir para este comunicado
+    await knex('notificacoes_paciente_log')
+      .where({ paciente_id: req.user.id, entidade: 'comunicados', entidade_id: req.params.id })
+      .update({
+        status_envio: 'LIDO',
+        lido_em: knex.fn.now(),
+      });
+
     return res.json({ ok: true });
   } catch (err) {
     console.error('[POST /paciente/comunicado/:id/lido]', err);
     return res.status(500).json({ error: MENSAGENS.GERAL.ERRO_INTERNO });
   }
 });
+
+
+// ─── GET /api/paciente/notificacoes/historico ─────────────────────────────────
+// AUDITORIA: Retorna todo o histórico de notificações dos últimos 12 meses do paciente.
+router.get('/notificacoes/historico', async (req, res) => {
+  try {
+    const dataLimite = new Date();
+    dataLimite.setMonth(dataLimite.getMonth() - 12);
+
+    const logs = await knex('notificacoes_paciente_log')
+      .where('paciente_id', req.user.id)
+      .andWhere('disparado_em', '>=', dataLimite)
+      .select(
+        'id',
+        'canal',
+        'categoria',
+        'titulo',
+        'corpo_mensagem',
+        'status_envio',
+        'entidade',
+        'entidade_id',
+        'disparado_em',
+        'entregue_em',
+        'lido_em'
+      )
+      .orderBy('disparado_em', 'desc');
+
+    return res.json(logs);
+  } catch (err) {
+    console.error('[GET /paciente/notificacoes/historico]', err);
+    return res.status(500).json({ error: MENSAGENS.GERAL.ERRO_INTERNO });
+  }
+});
+
 
 
 // ─── GET /api/paciente/agendamentos/disponiveis ───────────────────────────────
@@ -476,6 +574,12 @@ router.post('/agendamento/:id/reservar', async (req, res) => {
 
     // Impede reserva de slot já ocupado (race condition protection)
     if (agendamento.status !== 'disponivel') {
+      return res.status(409).json({ error: MENSAGENS.AGENDAMENTO.INDISPONIVEL });
+    }
+
+    // Defesa contra telas antigas: mesmo que o slot tenha aparecido antes,
+    // o backend impede reservar horarios que ja ficaram no passado.
+    if (new Date(agendamento.data_hora) <= new Date()) {
       return res.status(409).json({ error: MENSAGENS.AGENDAMENTO.INDISPONIVEL });
     }
 

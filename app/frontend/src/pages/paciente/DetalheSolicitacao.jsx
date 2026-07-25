@@ -1,8 +1,8 @@
 /**
  * PÁGINA: DetalheSolicitacao.jsx + Responsividade
  * ─────────────────────────────────────────────────────────────────────────────
- * FUNÇÃO: Detalhe de uma solicitação do paciente com histórico de status.
- *         Timeline vertical mostra a evolução do processo.
+ * FUNÇÃO: Detalhe de uma solicitação do paciente com card de custódia e histórico de status.
+ *         Timeline vertical em ordem decrescente (mais recente primeiro) mostra a evolução.
  *         Usa PacienteLayout para centralização no desktop.
  *
  * API: GET /api/paciente/solicitacao/:id
@@ -38,16 +38,16 @@ export default function DetalheSolicitacao() {
   useEffect(() => {
     // Polling silencioso: consulta a API em segundo plano a cada 20 segundos
     // para atualizar a timeline sem reverter para o estado de loading
-    if (!sol) return; // não inicia o intervalo antes que a carga inicial preencha os dados
+    if (!sol) return;
 
     const intervalo = setInterval(() => {
       api.get(`/paciente/solicitacao/${id}`)
         .then(r => setSol(r.data))
-        .catch(() => {}); // falha silenciosa em caso de perda temporária de rede
+        .catch(() => {});
     }, 20000);
 
     return () => clearInterval(intervalo);
-  }, [id, sol?.id]); // depende de sol?.id para iniciar estritamente após a carga inicial
+  }, [id, sol?.id]);
 
   // Skeleton de carregamento enquanto aguarda a API
   if (loading) {
@@ -62,7 +62,7 @@ export default function DetalheSolicitacao() {
     );
   }
 
-  // Estado de erro com botão de nova tentativa — evita tela travada em branco
+  // Estado de erro com botão de nova tentativa
   if (erro || !sol) {
     return (
       <PacienteLayout semNav>
@@ -77,6 +77,13 @@ export default function DetalheSolicitacao() {
     );
   }
 
+  // Para eventos de agendamento, a data que importa ao paciente é a data do procedimento.
+  const obterDataPrincipalHistorico = (historico) => (
+    historico.status_novo === 'data_marcada' && sol.encaminhamento?.data_procedimento_unidade
+      ? sol.encaminhamento.data_procedimento_unidade
+      : historico.alterado_em
+  );
+
   return (
     <PacienteLayout semNav>
       {/* ── Header com botão de voltar ── */}
@@ -88,7 +95,7 @@ export default function DetalheSolicitacao() {
       </header>
 
       <main className="px-6 py-6 pb-10">
-        {/* O detalhe usa apenas o texto preparado para o paciente. */}
+        {/* Descrição e observações da solicitação */}
         <h2 className="text-2xl font-bold text-on-surface break-words">{sol.descricao_paciente}</h2>
         {sol.observacao_paciente && (
           <p className="text-sm text-on-surface-variant mt-2 break-words">{sol.observacao_paciente}</p>
@@ -105,7 +112,7 @@ export default function DetalheSolicitacao() {
         )}
 
         {/* ── Badges de tipo, prioridade e status atual ── */}
-        <div className="flex gap-2 flex-wrap mt-4 mb-8">
+        <div className="flex gap-2 flex-wrap mt-4 mb-6">
           {sol.tipo && (
             <span 
               aria-label={`Tipo de solicitação: ${sol.tipo}`}
@@ -132,6 +139,51 @@ export default function DetalheSolicitacao() {
             </span>
           )}
         </div>
+
+        {/* ── Card de Custódia Atual ("Com quem está a ação agora?") ── */}
+        {sol.custodia_atual && (
+          <div className={`p-4 md:p-5 rounded-2xl border mb-8 transition-all shadow-sm ${
+            sol.custodia_atual.tipo === 'CONCLUIDO'
+              ? 'bg-emerald-50 border-emerald-200 text-emerald-950'
+              : sol.custodia_atual.tipo === 'UNIDADE_EXTERNA'
+              ? 'bg-blue-50 border-blue-200 text-blue-950'
+              : 'bg-amber-50 border-amber-200 text-amber-950'
+          }`}>
+            <div className="flex items-start gap-3">
+              <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5 ${
+                sol.custodia_atual.tipo === 'CONCLUIDO'
+                  ? 'bg-emerald-100 text-emerald-700'
+                  : sol.custodia_atual.tipo === 'UNIDADE_EXTERNA'
+                  ? 'bg-blue-100 text-blue-700'
+                  : 'bg-amber-100 text-amber-700'
+              }`}>
+                <span className="material-symbols-outlined text-2xl">
+                  {sol.custodia_atual.tipo === 'CONCLUIDO'
+                    ? 'check_circle'
+                    : sol.custodia_atual.tipo === 'UNIDADE_EXTERNA'
+                    ? 'domain'
+                    : 'home_health'}
+                </span>
+              </div>
+
+              <div className="flex-1 min-w-0">
+                <div className="flex flex-wrap items-center justify-between gap-2 mb-1">
+                  <h3 className="font-extrabold text-sm md:text-base leading-snug">
+                    {sol.custodia_atual.titulo}
+                  </h3>
+                  {sol.custodia_atual.unidade_nome && (
+                    <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-white/80 border border-current/20 shrink-0">
+                      {sol.custodia_atual.unidade_nome}
+                    </span>
+                  )}
+                </div>
+                <p className="text-xs md:text-sm opacity-90 leading-relaxed">
+                  {sol.custodia_atual.descricao}
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* ── Seção de Encaminhamento Externo (se houver agendamento) ── */}
         {sol.encaminhamento && sol.encaminhamento.data_procedimento_unidade && (
@@ -179,33 +231,58 @@ export default function DetalheSolicitacao() {
           </div>
         )}
 
-        {/* ── Timeline de histórico de status ── */}
+        {/* ── Timeline de histórico de status (Decrescente: Atual → Mais Antigo) ── */}
         <div className="relative ml-2 space-y-8">
-          {/* Linha vertical centralizada em ml-2 (8px), dot com w-4 (16px) fica perfeitamente centrado */}
+          {/* Linha vertical centralizada */}
           <div className="absolute top-2 bottom-0 left-[7px] w-[2px] bg-surface-variant"></div>
 
           {sol.historico?.length > 0 ? (
-            sol.historico.map(h => (
-              <div key={h.id} className="relative pl-8">
-                {/* Marcador da timeline */}
-                <div className="absolute left-0 top-1 w-4 h-4 rounded-full border-4 border-surface-container-lowest bg-primary z-10"></div>
-                <p className="text-xs font-bold text-primary mb-1">
-                  {formatarDataBR(h.alterado_em)}
-                </p>
-                <div 
-                  role="status"
-                  aria-label={`Status histórico: ${STATUS_LABELS[h.status_novo] || 'Status em atualização'}`}
-                  className={`p-4 rounded-xl ${STATUS_CORES[h.status_novo] || 'bg-surface-container-low text-on-surface'}`}
-                >
-                  <h4 className="font-bold text-sm mb-1">
-                    {STATUS_LABELS[h.status_novo] || 'Status em atualização'}
-                  </h4>
-                  {h.observacao && (
-                    <p className="text-xs opacity-80 leading-relaxed break-words">{h.observacao}</p>
-                  )}
+            sol.historico.map((h, idx) => {
+              const isAtual = idx === 0;
+              const ehExterno = h.origem_evento?.tipo === 'UNIDADE_EXTERNA';
+              const origemLabel = h.origem_evento?.label || (ehExterno ? 'Unidade externa' : 'UBS de referência');
+
+              return (
+                <div key={h.id} className="relative pl-8">
+                  {/* Marcador da timeline */}
+                  <div className={`absolute left-0 top-1 w-4 h-4 rounded-full border-4 border-surface-container-lowest z-10 ${
+                    isAtual ? 'bg-primary ring-4 ring-primary/20' : 'bg-surface-variant'
+                  }`}></div>
+
+                  <div className="flex items-center gap-2 flex-wrap mb-1">
+                    <p className="text-xs font-bold text-primary">
+                      {formatarDataBR(obterDataPrincipalHistorico(h))}
+                    </p>
+                    {isAtual && (
+                      <span className="text-[10px] font-extrabold px-2 py-0.5 bg-primary text-white rounded-full uppercase tracking-wider">
+                        Atual
+                      </span>
+                    )}
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                      ehExterno ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                    }`}>
+                      {origemLabel}
+                    </span>
+                  </div>
+
+                  <div
+                    role="status"
+                    aria-label={`Status histórico: ${STATUS_LABELS[h.status_novo] || 'Status em atualização'}`}
+                    className={`p-4 rounded-xl ${STATUS_CORES[h.status_novo] || 'bg-surface-container-low text-on-surface'}`}
+                  >
+                    <h4 className="font-bold text-sm mb-1">
+                      {STATUS_LABELS[h.status_novo] || 'Status em atualização'}
+                    </h4>
+                    {h.observacao && (
+                      <p className="text-xs opacity-80 leading-relaxed break-words">{h.observacao}</p>
+                    )}
+                    <p className="text-[11px] opacity-70 leading-relaxed mt-2">
+                      Movimento registrado em {formatarDataBR(h.alterado_em)}.
+                    </p>
+                  </div>
                 </div>
-              </div>
-            ))
+              );
+            })
           ) : (
             <div className="relative pl-8">
               <div className="absolute left-0 top-1 w-4 h-4 rounded-full border-4 border-surface-container-lowest bg-surface-variant z-10"></div>

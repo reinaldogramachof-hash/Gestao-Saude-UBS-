@@ -59,6 +59,20 @@ function formatarHorario(minutos) {
   return `${String(Math.floor(minutos / 60)).padStart(2, '0')}:${String(minutos % 60).padStart(2, '0')}`;
 }
 
+// Mantem comparacoes de data no fuso local da UBS, sem depender de UTC.
+function hojeISODateLocal() {
+  const hoje = new Date();
+  const ano = hoje.getFullYear();
+  const mes = String(hoje.getMonth() + 1).padStart(2, '0');
+  const dia = String(hoje.getDate()).padStart(2, '0');
+  return `${ano}-${mes}-${dia}`;
+}
+
+// Protecao visual contra slots vencidos que venham de cache ou tela antiga.
+function dataHoraFutura(dataHora) {
+  return new Date(dataHora) > new Date();
+}
+
 export default function AgendamentosGestor() {
   const navigate = useNavigate();
   const [agendamentos, setAgendamentos] = useState([]);
@@ -92,10 +106,13 @@ export default function AgendamentosGestor() {
 
   useEffect(() => { carregarAgendamentos(); }, []);
 
+  const hojeLocalISO = hojeISODateLocal();
+  const agendamentosFuturos = agendamentos.filter((item) => dataHoraFutura(item.data_hora));
+
   // Filtragem local baseada nas abas
   const agendamentosFiltrados = filtroStatus === 'todos'
-    ? agendamentos
-    : agendamentos.filter(a => a.status === filtroStatus);
+    ? agendamentosFuturos
+    : agendamentosFuturos.filter(a => a.status === filtroStatus);
 
   // Agrupa os agendamentos filtrados por data para visualização organizada em tópicos
   const agrupados = agendamentosFiltrados.reduce((acc, ag) => {
@@ -110,9 +127,9 @@ export default function AgendamentosGestor() {
   // Resumo estatístico de slots calculados a partir da carga total
   const hoje = new Date().toDateString();
   const resumo = {
-    disponiveis: agendamentos.filter((item) => item.status === 'disponivel').length,
-    reservados: agendamentos.filter((item) => item.status === 'reservado').length,
-    concluidosHoje: agendamentos.filter(
+    disponiveis: agendamentosFuturos.filter((item) => item.status === 'disponivel').length,
+    reservados: agendamentosFuturos.filter((item) => item.status === 'reservado').length,
+    concluidosHoje: agendamentosFuturos.filter(
       (item) => item.status === 'concluido' && new Date(item.data_hora).toDateString() === hoje
     ).length,
   };
@@ -136,6 +153,11 @@ export default function AgendamentosGestor() {
 
     if (!horarioDentroFuncionamento(form.hora_inicio) || minutosDoHorario(form.hora_fim) > minutosDoHorario(HORARIO_MAXIMO)) {
       setErroFormulario(ERRO_HORARIO_FUNCIONAMENTO);
+      return;
+    }
+
+    if (form.data_inicio < hojeLocalISO) {
+      setErroFormulario('Nao e possivel criar horarios em datas passadas.');
       return;
     }
 
@@ -439,7 +461,7 @@ export default function AgendamentosGestor() {
               {/* Data de início */}
               <div className="space-y-2">
                 <label className="text-xs font-extrabold text-on-surface-variant uppercase tracking-wider">Data de Início*</label>
-                <input required type="date" value={form.data_inicio}
+                <input required type="date" value={form.data_inicio} min={hojeLocalISO}
                   onChange={e => setForm(p => ({ ...p, data_inicio: e.target.value }))}
                   className="w-full h-12 px-4 bg-surface-container-high/60 border border-surface-variant/40 rounded-xl focus:ring-4 focus:ring-primary/10 focus:border-primary outline-none font-semibold text-sm transition-all" />
               </div>

@@ -116,6 +116,21 @@ self.addEventListener('push', (event) => {
         try { dados = { ...dados, ...JSON.parse(event.data.text()) }; } catch (_) {}
       }
 
+      // AUDITORIA: Se a notificacao contem um ack_token opaco (nonce de seguranca),
+      // envia o ACK para o backend. Em producao a URL vem no payload; no dev usa /api.
+      if (dados.ack_token) {
+        const ackUrl = dados.api_base_url
+          ? new URL('/api/public/notificacoes/ack', dados.api_base_url).toString()
+          : '/api/public/notificacoes/ack';
+
+        fetch(ackUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ack_token: dados.ack_token }),
+        }).catch(() => {});
+      }
+
+
       await self.registration.showNotification(dados.titulo, {
         body:    dados.corpo,
         icon:    '/icon-192.svg',
@@ -129,6 +144,7 @@ self.addEventListener('push', (event) => {
     })()
   );
 });
+
 
 // ─── NOTIFICATION CLICK: abre o app na tela correta ao tocar na notificação ──
 self.addEventListener('notificationclick', (event) => {

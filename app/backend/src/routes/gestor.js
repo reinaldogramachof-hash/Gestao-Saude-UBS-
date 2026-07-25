@@ -998,7 +998,58 @@ router.get('/paciente/:id/atendimentos', async (req, res) => {
       )
       .orderBy('atendimentos.data_atendimento', 'desc');
 
-    return res.json(atendimentos);
+    const historicoProcesso = await knex('historico_status')
+      .join('solicitacoes as sol_linha_tempo', 'historico_status.solicitacao_id', 'sol_linha_tempo.id')
+      .leftJoin('usuarios_gestores', 'historico_status.gestor_id', 'usuarios_gestores.id')
+      .where('sol_linha_tempo.paciente_id', req.params.id)
+      .andWhere('sol_linha_tempo.ubs_id', req.user.ubs_id)
+      .select(
+        'historico_status.id',
+        'historico_status.solicitacao_id',
+        'historico_status.status_anterior',
+        'historico_status.status_novo',
+        'historico_status.observacao',
+        'historico_status.alterado_em',
+        'sol_linha_tempo.descricao_paciente',
+        'sol_linha_tempo.tipo',
+        'usuarios_gestores.nome as registrado_por_nome',
+      );
+
+    // Eventos de processo entram no mesmo feed para auditoria, mas seguem
+    // imutaveis no frontend porque representam historico operacional.
+    const eventosAtendimento = atendimentos.map((atendimento) => ({
+      ...atendimento,
+      origem_linha_tempo: 'atendimento',
+      pode_editar: true,
+    }));
+
+    const eventosProcesso = historicoProcesso.map((evento) => ({
+      id: `processo-${evento.id}`,
+      origem_linha_tempo: 'processo',
+      pode_editar: false,
+      data_atendimento: evento.alterado_em,
+      unidade: evento.descricao_paciente || 'Solicitacao UBS+',
+      tipo_unidade: 'ubs',
+      especialidade: evento.status_novo,
+      profissional: null,
+      cid_10_principal: null,
+      cid_10_secundario: null,
+      conduta: evento.observacao || 'Movimentacao de status registrada no processo.',
+      observacoes: evento.status_anterior
+        ? `Status anterior: ${evento.status_anterior}`
+        : 'Evento inicial da solicitacao.',
+      registrado_por_nome: evento.registrado_por_nome || 'Sistema / unidade externa',
+      solicitacao_id: evento.solicitacao_id,
+      status_anterior: evento.status_anterior,
+      status_novo: evento.status_novo,
+      tipo_solicitacao: evento.tipo,
+    }));
+
+    const linhaDoTempo = [...eventosAtendimento, ...eventosProcesso].sort(
+      (a, b) => new Date(b.data_atendimento) - new Date(a.data_atendimento),
+    );
+
+    return res.json(linhaDoTempo);
   } catch (err) {
     console.error('[GET /gestor/paciente/:id/atendimentos]', err);
     return res.status(500).json({ error: 'Erro ao buscar atendimentos.' });
@@ -1783,6 +1834,7 @@ router.get('/agendamentos', async (req, res) => {
     let query = knex('agendamentos_gestao')
       .leftJoin('pacientes', 'agendamentos_gestao.paciente_id', 'pacientes.id')
       .where('agendamentos_gestao.ubs_id', req.user.ubs_id)
+      .andWhere('agendamentos_gestao.data_hora', '>', knex.fn.now())
       .select(
         'agendamentos_gestao.id',
         'agendamentos_gestao.data_hora',
@@ -1847,6 +1899,18 @@ router.post('/agendamentos/lote', validateBody(agendamentoLoteSchema), async (re
       return res.status(400).json({ error: 'Horário fora do período de funcionamento (07h-18h).' });
     }
 
+    const hojeInicio = new Date();
+    hojeInicio.setHours(0, 0, 0, 0);
+    const dataInicial = new Date(`${data_inicio}T00:00:00`);
+
+    if (Number.isNaN(dataInicial.getTime())) {
+      return res.status(400).json({ error: 'Data inicial invalida.' });
+    }
+
+    if (dataInicial < hojeInicio) {
+      return res.status(400).json({ error: 'Nao e possivel criar horarios em datas passadas.' });
+    }
+
     const slots = [];
 
     for (let d = 0; d < repetir_dias; d++) {
@@ -1903,6 +1967,10 @@ router.post('/agendamento', async (req, res) => {
     const dataHora = new Date(data_hora);
     if (Number.isNaN(dataHora.getTime())) {
       return res.status(400).json({ error: 'Data e hora invalidas.' });
+    }
+
+    if (dataHora <= new Date()) {
+      return res.status(400).json({ error: 'Nao e possivel criar horario em data passada.' });
     }
 
     const minutosSlot = minutosDoHorario(dataHora);
@@ -2656,6 +2724,44 @@ router.post('/notificacoes/marcar-todas-lidas', async (req, res) => {
   } catch (err) {
     console.error('[POST /gestor/notificacoes/marcar-todas-lidas]', err);
     return res.status(500).json({ error: 'Erro ao marcar todas as notificações como lidas.' });
+  }
+});
+
+
+// ─── GET /api/gestor/pacientes/:id/notificacoes-log ───────────────────────────
+// AUDITORIA: Lista o histórico imutável de notificações enviadas ao paciente nos últimos 12 meses.
+// SEGURANÇA: Restringe a consulta estritamente aos registros pertencentes à UBS do gestor (req.user.ubs_id).
+router.get('/pacientes/:id/notificacoes-log', async (req, res) => {
+  try {
+    const pacienteId = req.params.id;
+    const gestorUbsId = req.user.ubs_id;
+
+    const dataLimite = new Date();
+    dataLimite.setMonth(dataLimite.getMonth() - 12);
+
+    const logs = await knex('notificacoes_paciente_log')
+      .where({ paciente_id: pacienteId, ubs_id: gestorUbsId })
+      .andWhere('disparado_em', '>=', dataLimite)
+      .select(
+        'id',
+        'canal',
+        'categoria',
+        'titulo',
+        'corpo_mensagem',
+        'status_envio',
+        'detalhe_erro',
+        'entidade',
+        'entidade_id',
+        'disparado_em',
+        'entregue_em',
+        'lido_em'
+      )
+      .orderBy('disparado_em', 'desc');
+
+    return res.json(logs);
+  } catch (err) {
+    console.error('[GET /gestor/pacientes/:id/notificacoes-log]', err);
+    return res.status(500).json({ error: 'Erro ao carregar log de notificações do paciente.' });
   }
 });
 

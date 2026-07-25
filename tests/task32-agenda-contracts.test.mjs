@@ -77,9 +77,26 @@ test('frontend gestor valida horario, mostra preview e permite selecao multipla'
 test('paciente continua vendo apenas slots futuros da propria UBS', async () => {
   const paciente = await read('app/backend/src/routes/paciente.js');
   const rota = paciente.match(/router\.get\('\/agendamentos\/disponiveis'[\s\S]*?\n\}\);/)?.[0] || '';
+  const reserva = paciente.match(/router\.post\('\/agendamento\/:id\/reservar'[\s\S]*?\n\}\);/)?.[0] || '';
 
   assert.match(rota, /where\(\{ ubs_id: req\.user\.ubs_id, status: 'disponivel' \}\)/);
   assert.match(rota, /andWhere\('data_hora', '>', knex\.fn\.now\(\)\)/);
+  assert.match(reserva, /new Date\(agendamento\.data_hora\) <= new Date\(\)/);
+});
+
+test('gestor nao lista nem cria horarios em datas passadas', async () => {
+  const gestor = await read('app/backend/src/routes/gestor.js');
+  const frontend = await read('app/frontend/src/pages/gestor/AgendamentosGestor.jsx');
+  const listagem = gestor.match(/router\.get\('\/agendamentos'[\s\S]*?router\.post\('\/agendamentos\/lote'/)?.[0] || '';
+  const lote = gestor.match(/router\.post\('\/agendamentos\/lote'[\s\S]*?router\.post\('\/agendamento'/)?.[0] || '';
+  const singular = gestor.match(/router\.post\('\/agendamento'[\s\S]*?router\.put\('\/agendamento\/:id'/)?.[0] || '';
+
+  assert.match(listagem, /andWhere\('agendamentos_gestao\.data_hora', '>', knex\.fn\.now\(\)\)/);
+  assert.match(lote, /dataInicial < hojeInicio/);
+  assert.match(singular, /dataHora <= new Date\(\)/);
+  assert.match(frontend, /function dataHoraFutura/);
+  assert.match(frontend, /agendamentosFuturos/);
+  assert.match(frontend, /min=\{hojeLocalISO\}/);
 });
 
 test('seed 008 cria slots da banca para UBS Vila Maria de forma idempotente', async () => {
