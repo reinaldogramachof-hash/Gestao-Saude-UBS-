@@ -75,6 +75,31 @@ test('rotas externas exigem ownership e registram auditoria', async () => {
   assert.doesNotMatch(externa, /pacientes\.cpf|['"]cpf['"]/);
 });
 
+test('agendamento externo preserva data civil sem converter fuso horario', async () => {
+  const externa = await read('app/backend/src/routes/externa.js');
+
+  assert.match(externa, /data_procedimento_unidade:\s*Joi\.string\(\)\.pattern\(/);
+  assert.match(externa, /hora_procedimento_unidade:\s*Joi\.string\(\)\.pattern\(/);
+  assert.match(externa, /orientacoes_procedimento:\s*Joi\.string\(\)\.trim\(\)\.min\(10\)/);
+  assert.doesNotMatch(externa, /data_procedimento_unidade:\s*Joi\.date\(\)/);
+  assert.match(externa, /const dataProcedimento = req\.body\.data_procedimento_unidade/);
+  assert.match(externa, /const horaProcedimento = req\.body\.hora_procedimento_unidade/);
+  assert.match(externa, /data_prevista:\s*dataProcedimento/);
+  assert.match(externa, /data_procedimento_unidade:\s*dataProcedimento/);
+  assert.match(externa, /hora_procedimento_unidade:\s*horaProcedimento/);
+  assert.match(externa, /orientacoes_procedimento:\s*orientacoesProcedimento/);
+  assert.match(externa, /formatarDataCivilBR\(dataProcedimento\)/);
+});
+
+test('migration 034 adiciona hora e orientacoes do procedimento externo', async () => {
+  const migration = await read('app/backend/src/db/migrations/034_add_hora_orientacoes_encaminhamentos.js');
+
+  assert.match(migration, /hora_procedimento_unidade/);
+  assert.match(migration, /orientacoes_procedimento/);
+  assert.match(migration, /string\('hora_procedimento_unidade',\s*5\)/);
+  assert.match(migration, /text\('orientacoes_procedimento'\)/);
+});
+
 test('paciente confirma somente encaminhamento proprio', async () => {
   const paciente = await read('app/backend/src/routes/paciente.js');
 

@@ -34,6 +34,8 @@ const CAMPOS_ENCAMINHAMENTO_EXTERNA = [
   'encaminhamentos.status',
   'encaminhamentos.data_solicitacao',
   'encaminhamentos.data_procedimento_unidade',
+  'encaminhamentos.hora_procedimento_unidade',
+  'encaminhamentos.orientacoes_procedimento',
   'encaminhamentos.confirmado_paciente',
   'encaminhamentos.feedback_tipo',
   // feedback_conduta e feedback_data_retorno são necessários para o dashboard calcular
@@ -47,7 +49,13 @@ const CAMPOS_ENCAMINHAMENTO_EXTERNA = [
 ];
 
 const agendamentoSchema = Joi.object({
-  data_procedimento_unidade: Joi.date().iso().required(),
+  // O input do portal externo envia uma data civil (YYYY-MM-DD), nao um instante
+  // global. Manter como string evita conversao de fuso que antecipa um dia.
+  data_procedimento_unidade: Joi.string().pattern(/^\d{4}-\d{2}-\d{2}$/).required(),
+  // Hora operacional da unidade externa. Tambem fica como string para preservar
+  // exatamente o horario comunicado ao paciente.
+  hora_procedimento_unidade: Joi.string().pattern(/^([01]\d|2[0-3]):[0-5]\d$/).required(),
+  orientacoes_procedimento: Joi.string().trim().min(10).max(2000).required(),
 });
 
 const feedbackSchema = Joi.object({
@@ -79,6 +87,14 @@ async function buscarEncaminhamentoOuResponder(req, res) {
   }
 
   return encaminhamento;
+}
+
+// Mantem a data do procedimento como data civil. Essa data representa o dia
+// escolhido pela unidade externa, sem hora e sem fuso horario.
+function formatarDataCivilBR(dataCivil) {
+  if (!dataCivil) return 'data nao informada';
+  const [ano, mes, dia] = String(dataCivil).slice(0, 10).split('-');
+  return `${dia}/${mes}/${ano}`;
 }
 
 router.get('/dashboard', async (req, res) => {
@@ -193,12 +209,19 @@ router.put('/encaminhamento/:id/agendar', validateBody(agendamentoSchema), async
       return res.status(409).json({ error: MENSAGENS.PACIENTE.DADOS_INVALIDOS });
     }
 
+    const dataProcedimento = req.body.data_procedimento_unidade;
+    const horaProcedimento = req.body.hora_procedimento_unidade;
+    const orientacoesProcedimento = req.body.orientacoes_procedimento;
+    const dataProcedimentoBR = formatarDataCivilBR(dataProcedimento);
+
     await knex.transaction(async (trx) => {
       await trx('encaminhamentos')
         .where({ id: encaminhamento.id })
         .update({
           status: 'AGUARDANDO_CONFIRMACAO',
-          data_procedimento_unidade: req.body.data_procedimento_unidade,
+          data_procedimento_unidade: dataProcedimento,
+          hora_procedimento_unidade: horaProcedimento,
+          orientacoes_procedimento: orientacoesProcedimento,
           atualizado_em: trx.fn.now(),
         });
 
@@ -211,7 +234,7 @@ router.put('/encaminhamento/:id/agendar', validateBody(agendamentoSchema), async
           .where({ id: encaminhamento.solicitacao_id })
           .update({
             status: 'data_marcada',
-            data_prevista: req.body.data_procedimento_unidade,
+            data_prevista: dataProcedimento,
             atualizado_em: trx.fn.now(),
           });
 
@@ -230,14 +253,17 @@ router.put('/encaminhamento/:id/agendar', validateBody(agendamentoSchema), async
       entidade: 'encaminhamentos',
       entidade_id: encaminhamento.id,
       escopo_ubs_id: encaminhamento.ubs_id,
-      metadata: { data_procedimento_unidade: req.body.data_procedimento_unidade },
+      metadata: {
+        data_procedimento_unidade: dataProcedimento,
+        hora_procedimento_unidade: horaProcedimento,
+      },
     });
 
     // Notifica os gestores da UBS sobre o agendamento externo
     await gestorNotificationService.criarNotificacao(encaminhamento.ubs_id, {
       tipo_evento: 'status_encaminhamento',
       titulo: 'Consulta/Procedimento agendado',
-      mensagem: `Atendimento do paciente #${encaminhamento.paciente_id} agendado para ${req.body.data_procedimento_unidade} em ${req.user.nome}.`,
+      mensagem: `Atendimento do paciente #${encaminhamento.paciente_id} agendado para ${dataProcedimentoBR} às ${horaProcedimento} em ${req.user.nome}.`,
       rota_destino: '/regulacao',
       entidade: 'encaminhamentos',
       entidade_id: encaminhamento.id
@@ -247,7 +273,7 @@ router.put('/encaminhamento/:id/agendar', validateBody(agendamentoSchema), async
     // Feito fora da transação — falha no push não desfaz o agendamento.
     pushService.enviar(encaminhamento.paciente_id, 'paciente', {
       titulo: 'Data agendada para seu encaminhamento',
-      corpo:  `Seu atendimento foi agendado para ${req.body.data_procedimento_unidade}. Confira os detalhes no app.`,
+      corpo:  `Seu atendimento foi agendado para ${dataProcedimentoBR} às ${horaProcedimento}. Confira as orientações no app.`,
       url:    `/paciente/solicitacao/${encaminhamento.solicitacao_id}`,
     }).catch(() => {});
 

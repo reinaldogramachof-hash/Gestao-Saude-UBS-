@@ -121,6 +121,8 @@ export default function EncaminhamentosExterna() {
   // Agendamento inline
   const [agendandoId, setAgendandoId] = useState(null);
   const [dataAgendamento, setDataAgendamento] = useState('');
+  const [horaAgendamento, setHoraAgendamento] = useState('');
+  const [orientacoesAgendamento, setOrientacoesAgendamento] = useState('');
 
   // Modal de Retorno Clínico
   const [retornoAberto, setRetornoAberto] = useState(false);
@@ -192,8 +194,11 @@ export default function EncaminhamentosExterna() {
   // Inicia o fluxo inline de agendamento
   const iniciarAgendamento = (e, enc) => {
     e.stopPropagation();
+    const preparo = obterPreparoClinico(enc.catalogo_nome || enc.especialidade, enc.especialidade);
     setAgendandoId(enc.id);
     setDataAgendamento('');
+    setHoraAgendamento('');
+    setOrientacoesAgendamento(preparo.instrucoes);
   };
 
   // Salva o agendamento de data do procedimento
@@ -202,12 +207,26 @@ export default function EncaminhamentosExterna() {
       toast.error('Informe a data do procedimento.');
       return;
     }
+    if (!horaAgendamento) {
+      toast.error('Informe o horário do procedimento.');
+      return;
+    }
+    if (orientacoesAgendamento.trim().length < 10) {
+      toast.error('Informe as orientações de preparo para o paciente.');
+      return;
+    }
     try {
-      await executarAcao(enc.id, 'agendar', { data_procedimento_unidade: dataAgendamento });
+      await executarAcao(enc.id, 'agendar', {
+        data_procedimento_unidade: dataAgendamento,
+        hora_procedimento_unidade: horaAgendamento,
+        orientacoes_procedimento: orientacoesAgendamento.trim(),
+      });
       toast.success('Encaminhamento agendado com sucesso!');
       fetchEncaminhamentos();
       setAgendandoId(null);
       setDataAgendamento('');
+      setHoraAgendamento('');
+      setOrientacoesAgendamento('');
     } catch (err) {
       toast.error(err.response?.data?.error || 'Erro ao agendar encaminhamento.');
     }
@@ -494,7 +513,13 @@ export default function EncaminhamentosExterna() {
                       {enc.data_procedimento_unidade && (
                         <p className="text-primary font-bold flex items-center gap-1">
                           <span className="material-symbols-outlined text-sm">event_available</span>
-                          Procedimento agendado para: <strong>{formatarDataBR(enc.data_procedimento_unidade)}</strong>
+                          Procedimento agendado para: <strong>{formatarDataBR(enc.data_procedimento_unidade)}{enc.hora_procedimento_unidade ? ` às ${enc.hora_procedimento_unidade}` : ''}</strong>
+                        </p>
+                      )}
+                      {enc.orientacoes_procedimento && (
+                        <p className="md:col-span-2 text-blue-800 font-semibold flex items-start gap-1">
+                          <span className="material-symbols-outlined text-sm mt-0.5">info</span>
+                          <span>Orientações ao paciente: <strong>{enc.orientacoes_procedimento}</strong></span>
                         </p>
                       )}
                     </div>
@@ -545,13 +570,30 @@ export default function EncaminhamentosExterna() {
                             </div>
                           </div>
 
-                          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 w-full">
                             <input
                               type="date"
                               value={dataAgendamento}
                               onChange={(e) => setDataAgendamento(e.target.value)}
                               className="px-3.5 py-2 h-11 bg-surface-container-high/80 border border-surface-variant/35 rounded-xl text-xs font-semibold outline-none focus:border-primary/50 focus:bg-surface-container-lowest focus:ring-2 focus:ring-primary/15 transition-all flex-1"
                             />
+                            <input
+                              type="time"
+                              value={horaAgendamento}
+                              onChange={(e) => setHoraAgendamento(e.target.value)}
+                              className="px-3.5 py-2 h-11 bg-surface-container-high/80 border border-surface-variant/35 rounded-xl text-xs font-semibold outline-none focus:border-primary/50 focus:bg-surface-container-lowest focus:ring-2 focus:ring-primary/15 transition-all flex-1"
+                            />
+                          </div>
+
+                          <textarea
+                            value={orientacoesAgendamento}
+                            onChange={(e) => setOrientacoesAgendamento(e.target.value)}
+                            rows={4}
+                            placeholder="Orientações para o paciente: preparo, documentos, jejum, acompanhante e chegada."
+                            className="w-full px-3.5 py-3 bg-surface-container-high/80 border border-surface-variant/35 rounded-xl text-xs font-semibold outline-none focus:border-primary/50 focus:bg-surface-container-lowest focus:ring-2 focus:ring-primary/15 transition-all resize-y min-h-[96px]"
+                          />
+
+                          <div className="flex justify-end">
                             <div className="flex gap-2">
                               <button
                                 onClick={() => confirmarAgendamento(enc)}
@@ -560,7 +602,12 @@ export default function EncaminhamentosExterna() {
                                 Confirmar
                               </button>
                               <button
-                                onClick={() => setAgendandoId(null)}
+                                onClick={() => {
+                                  setAgendandoId(null);
+                                  setDataAgendamento('');
+                                  setHoraAgendamento('');
+                                  setOrientacoesAgendamento('');
+                                }}
                                 className="h-11 px-4 bg-surface-container-high hover:bg-surface-variant text-on-surface-variant font-extrabold rounded-xl text-xs flex items-center justify-center active:scale-98 transition-all"
                               >
                                 Cancelar

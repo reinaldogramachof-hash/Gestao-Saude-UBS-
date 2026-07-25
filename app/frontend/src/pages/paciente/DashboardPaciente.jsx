@@ -316,9 +316,16 @@ export default function DashboardPaciente() {
                 <h3 className="font-extrabold text-blue-900 text-sm mb-1">Confirmação pendente</h3>
                 <p className="text-xs text-blue-800 font-medium leading-relaxed">
                   Procedimento: <strong>{pend.especialidade}</strong><br/>
-                  Data: <strong>{formatarProximoAg(pend.data_agendamento)}</strong><br/>
+                  Data: <strong>{formatarDataBR(pend.data_procedimento_unidade)}</strong><br/>
+                  Horário: <strong>{pend.hora_procedimento_unidade || 'A confirmar'}</strong><br/>
                   Local: <strong>{pend.destino}</strong>
                 </p>
+                {pend.orientacoes_procedimento && (
+                  <div className="mt-3 rounded-xl bg-white/80 border border-blue-200 p-3 text-xs text-blue-900 leading-relaxed">
+                    <strong className="block mb-1">Orientações para o exame</strong>
+                    {pend.orientacoes_procedimento}
+                  </div>
+                )}
                 <button
                   onClick={() => confirmarPresenca(pend.id)}
                   disabled={confirmandoId === pend.id}

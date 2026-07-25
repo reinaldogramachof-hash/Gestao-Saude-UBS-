@@ -28,6 +28,8 @@ test('1. paciente.js ordena historico_status por alterado_em desc e inclui custo
 
   // Enriquecimento de origem_evento em cada item do histórico
   assert.match(routeMatch, /origem_evento/);
+  assert.match(routeMatch, /hora_procedimento_unidade/);
+  assert.match(routeMatch, /orientacoes_procedimento/);
 });
 
 test('2. DetalheSolicitacao.jsx renderiza Card de Custódia Atual e Timeline Decrescente com destaque Atual', async () => {
@@ -50,4 +52,7 @@ test('2. DetalheSolicitacao.jsx renderiza Card de Custódia Atual e Timeline Dec
   // Preservação do texto de trilha e data do procedimento
   assert.match(source, /Movimento registrado em \{formatarDataBR\(h\.alterado_em\)\}/);
   assert.match(source, /formatarDataBR\(obterDataPrincipalHistorico\(h\)\)/);
+  assert.match(source, /hora_procedimento_unidade/);
+  assert.match(source, /orientacoes_procedimento/);
+  assert.match(source, /Orientações para o exame/);
 });

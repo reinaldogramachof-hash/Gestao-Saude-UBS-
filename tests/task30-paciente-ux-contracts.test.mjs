@@ -51,6 +51,16 @@ test('dashboard adiciona barra resumo e reduz espaçamentos principais', async (
   assert.match(source, /rounded-xl px-3 py-2/);
 });
 
+test('dashboard usa a data real do procedimento externo na confirmacao pendente', async () => {
+  const source = await read('app/frontend/src/pages/paciente/DashboardPaciente.jsx');
+
+  assert.match(source, /formatarDataBR\(pend\.data_procedimento_unidade\)/);
+  assert.match(source, /pend\.hora_procedimento_unidade/);
+  assert.match(source, /pend\.orientacoes_procedimento/);
+  assert.match(source, /Orientações para o exame/);
+  assert.doesNotMatch(source, /pend\.data_agendamento/);
+});
+
 test('portal do paciente sincroniza comunicados com polling leve e evento global', async () => {
   const layout = await read('app/frontend/src/components/paciente/PacienteLayout.jsx');
   const dashboard = await read('app/frontend/src/pages/paciente/DashboardPaciente.jsx');

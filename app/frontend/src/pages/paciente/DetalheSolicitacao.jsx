@@ -203,6 +203,7 @@ export default function DetalheSolicitacao() {
                 <p className="text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-1">Data e Horário</p>
                 <p className="font-bold text-on-background">
                   {formatarDataBR(sol.encaminhamento.data_procedimento_unidade)}
+                  {sol.encaminhamento.hora_procedimento_unidade && ` às ${sol.encaminhamento.hora_procedimento_unidade}`}
                 </p>
               </div>
 
@@ -225,6 +226,13 @@ export default function DetalheSolicitacao() {
                 <div className="md:col-span-2 mt-2 p-3 bg-white rounded-xl border border-surface-variant">
                   <p className="text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-1">Resultado / Conduta</p>
                   <p className="text-sm text-on-background font-medium">{sol.encaminhamento.conduta}</p>
+                </div>
+              )}
+
+              {sol.encaminhamento.orientacoes_procedimento && (
+                <div className="md:col-span-2 mt-2 p-3 bg-blue-50 rounded-xl border border-blue-100">
+                  <p className="text-xs font-bold text-blue-700 uppercase tracking-wider mb-1">Orientações para o exame</p>
+                  <p className="text-sm text-blue-950 font-medium leading-relaxed">{sol.encaminhamento.orientacoes_procedimento}</p>
                 </div>
               )}
             </div>

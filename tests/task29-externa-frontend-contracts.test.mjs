@@ -24,7 +24,11 @@ test('frontend externo envia payloads Joi do backend para agendar e concluir', a
   const source = await read('app/frontend/src/pages/externa/EncaminhamentosExterna.jsx');
 
   assert.match(source, /data_procedimento_unidade:\s*dataAgendamento/);
+  assert.match(source, /hora_procedimento_unidade:\s*horaAgendamento/);
+  assert.match(source, /orientacoes_procedimento:\s*orientacoesAgendamento\.trim\(\)/);
   assert.doesNotMatch(source, /data_agendamento/);
+  assert.match(source, /type="time"/);
+  assert.match(source, /orientacoesAgendamento/);
   assert.match(source, /feedback_conduta:\s*retornoForm\.conduta/);
   assert.doesNotMatch(source, /^\s*conduta:\s*retornoForm\.conduta/m);
 });
@@ -43,6 +47,8 @@ test('portal externo usa helper de data e largura responsiva de tablet desktop',
 
   assert.match(fila, /import \{ formatarDataBR \}/);
   assert.match(fila, /formatarDataBR\(enc\.data_procedimento_unidade\)/);
+  assert.match(fila, /enc\.hora_procedimento_unidade/);
+  assert.match(fila, /enc\.orientacoes_procedimento/);
   assert.match(layout, /max-w-7xl/);
   assert.match(layout, /nomeUnidade/);
 });
