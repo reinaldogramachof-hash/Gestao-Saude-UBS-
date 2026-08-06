@@ -100,7 +100,11 @@ export default function PerfilPaciente() {
   return (
     <PacienteLayout>
       {/* ── Cabeçalho verde premium ── */}
-      <header className="bg-primary pt-12 pb-6 px-6">
+      {/* Soma a área segura do notch/Dynamic Island ao espaçamento do header para o texto não ficar sob a barra de status do celular. */}
+      <header
+        className="bg-primary pb-6 px-6"
+        style={{ paddingTop: 'calc(var(--safe-top) + 1.5rem)' }}
+      >
         <h1 className="text-on-primary text-2xl font-extrabold">Meu Perfil</h1>
         <p className="text-white/70 text-sm mt-1">Dados pessoais e prontuário de saúde</p>
       </header>

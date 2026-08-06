@@ -231,7 +231,11 @@ export default function SolicitacoesPaciente() {
   return (
     <PacienteLayout>
       {/* ── Cabeçalho simples (sem o hero verde com nome — só o título da seção) ── */}
-      <header className="bg-primary pt-12 pb-4 px-6">
+      {/* Soma a área segura do notch/Dynamic Island ao espaçamento do header para o texto não ficar sob a barra de status do celular. */}
+      <header
+        className="bg-primary pb-4 px-6"
+        style={{ paddingTop: 'calc(var(--safe-top) + 1.5rem)' }}
+      >
         <button
           onClick={() => navigate('/paciente/dashboard')}
           className="flex items-center gap-1 text-white/80 text-sm mb-4 hover:text-white"

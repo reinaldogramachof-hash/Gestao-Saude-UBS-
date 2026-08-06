@@ -116,9 +116,16 @@ export default function LoginExterna() {
         </form>
 
         {/* ── Links auxiliares ── */}
+        {/* Links cruzados para os outros dois painéis (Gestor e Paciente), facilitando
+            a troca entre os três portais do sistema sem precisar digitar a URL. */}
         <p className="text-center text-on-surface-variant text-sm font-medium mt-6">
           <a href="/login-gestor" className="text-primary font-bold hover:underline transition-colors">
             Acesso para gestores UBS &rarr;
+          </a>
+        </p>
+        <p className="text-center text-on-surface-variant text-sm font-medium mt-2">
+          <a href="/login-paciente" className="text-primary font-bold hover:underline transition-colors">
+            Acesso para pacientes &rarr;
           </a>
         </p>
       </div>

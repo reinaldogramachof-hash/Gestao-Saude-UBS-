@@ -131,6 +131,13 @@ export default function LoginGestor() {
           <a href="/login-paciente" className="text-primary font-bold hover:underline">Acesse o Portal do Paciente</a>
         </p>
 
+        {/* Link cruzado para o Portal de Unidades Externas (AME, CAPS, hospitais parceiros),
+            facilitando a troca entre os três painéis do sistema sem precisar digitar a URL. */}
+        <p className="text-center text-on-surface-variant text-sm font-medium mt-2">
+          Unidade de rede externa? {' '}
+          <a href="/login-externa" className="text-primary font-bold hover:underline">Acesse o Portal Externo</a>
+        </p>
+
         <p className="text-center mt-3">
           <Link to="/privacidade" target="_blank" className="text-xs text-on-surface-variant/70 hover:text-primary font-semibold hover:underline">
             Política de Privacidade

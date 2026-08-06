@@ -54,7 +54,11 @@ export default function Medicamentos() {
   return (
     <PacienteLayout>
       {/* ── Cabeçalho com campo de busca integrado ── */}
-      <header className="bg-primary pt-12 pb-3 px-6">
+      {/* Soma a área segura do notch/Dynamic Island ao espaçamento do header para o texto não ficar sob a barra de status do celular. */}
+      <header
+        className="bg-primary pb-3 px-6"
+        style={{ paddingTop: 'calc(var(--safe-top) + 1.5rem)' }}
+      >
         <h1 className="text-on-primary text-xl font-extrabold">Consulta de Estoque</h1>
         <p className="text-white/70 text-xs mt-0.5 mb-3">Medicamentos disponíveis na sua UBS</p>
         {/* Campo de busca parcial por nome ou substância ativa */}

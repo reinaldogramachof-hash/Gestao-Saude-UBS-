@@ -1061,7 +1061,10 @@ router.get('/paciente/:id/atendimentos', async (req, res) => {
 // Registra um novo atendimento clínico para o paciente.
 // Body: { data_atendimento, unidade, tipo_unidade, especialidade,
 //         profissional, cid_10_principal, cid_10_secundario, conduta, observacoes }
-router.post('/paciente/:id/atendimento', validateBody(atendimentoSchema), async (req, res) => {
+// Restrito a perfil medico: o Painel Medico e o unico ponto de escrita de
+// evolucao clinica, e apenas quem tem perfil medico pode registrar/alterar/
+// excluir esses dados (ver comentario em routes/admin.js sobre o perfil medico).
+router.post('/paciente/:id/atendimento', requirePerfil(['medico']), validateBody(atendimentoSchema), async (req, res) => {
   try {
     const {
       data_atendimento, unidade, tipo_unidade, especialidade,
@@ -1113,7 +1116,8 @@ router.post('/paciente/:id/atendimento', validateBody(atendimentoSchema), async 
 // Atualiza um atendimento clínico existente.
 // Permite corrigir data, unidade, resultado, CID etc. após o registro inicial.
 // Body: qualquer combinação dos campos de atendimento (todos opcionais)
-router.put('/atendimento/:id', validateBody(atendimentoSchema), async (req, res) => {
+// Restrito a perfil medico (mesma justificativa do POST acima).
+router.put('/atendimento/:id', requirePerfil(['medico']), validateBody(atendimentoSchema), async (req, res) => {
   try {
     const existente = await knex('atendimentos')
       .where({ id: req.params.id })
@@ -1163,7 +1167,8 @@ router.put('/atendimento/:id', validateBody(atendimentoSchema), async (req, res)
 // Remove permanentemente um atendimento clínico.
 // Usado para corrigir registros inseridos por engano.
 // Não há soft delete — atendimentos errôneos simplesmente não existiram.
-router.delete('/atendimento/:id', async (req, res) => {
+// Restrito a perfil medico (mesma justificativa do POST acima).
+router.delete('/atendimento/:id', requirePerfil(['medico']), async (req, res) => {
   try {
     const { motivo_exclusao } = req.body || {};
     const existente = await knex('atendimentos')

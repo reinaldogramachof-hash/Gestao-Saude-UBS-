@@ -103,7 +103,11 @@ export default function ComunicadosPaciente() {
   return (
     <PacienteLayout>
       {/* ── Cabeçalho verde padrão do portal do paciente com abas ── */}
-      <header className="bg-primary pt-12 pb-4 px-6">
+      {/* Soma a área segura do notch/Dynamic Island ao espaçamento do header para o texto não ficar sob a barra de status do celular. */}
+      <header
+        className="bg-primary pb-4 px-6"
+        style={{ paddingTop: 'calc(var(--safe-top) + 1.5rem)' }}
+      >
         <div className="flex flex-wrap justify-between items-center gap-3 mb-4">
           <div>
             <h1 className="text-on-primary text-2xl font-extrabold flex flex-wrap items-center gap-2">

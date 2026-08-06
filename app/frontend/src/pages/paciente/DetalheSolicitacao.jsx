@@ -87,7 +87,11 @@ export default function DetalheSolicitacao() {
   return (
     <PacienteLayout semNav>
       {/* ── Header com botão de voltar ── */}
-      <header className="bg-surface-container-lowest px-4 py-5 border-b border-surface-variant flex items-center gap-4 sticky top-0 z-30">
+      {/* Soma a área segura do notch/Dynamic Island ao espaçamento do header para o texto não ficar sob a barra de status do celular. */}
+      <header
+        className="bg-surface-container-lowest px-4 pb-5 border-b border-surface-variant flex items-center gap-4 sticky top-0 z-30"
+        style={{ paddingTop: 'calc(var(--safe-top) + 1.25rem)' }}
+      >
         <button onClick={() => nav(-1)} className="w-10 h-10 rounded-full hover:bg-surface-variant flex items-center justify-center text-on-surface flex-shrink-0">
           <span className="material-symbols-outlined">arrow_back</span>
         </button>

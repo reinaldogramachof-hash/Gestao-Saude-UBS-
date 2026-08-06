@@ -49,3 +49,7 @@ TASK_07_infra_vercel.md
 # Build do hub de mockups na raiz
 dist/
 logo.svg
+
+# Arquivos de configuração órfãos gerados quando o Vite trava durante o dev/build
+# (ver .Agent/reports — recorrente neste projeto por causa do mount OneDrive)
+app/frontend/vite.config.js.timestamp-*.mjs

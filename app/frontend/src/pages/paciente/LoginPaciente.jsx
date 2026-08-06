@@ -1,8 +1,8 @@
 /**
- * PAGINA: LoginPaciente.jsx
+ * PÁGINA: LoginPaciente.jsx
  * -----------------------------------------------------------------------------
- * FUNCAO: Autentica pacientes por CRA + Data de Nascimento e bloqueia a
- *         navegacao ate o aceite LGPD ser registrado no backend.
+ * FUNÇÃO: Autentica pacientes por CRA + Data de Nascimento e bloqueia a
+ *         navegação até o aceite LGPD ser registrado no backend.
  * -----------------------------------------------------------------------------
  */
 import { useEffect, useState } from 'react';
@@ -21,10 +21,10 @@ export default function LoginPaciente() {
   const navigate = useNavigate();
 
   // Centraliza a ida ao dashboard para manter o fluxo de login e o fluxo
-  // pos-aceite apontando para o mesmo destino.
+  // pós-aceite apontando para o mesmo destino.
   const abrirDashboard = () => navigate('/paciente/dashboard');
 
-  // Se a sessao ja existir, esta tela decide se abre o modal LGPD ou segue
+  // Se a sessão já existir, esta tela decide se abre o modal LGPD ou segue
   // para o dashboard do paciente.
   useEffect(() => {
     if (authLoading || !isAuthenticated || user?.tipo !== 'paciente') return;
@@ -76,7 +76,7 @@ export default function LoginPaciente() {
         abrirDashboard();
       }
     } catch {
-      setError('CRA ou Data de Nascimento invalidos. Tente novamente.');
+      setError('CRA ou Data de Nascimento inválidos. Tente novamente.');
     } finally {
       setLoading(false);
     }
@@ -102,8 +102,8 @@ export default function LoginPaciente() {
           <div className="w-24 h-24 flex items-center justify-center mx-auto mb-5">
             <img src="/logo.webp" alt="Logotipo Gestão Saúde UBS+" className="w-full h-full object-contain" />
           </div>
-          <h1 className="text-3xl font-extrabold tracking-tight text-on-background mb-1">Gestao Saude</h1>
-          <p className="text-on-surface-variant font-medium">Portal do Paciente - Sao Jose dos Campos</p>
+          <h1 className="text-3xl font-extrabold tracking-tight text-on-background mb-1">Gestão Saúde</h1>
+          <p className="text-on-surface-variant font-medium">Portal do Paciente - São José dos Campos</p>
         </div>
 
         <div className="w-full max-w-md bg-surface-container-lowest rounded-3xl shadow-md p-8 space-y-6">
@@ -115,7 +115,7 @@ export default function LoginPaciente() {
 
           <form onSubmit={handleLogin} className="space-y-6">
             <div className="space-y-2">
-              <label htmlFor="cra" className="block text-sm font-bold text-on-surface-variant">Numero do CRA</label>
+              <label htmlFor="cra" className="block text-sm font-bold text-on-surface-variant">Número do CRA</label>
               <input
                 id="cra"
                 value={cra}
@@ -125,7 +125,7 @@ export default function LoginPaciente() {
                 placeholder="Ex: 00123456"
                 className="w-full h-12 bg-surface-container-high border-none rounded-xl px-4 text-on-surface focus:ring-2 focus:ring-primary outline-none font-medium"
               />
-              <p className="text-xs text-on-surface-variant ml-1">O CRA e o seu numero de cadastro na unidade de saude.</p>
+              <p className="text-xs text-on-surface-variant ml-1">O CRA é o seu número de cadastro na unidade de saúde.</p>
             </div>
 
             <div className="space-y-2">
@@ -153,13 +153,13 @@ export default function LoginPaciente() {
           </form>
 
           <p className="text-center text-xs text-on-surface-variant pt-2">
-            Seus dados sao protegidos - LGPD/Lei 13.709
+            Seus dados são protegidos - LGPD/Lei 13.709
           </p>
         </div>
 
         <div className="mt-6 text-center space-y-3">
           <div className="bg-surface-container-lowest rounded-2xl p-4 max-w-md w-full border border-surface-variant">
-            <p className="text-sm font-semibold text-on-surface-variant mb-2">Ainda nao tem cadastro?</p>
+            <p className="text-sm font-semibold text-on-surface-variant mb-2">Ainda não tem cadastro?</p>
             <Link
               to="/cadastro-paciente"
               className="inline-flex items-center gap-2 h-11 px-6 bg-primary/10 text-primary font-bold rounded-xl hover:bg-primary/20 transition-colors text-sm"
@@ -174,9 +174,16 @@ export default function LoginPaciente() {
             <a href="/login-gestor" className="text-primary font-bold hover:underline">Acesse o Portal do Gestor</a>
           </p>
 
+          {/* Link cruzado para o Portal de Unidades Externas (AME, CAPS, hospitais parceiros),
+              facilitando a troca entre os três painéis do sistema sem precisar digitar a URL. */}
+          <p className="text-on-surface-variant text-sm font-medium">
+            Unidade de rede externa?{' '}
+            <a href="/login-externa" className="text-primary font-bold hover:underline">Acesse o Portal Externo</a>
+          </p>
+
           <p className="pt-2">
             <Link to="/privacidade" target="_blank" className="text-xs text-on-surface-variant/70 hover:text-primary font-semibold hover:underline">
-              Politica de Privacidade
+              Política de Privacidade
             </Link>
           </p>
         </div>

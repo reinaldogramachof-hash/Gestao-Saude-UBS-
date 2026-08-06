@@ -46,10 +46,10 @@ export default function MinhaContaGestor() {
           nome: res.data.nome || '',
           email: res.data.email || '',
           perfil: res.data.perfil || '',
-          ubs_nome: res.data.ubs_nome || 'Unidade de Saude',
+          ubs_nome: res.data.ubs_nome || 'Unidade de Saúde',
         });
       })
-      .catch(() => toast.error('Nao foi possivel carregar sua conta.'))
+      .catch(() => toast.error('Não foi possível carregar sua conta.'))
       .finally(() => {
         if (montado) setCarregando(false);
       });
@@ -86,12 +86,12 @@ export default function MinhaContaGestor() {
     event.preventDefault();
 
     if (senha.nova_senha.length < 8) {
-      toast.error('A nova senha deve ter no minimo 8 caracteres.');
+      toast.error('A nova senha deve ter no mínimo 8 caracteres.');
       return;
     }
 
     if (senha.nova_senha !== senha.confirmar_senha) {
-      toast.error('A confirmacao nao corresponde a nova senha.');
+      toast.error('A confirmação não corresponde à nova senha.');
       return;
     }
 
@@ -119,7 +119,7 @@ export default function MinhaContaGestor() {
           Minha conta
         </h1>
         <p className="text-on-surface-variant font-medium mt-1 text-sm md:text-base">
-          Dados de acesso, identificacao profissional e senha do usuario logado.
+          Dados de acesso, identificação profissional e senha do usuário logado.
         </p>
       </header>
 
@@ -197,7 +197,7 @@ export default function MinhaContaGestor() {
                 label="Nova senha"
                 value={senha.nova_senha}
                 onChange={(valor) => setSenha((prev) => ({ ...prev, nova_senha: valor }))}
-                placeholder="Minimo de 8 caracteres"
+                placeholder="Mínimo de 8 caracteres"
               />
               <CampoSenha
                 label="Confirmar nova senha"
